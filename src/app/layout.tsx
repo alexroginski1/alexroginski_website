@@ -2,6 +2,34 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 
+const momsTypewriter = localFont({
+  src: '../fonts/moms_typewriter/Mom差___.ttf',
+  variable: '--font-moms-typewriter',
+  display: 'swap',
+})
+
+const roughTypewriter = localFont({
+  src: [
+    {
+      path: '../fonts/rough_typewriter/rough_typewriter.otf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../fonts/rough_typewriter/rough_typewriter-itl.otf',
+      weight: '400',
+      style: 'italic',
+    },
+    {
+      path: '../fonts/rough_typewriter/rough_typewriter-bld-itl.otf',
+      weight: '700',
+      style: 'italic',
+    },
+  ],
+  variable: '--font-rough-typewriter',
+  display: 'swap',
+})
+
 const f25BankPrinter = localFont({
   src: [
     {
