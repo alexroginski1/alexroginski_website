@@ -41,19 +41,23 @@ export default function StuffToDo() {
         <h1>Stuff To Do SF</h1>
 
         <div className="std-intro">
-          <p>Hi, my name's Alex.</p>
+
+          <p>Hi, I'm Alex.</p>
           <p>I want to make it easier for people to find community in San Francisco.</p>
-          <p>I take many events from across the city and put them into Google Calendars automatically.</p>
-          <p>It's all free. It's for you and your friends.</p>
+          <p>I automatically collect events happening across the city and organize them into Google Calendars, so you can discover what's going on without searching several websites.</p>
+          <p>Everything is free. This is for you and your friends.</p>
           <p>
-            For example, here's the Arts and Cultures event calendar. It tracks the events from three SF arts
-            venues' calendars so that you don't have to go manually searching yourself:
+            Here's an example of how it works: 
+          </p>
+        
+          <p>
+            This is the Arts and Cultures event calendar. It tracks the events from three SF art venues and some other reoccuring art events.
           </p>
         </div>
 
         <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture} />
 
-        <p>The calendar above includes three venues:</p>
+        <p>Here are the venues:</p>
         <ul>
           <li>🔮 <a href="https://www.thefaight.com/events">The Faight</a> (Haight)</li>
           <li>🤖 <a href="https://luma.com/tiat">TIAT Art and Tech</a> (Downtown)</li>
@@ -61,17 +65,17 @@ export default function StuffToDo() {
         </ul>
         
         <br></br>
+        <p>These all have their own calendars. It's a headache check each one manually whenever you want to find events.</p>
         <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
-        <p>I've also added some weekly events manually, like figure drawing from Sketchboard Co. </p>
 
         <p><b>Click on the + on the bottom right corner of the calendar to add it to your Google Calendar as shown in the red box here:</b></p>
         <img src="/add_calendar_button.png" alt="Add to Google Calendar button" />
 
         <br></br>
-        <p>Here are some more community calendars. I added these events manually since they're weekly and consistent.</p>
+        <p>Here are some more community calendars.</p>
         <br></br>
         <h2>Sports</h2>
-        <p>Run Clubs, yoga, etc.</p>
+        <p>Run Clubs, yoga, etc.   I added these events manually since they're weekly and consistent.</p>
         <CalendarEmbed title="" src={CALENDARS.sports} />
 
 
@@ -80,20 +84,23 @@ export default function StuffToDo() {
         <ul>
           <li><a href="https://decentered.org/events">👥 Decentered Community Submitted Events</a> (Various Locations)</li>
           <li><a href="https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512">👨‍🦰 Manny's: Community, Politics, and Culture</a> (Mission)</li>
-          <li><a href="https://www.thesfnook.com/events">🏠 The SF Nook: SF Event Space</a> (on Market near Civic Center)</li>
+          <li><a href="https://www.thesfnook.com/events">🏠 The SF Nook: Event Space</a> (on Market near Civic Center)</li>
   
         </ul>
         <CalendarEmbed title="" src={CALENDARS.other} />
 
+        <p>This calendar can get really dense. It's good to look at it on the "Day" or "Schedule" level.</p>
+        <br></br>
 
         <h1>Non-Community Google Calendars</h1>
         <p>
           There are some additional calendars not specifically for community events.
         </p>
 
-
-
-
+        <h2>Partiful Discover Page</h2>
+        <p>This scrapes some events on the Partiful discover page for San Francisco. I have found some really fun stuff here.
+        </p>
+        <CalendarEmbed title="" src={CALENDARS.partiful} />
 
         <h2>SF Fun Cheap</h2>
         <p>SF Fun Cheap aggregates tons of stuff happening in the city. It's just hard to manually go through their calendar
@@ -101,30 +108,26 @@ export default function StuffToDo() {
         </p>
     
         <CalendarEmbed title="" src={CALENDARS.funCheap} />
-        <h2>Luma</h2>
-        <p>I found a way to scrape Luma for events. They are mostly tech events. I haven't found anything good here yet.
+        
+        <h2>Luma Discover Page</h2>
+        <p>Mostly tech events. I haven't found this calendar useful yet.
         </p>
         <CalendarEmbed title="" src={CALENDARS.luma} />
 
-
-        <h2>Partiful</h2>
-        <p>This scrapes some events on the Partiful discover page for San Francisco.
-        </p>
-        <CalendarEmbed title="" src={CALENDARS.partiful} />
 
         
 
         <div className="std-callout">
           <p>
             <span className="font-medium">Know a great community event source?</span>{' '}
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSd9Wt0kFxIYOafqI-jn7lMs7IQ95XxQ7aZk7P_fup24Ng4clw/viewform?usp=sharing&ouid=101189593015983846180">Let me know</a> and I'll consider adding it.
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSd9Wt0kFxIYOafqI-jn7lMs7IQ95XxQ7aZk7P_fup24Ng4clw/viewform?usp=sharing&ouid=101189593015983846180">Let me know!</a>
           </p>
         </div>
 
         <h2>Origins of this project</h2>
         <p>Last year, I lived in Sunnyvale where there wasn't much to do. Once I moved to the city,
           I started keeping track of the fun reoccuring events in <a href="https://docs.google.com/spreadsheets/d/1x1EeFDPKNDULmW1_EE-4xsTcPV0RQ7pdZd4oK_fh0Dg/edit?gid=545113219#gid=545113219">this spreadsheet</a>.
-          There are more resources there for finding fun stuff like partner dancing, jamming (instruments), and unique clubs.
+          There are more resources there for finding fun stuff like partner dancing, jamming (instruments), trivia, and unique clubs.
 
         </p>
 
