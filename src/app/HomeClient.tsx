@@ -1,15 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import typewriterBg from './backgrounds/typewriter.png'
 
-// Coordinates of the paper slot in the typewriter image (% of image dimensions).
-// Image is 740x1014. The carriage/paper-feed is at roughly (50%, 42%).
-// With object-fit:contain on a landscape viewport the image fills the full height,
-// so these percentages map directly to viewport percentages.
-const SLOT_X = 50   // % from left
-const SLOT_Y = 51   // % from top
+const SLOT_X = 50
+const SLOT_Y = 52
 
 const LINES = [
   'Lorem ipsum dolor sit amet,',
@@ -53,42 +49,64 @@ const LINES = [
 
 const TOTAL_CHARS = LINES.reduce((sum, l) => sum + l.length + 1, 0)
 
+// Cumulative char count at the end of each line (including the implicit newline unit)
+const LINE_BOUNDARIES = LINES.reduce<number[]>((acc, line, i) => {
+  acc.push((acc[i - 1] ?? 0) + line.length + 1)
+  return acc
+}, [])
+
+function snapToLineBoundary(chars: number): number {
+  let snapped = 0
+  for (let i = 0; i < LINE_BOUNDARIES.length; i++) {
+    if (LINE_BOUNDARIES[i] <= chars) {
+      snapped = LINE_BOUNDARIES[i]
+    } else {
+      break
+    }
+  }
+  return snapped
+}
+
 export default function HomeClient() {
-  const [charsShown, setCharsShown] = useState(0)
+  const [displayedChars, setDisplayedChars] = useState(0)
+  const prevScrollRef = useRef(0)
 
   useEffect(() => {
     const onScroll = () => {
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight
       const ratio = maxScroll > 0 ? Math.min(window.scrollY / maxScroll, 1) : 0
-      setCharsShown(Math.round(ratio * TOTAL_CHARS))
+      const exactChars = Math.round(ratio * TOTAL_CHARS)
+      const scrollingDown = window.scrollY >= prevScrollRef.current
+
+      setDisplayedChars(scrollingDown ? exactChars : snapToLineBoundary(exactChars))
+      prevScrollRef.current = window.scrollY
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Split charsShown into completed lines + a partial current line
+  // Split displayedChars into completed lines + a partial current line
   const completedLines: string[] = []
   let partialLine: string | null = null
   let acc = 0
 
   for (let i = 0; i < LINES.length; i++) {
-    const lineLen = LINES[i].length + 1 // +1 for implicit newline unit
-    if (acc + lineLen <= charsShown) {
+    const lineLen = LINES[i].length + 1
+    if (acc + lineLen <= displayedChars) {
       completedLines.push(LINES[i])
       acc += lineLen
     } else {
-      const remaining = charsShown - acc
+      const remaining = displayedChars - acc
       partialLine = LINES[i].slice(0, remaining)
       break
     }
   }
 
   const hasContent = completedLines.length > 0 || (partialLine !== null && partialLine.length > 0)
-  const atStart = charsShown === 0
+  const atStart = displayedChars === 0
 
   return (
-    // Scroll container — fixed bg means the user scrolls "through" the typewriter
     <div style={{ height: '350vh', position: 'relative' }}>
 
       {/* Fixed typewriter background */}
@@ -129,20 +147,17 @@ export default function HomeClient() {
           className="fixed pointer-events-none"
           style={{
             zIndex: 10,
-            // Bottom edge sits exactly at the paper slot
             bottom: `${100 - SLOT_Y}%`,
             left: `${SLOT_X}%`,
             transform: 'translateX(-50%)',
-            width: 'min(320px, 72vw)',
+            width: 'min(310px, 72vw)',
           }}
         >
-          {/* Paper strip — grows upward as lines accumulate */}
           <div
             style={{
               background: '#f5f0e5',
               boxShadow: '2px 0 6px rgba(0,0,0,0.18), -2px 0 6px rgba(0,0,0,0.18)',
               padding: '10px 18px 0 18px',
-              // Fade the very bottom edge so paper looks like it emerges from the slot
               WebkitMaskImage: 'linear-gradient(to top, transparent 0px, black 14px)',
               maskImage: 'linear-gradient(to top, transparent 0px, black 14px)',
             }}
@@ -180,6 +195,16 @@ export default function HomeClient() {
           </div>
         </div>
       )}
+
+      {/* Bottom fade to black — sits above everything so the page bleeds into darkness */}
+      <div
+        className="fixed bottom-0 left-0 right-0 pointer-events-none"
+        style={{
+          zIndex: 30,
+          height: '18vh',
+          background: 'linear-gradient(to bottom, transparent 0%, black 100%)',
+        }}
+      />
     </div>
   )
 }
