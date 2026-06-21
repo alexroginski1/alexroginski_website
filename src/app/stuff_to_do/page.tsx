@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
-import BackLink from '@/components/BackLink'
+import PageHeader from '@/components/PageHeader'
 
 export const metadata: Metadata = {
   title: 'Stuff To Do SF',
@@ -34,9 +34,7 @@ export default function StuffToDo() {
     <main className="std-root">
       <div className="std-container">
 
-        <nav className="std-nav">
-          <BackLink label="← Alex Roginski" />
-        </nav>
+        <PageHeader />
 
         <h1>Stuff To Do SF</h1>
 
@@ -149,7 +147,7 @@ export default function StuffToDo() {
         <h2></h2>
 
         <div className="std-footer">
-          <BackLink />
+          <PageHeader backLabel="← Back home" />
         </div>
 
       </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
+import Footer from '@/components/Footer'
 
 const momsTypewriter = localFont({
   src: '../fonts/moms_typewriter/Mom差___.ttf',
@@ -62,14 +63,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${f25BankPrinter.className} bg-stone-50 text-stone-900 antialiased flex flex-col min-h-screen`}>
+      <body
+        className={`${f25BankPrinter.variable} ${roughTypewriter.variable} ${momsTypewriter.variable} ${f25BankPrinter.className} bg-stone-50 text-stone-900 antialiased flex flex-col min-h-screen`}
+      >
         <div className="flex-1">{children}</div>
-        <footer className="border-t border-stone-200 py-6 mt-12">
-          <div className="max-w-2xl mx-auto px-6 flex gap-6 text-sm text-stone-500">
-            <a href="https://www.linkedin.com/in/alex-roginski-68b40219a/" target="_blank" rel="noopener noreferrer" className="hover:text-stone-900 transition-colors">LinkedIn</a>
-            <a href="mailto:roginskialexr@gmail.com" className="hover:text-stone-900 transition-colors">roginskialexr@gmail.com</a>
-          </div>
-        </footer>
+        <Footer />
       </body>
     </html>
   )

@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  animation: blink 0.75s step-end infinite;
+  font-family: monospace;
+  font-size: 0.9em;
+  vertical-align: baseline;
+}
+
 @layer base {
   h1 {
     @apply text-2xl font-semibold text-stone-900 leading-tight mb-6;
