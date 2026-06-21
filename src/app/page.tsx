@@ -14,7 +14,7 @@ export default function Home() {
         <h1 className="text-lg font-semibold text-stone-900 mb-20">
           Alex Roginski
         </h1>
-
+{/*  */}
         {/* Introduction */}
         <div className="space-y-5 mb-16">
           <p className="text-xl leading-relaxed text-stone-700">
