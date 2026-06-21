@@ -8,6 +8,7 @@ const inter = Inter({
   display: 'swap',
   weight: ['400', '500', '600'],
 })
+// 
 
 export const metadata: Metadata = {
   title: {
