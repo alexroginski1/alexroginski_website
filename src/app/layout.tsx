@@ -1,14 +1,23 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
+const f25BankPrinter = localFont({
+  src: [
+    {
+      path: '../fonts/f25_bank_printer/F25_Bank_Printer.ttf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../fonts/f25_bank_printer/F25_Bank_Printer_Bold.ttf',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-f25',
   display: 'swap',
-  weight: ['400', '500', '600'],
 })
-// 
 
 export const metadata: Metadata = {
   title: {
@@ -24,8 +33,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="font-sans bg-stone-50 text-stone-900 antialiased flex flex-col min-h-screen">
+    <html lang="en">
+      <body className={`${f25BankPrinter.className} bg-stone-50 text-stone-900 antialiased flex flex-col min-h-screen`}>
         <div className="flex-1">{children}</div>
         <footer className="border-t border-stone-200 py-6 mt-12">
           <div className="max-w-2xl mx-auto px-6 flex gap-6 text-sm text-stone-500">

@@ -46,6 +46,23 @@ export default function StuffToDo() {
           <p>I want to make it easier for people to find community in San Francisco.</p>
           <p>I automatically collect events happening across the city and organize them into Google Calendars, so you can discover what's going on without searching several websites.</p>
           <p>Everything is free. This is for you and your friends.</p>
+
+
+          <p><b>Click these links to add to your Google Calendar:</b></p>
+
+          <a href="https://calendar.google.com/calendar/embed?src=7f66e10ca74622780fdf0db852f0dc8e4be2272cf206bfc8cf83f2eaefc8abdf%40group.calendar.google.com&ctz=America%2FLos_Angeles">Arts and Culture</a><br></br>
+          <a href="https://calendar.google.com/calendar/embed?src=c40ce35591588f6a8cf1d14e96f4ec215f2d812857382a0fb7253eabea1a0154%40group.calendar.google.com&ctz=America%2FLos_Angeles">Other (community venues)</a><br></br>
+          <a href="https://calendar.google.com/calendar/embed?src=60a19fdad14c75dc604082f022416e48c2d30dc440502a5e80bf410d32570d1d%40group.calendar.google.com&ctz=America%2FLos_Angeles">SF Fun Cheap</a><br></br>
+          <a href="https://calendar.google.com/calendar/embed?src=9d7c77c609ffc954909e2a0cb72e2c2b5029048fe87d0ba6a035ccac18e1472a%40group.calendar.google.com&ctz=America%2FLos_Angeles">Partiful</a><br></br>
+          <a href="https://calendar.google.com/calendar/embed?src=2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f%40group.calendar.google.com&ctz=America%2FLos_Angeles">Sports/Exercise</a><br></br>
+          <a href="https://calendar.google.com/calendar/embed?src=45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15%40group.calendar.google.com&ctz=America%2FLos_Angeles">Luma</a>
+          
+          
+          
+
+
+
+
           <p>
             Here's an example of how it works: 
           </p>
@@ -57,6 +74,7 @@ export default function StuffToDo() {
 
         <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture} />
 
+
         <p>Here are the venues:</p>
         <ul>
           <li>🔮 <a href="https://www.thefaight.com/events">The Faight</a> (Haight)</li>
@@ -65,12 +83,9 @@ export default function StuffToDo() {
         </ul>
         
         <br></br>
-        <p>These venues all have their own calendars. It's a headache check each one manually whenever you want to find events.</p>
+        <p>These venues all have their own calendars. It's a headache to check each one manually whenever you want to find events.</p>
         <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
-
-        <p><b>Click on the + on the bottom right corner of the calendar to add it to your Google Calendar as shown in the red box here:</b></p>
-        <img src="/add_calendar_button.png" alt="Add to Google Calendar button" />
-
+        
         <br></br>
         <p>Here are some more community calendars.</p>
         <br></br>

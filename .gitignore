@@ -8,6 +8,7 @@
 # misc
 .DS_Store
 *.pem
+*.icloud
 
 # debug
 npm-debug.log*
