@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import typewriterBg from './backgrounds/typewriter.png'
 
 const SLOT_X = 50
 const SLOT_Y = 52
@@ -112,7 +111,7 @@ export default function HomeClient() {
       {/* Fixed typewriter background */}
       <div className="fixed inset-0 bg-stone-900" style={{ zIndex: 0 }}>
         <Image
-          src={typewriterBg}
+          src="/typewriter.png"
           alt="Vintage typewriter"
           fill
           style={{ objectFit: 'contain' }}
