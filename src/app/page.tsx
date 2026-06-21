@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-stone-50">
       <div className="max-w-2xl mx-auto px-6 py-20 md:py-32">
-
+{/*  */}
         {/* Name */}
         <h1 className="text-lg font-semibold text-stone-900 mb-20">
           Alex Roginski
