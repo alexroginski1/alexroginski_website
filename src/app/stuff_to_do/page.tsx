@@ -46,7 +46,7 @@ export default function StuffToDo() {
           <p>I take many events from across the city and put them into Google Calendars automatically.</p>
           <p>It's all free. It's for you and your friends.</p>
           <p>
-            For example, here's the Arts and Cultures event calendar. It takes the events from three SF arts
+            For example, here's the Arts and Cultures event calendar. It tracks the events from three SF arts
             venues' calendars so that you don't have to go manually searching yourself:
           </p>
         </div>
@@ -59,8 +59,10 @@ export default function StuffToDo() {
           <li>🤖 <a href="https://luma.com/tiat">TIAT Art and Tech</a> (Downtown)</li>
           <li>😵‍💫 <a href="https://decentered.org/events">Decentered Featured Events</a> (SOMA)</li>
         </ul>
+        
         <br></br>
         <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
+        <p>I've also added some weekly events manually, like figure drawing from Sketchboard Co. </p>
 
         <p><b>Click on the + on the bottom right corner of the calendar to add it to your Google Calendar as shown in the red box here:</b></p>
         <img src="/add_calendar_button.png" alt="Add to Google Calendar button" />
@@ -93,14 +95,14 @@ export default function StuffToDo() {
 
 
 
-        <h2>Fun Cheap</h2>
-        <p>SF Fun Cheap is a good aggregator. It's just hard to manually go through their calendar
+        <h2>SF Fun Cheap</h2>
+        <p>SF Fun Cheap aggregates tons of stuff happening in the city. It's just hard to manually go through their calendar
           and find stuff to do. This calendar does that for you automatically.
         </p>
     
         <CalendarEmbed title="" src={CALENDARS.funCheap} />
         <h2>Luma</h2>
-        <p>I found a way to scrape Luma for events. They are mostly tech events.
+        <p>I found a way to scrape Luma for events. They are mostly tech events. I haven't found anything good here yet.
         </p>
         <CalendarEmbed title="" src={CALENDARS.luma} />
 
@@ -115,10 +117,16 @@ export default function StuffToDo() {
         <div className="std-callout">
           <p>
             <span className="font-medium">Know a great community event source?</span>{' '}
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSd9Wt0kFxIYOafqI-jn7lMs7IQ95XxQ7aZk7P_fup24Ng4clw/viewform?usp=sharing&ouid=101189593015983846180" target="_blank" rel="noopener noreferrer">Let me know</a> and I'll consider adding it.
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSd9Wt0kFxIYOafqI-jn7lMs7IQ95XxQ7aZk7P_fup24Ng4clw/viewform?usp=sharing&ouid=101189593015983846180">Let me know</a> and I'll consider adding it.
           </p>
         </div>
 
+        <h2>Origins of this project</h2>
+        <p>Last year, I lived in Sunnyvale where there wasn't much to do. Once I moved to the city,
+          I started keeping track of the fun reoccuring events in <a href="https://docs.google.com/spreadsheets/d/1x1EeFDPKNDULmW1_EE-4xsTcPV0RQ7pdZd4oK_fh0Dg/edit?gid=545113219#gid=545113219">this spreadsheet</a>.
+          There are more resources there for finding fun stuff like partner dancing, jamming (instruments), and unique clubs.
+
+        </p>
 
         <h2></h2>
 
