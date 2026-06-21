@@ -15,7 +15,7 @@ export default function Home() {
         <div className="page-intro">
           <p>Hi, my name's Alex.</p>
           <p>
-            I'm a data analyst and software engineer based in San Francisco. I studied Data Science at UC Santa Barbara.
+            I'm a data analyst and software engineer based in San Francisco.
           </p>
         </div>
 

@@ -67,7 +67,7 @@ export default function StuffToDo() {
 
         <br></br>
         <p>Here are some more community calendars. I added these events manually since they're weekly and consistent.</p>
-
+        <br></br>
         <h2>Sports</h2>
         <p>Run Clubs, yoga, etc.</p>
         <CalendarEmbed title="" src={CALENDARS.sports} />
@@ -76,9 +76,9 @@ export default function StuffToDo() {
         <h2>Other</h2>
         <p>This calendar includes a few other venues I wasn't sure how to categorize: </p>
         <ul>
-          <li><a href="https://decentered.org/events">Decentered Community Submitted Events</a> (Various Locations)</li>
-          <li><a href="https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512">Manny's: Community, Politics, and Culture</a> (Mission)</li>
-          <li><a href="https://www.thesfnook.com/events">The SF Nook: SF Event Space</a> (on Market near Civic Center)</li>
+          <li><a href="https://decentered.org/events">👥 Decentered Community Submitted Events</a> (Various Locations)</li>
+          <li><a href="https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512">👨‍🦰 Manny's: Community, Politics, and Culture</a> (Mission)</li>
+          <li><a href="https://www.thesfnook.com/events">🏠 The SF Nook: SF Event Space</a> (on Market near Civic Center)</li>
   
         </ul>
         <CalendarEmbed title="" src={CALENDARS.other} />
@@ -98,13 +98,11 @@ export default function StuffToDo() {
           and find stuff to do. This calendar does that for you automatically.
         </p>
     
-
-        <h2>Luma</h2>
         <CalendarEmbed title="" src={CALENDARS.funCheap} />
-        
-        <p>I found this way to scrape Luma for events. They are mostly tech events.
+        <h2>Luma</h2>
+        <p>I found a way to scrape Luma for events. They are mostly tech events.
         </p>
-        <CalendarEmbed title="Luma" src={CALENDARS.luma} />
+        <CalendarEmbed title="" src={CALENDARS.luma} />
 
 
         <h2>Partiful</h2>
@@ -117,9 +115,12 @@ export default function StuffToDo() {
         <div className="std-callout">
           <p>
             <span className="font-medium">Know a great community event source?</span>{' '}
-            Let me know and I'll consider adding it.
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSd9Wt0kFxIYOafqI-jn7lMs7IQ95XxQ7aZk7P_fup24Ng4clw/viewform?usp=sharing&ouid=101189593015983846180" target="_blank" rel="noopener noreferrer">Let me know</a> and I'll consider adding it.
           </p>
         </div>
+
+
+        <h2></h2>
 
         <div className="std-footer">
           <BackLink />
