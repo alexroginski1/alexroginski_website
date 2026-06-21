@@ -65,7 +65,7 @@ export default function StuffToDo() {
         </ul>
         
         <br></br>
-        <p>These all have their own calendars. It's a headache check each one manually whenever you want to find events.</p>
+        <p>These venues all have their own calendars. It's a headache check each one manually whenever you want to find events.</p>
         <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
 
         <p><b>Click on the + on the bottom right corner of the calendar to add it to your Google Calendar as shown in the red box here:</b></p>
