@@ -1,3 +1,136 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  h1 {
+    @apply text-2xl font-semibold text-stone-900 leading-tight mb-6;
+  }
+
+  ul {
+    @apply ml-6 list-disc;
+  }
+
+  h2 {
+    @apply text-xl font-semibold text-stone-800 leading-snug mb-4;
+  }
+
+  h3 {
+    @apply text-lg font-medium text-stone-800 leading-snug mb-3;
+  }
+
+  h4 {
+    @apply text-base font-medium text-stone-700 mb-2;
+  }
+
+  h5 {
+    @apply text-xs font-medium text-stone-400 uppercase tracking-widest mb-2;
+  }
+}
+
+@layer components {
+  .page-root {
+    @apply min-h-screen bg-stone-50;
+  }
+
+  .page-container {
+    @apply max-w-2xl mx-auto px-6 py-20 md:py-32;
+  }
+
+  .page-intro {
+    @apply space-y-5 mb-16;
+  }
+
+  .page-intro p {
+    @apply text-xl leading-relaxed text-stone-700;
+  }
+
+  .page-projects {
+    @apply mb-20;
+  }
+
+  .page-projects-list {
+    @apply space-y-3;
+  }
+
+  .page-projects-list li {
+    @apply text-stone-600;
+  }
+
+  .page-project-link {
+    @apply text-orange-600 hover:text-orange-700 font-medium transition-colors;
+  }
+
+  .page-links {
+    @apply flex gap-6 text-sm border-t border-stone-200 pt-8;
+  }
+
+  .page-link {
+    @apply text-stone-500 hover:text-stone-800 transition-colors;
+  }
+
+  .std-root {
+    @apply min-h-screen bg-stone-50;
+  }
+
+  .std-container {
+    @apply max-w-2xl mx-auto px-6 py-20 md:py-32;
+  }
+
+  .std-back-link {
+    @apply text-sm text-stone-500 hover:text-stone-800 transition-colors;
+  }
+
+  .std-nav {
+    @apply mb-16;
+  }
+
+  .std-intro {
+    @apply space-y-5 mb-14;
+  }
+
+  .std-intro p {
+    @apply text-lg leading-relaxed text-stone-700;
+  }
+
+  .std-example {
+    @apply mb-14;
+  }
+
+  .std-image {
+    @apply rounded-xl border border-stone-200 w-full h-auto;
+  }
+
+  .std-calendar {
+    @apply mb-14;
+  }
+
+  .std-calendar-iframe {
+    @apply w-full rounded-xl border border-stone-200;
+    height: 600px;
+  }
+
+  .std-callout {
+    @apply rounded-xl border border-orange-200 bg-orange-50 px-5 py-4 mb-14;
+  }
+
+  .std-callout p {
+    @apply text-stone-700 text-sm leading-relaxed;
+  }
+
+  .std-section {
+    @apply mb-10;
+  }
+
+  .std-section-last {
+    @apply mb-16;
+  }
+
+  .std-footer {
+    @apply pt-8 border-t border-stone-200;
+  }
+
+  .std-container a {
+    @apply text-blue-600 hover:text-blue-800 transition-colors;
+  }
+}

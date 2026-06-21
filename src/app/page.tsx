@@ -7,64 +7,49 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-stone-50">
-      <div className="max-w-2xl mx-auto px-6 py-20 md:py-32">
-{/*  */}
-        {/* Name */}
-        <h1 className="text-lg font-semibold text-stone-900 mb-20">
-          Alex Roginski
-        </h1>
-{/*  */}
-        {/* Introduction */}
-        <div className="space-y-5 mb-16">
-          <p className="text-xl leading-relaxed text-stone-700">
-            Hi, my name&apos;s Alex.
-          </p>
-          <p className="text-xl leading-relaxed text-stone-700">
-            I&apos;m interested in building tools that help people find community
-            and make it easier to discover things happening around San Francisco.
+    <main className="page-root">
+      <div className="page-container">
+
+        <h1>Alex Roginski</h1>
+
+        <div className="page-intro">
+          <p>Hi, my name's Alex.</p>
+          <p>
+            I'm a data analyst and software engineer based in San Francisco. I studied Data Science at UC Santa Barbara.
           </p>
         </div>
 
-        {/* Current projects */}
-        <div className="mb-20">
-          <p className="text-xs font-medium text-stone-400 uppercase tracking-widest mb-5">
-            Current projects
-          </p>
-          <ul className="space-y-3">
+        <div className="page-projects">
+          <h2>Current projects</h2>
+          <ul className="page-projects-list">
             <li>
-              <Link
-                href="/stuff_to_do"
-                className="text-orange-600 hover:text-orange-700 font-medium transition-colors"
-              >
+              <Link href="/stuff_to_do" className="page-project-link">
                 Stuff To Do SF →
               </Link>
             </li>
-            <li className="text-stone-600">Community event calendars</li>
-            <li className="text-stone-600">Workflow automation</li>
-            <li className="text-stone-600">Data and software projects</li>
+            {/* <li>Community event calendars</li> */}
+            {/* <li>Workflow automation</li> */}
+            {/* <li>Data and software projects</li> */}
           </ul>
         </div>
 
-        {/* Links */}
-        {/* UPDATE: Replace these placeholder URLs with your real profiles */}
-        <div className="flex gap-6 text-sm border-t border-stone-200 pt-8">
+        <div className="page-links">
           <a
-            href="https://linkedin.com/in/alexroginski"
+            href="https://www.linkedin.com/in/alex-roginski-68b40219a/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-stone-500 hover:text-stone-800 transition-colors"
+            className="page-link"
           >
             LinkedIn
           </a>
-          <a
-            href="https://github.com/alexroginski"
+          {/* <a
+            href="https://github.com/alexroginski1"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-stone-500 hover:text-stone-800 transition-colors"
+            className="page-link"
           >
             GitHub
-          </a>
+          </a> */}
         </div>
 
       </div>

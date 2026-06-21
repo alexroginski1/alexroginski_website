@@ -1,136 +1,128 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
-import Link from 'next/link'
+import BackLink from '@/components/BackLink'
 
 export const metadata: Metadata = {
   title: 'Stuff To Do SF',
   description: 'Making it easier to find free community events in San Francisco.',
 }
 
+const BASE_CALENDAR_URL = 'https://calendar.google.com/calendar/embed'
+const TIMEZONE = 'America%2FLos_Angeles'
+
+function CalendarEmbed({ title, src }: { title: string; src: string }) {
+  const url = `${BASE_CALENDAR_URL}?mode=WEEK&src=${src}&ctz=${TIMEZONE}`
+  return (
+    <div className="std-calendar">
+      <h2>{title}</h2>
+      <iframe src={url} className="std-calendar-iframe" title={`${title} Calendar`} />
+    </div>
+  )
+}
+
+const CALENDARS = {
+  funCheap: '60a19fdad14c75dc604082f022416e48c2d30dc440502a5e80bf410d32570d1d%40group.calendar.google.com',
+  luma: '45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15%40group.calendar.google.com',
+  partiful: '9d7c77c609ffc954909e2a0cb72e2c2b5029048fe87d0ba6a035ccac18e1472a%40group.calendar.google.com',
+  sports: '2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f%40group.calendar.google.com',
+  other: 'c40ce35591588f6a8cf1d14e96f4ec215f2d812857382a0fb7253eabea1a0154%40group.calendar.google.com',
+  arts_and_culture: "7f66e10ca74622780fdf0db852f0dc8e4be2272cf206bfc8cf83f2eaefc8abdf%40group.calendar.google.com"
+}
+
 export default function StuffToDo() {
   return (
-    <main className="min-h-screen bg-stone-50">
-      <div className="max-w-2xl mx-auto px-6 py-20 md:py-32">
+    <main className="std-root">
+      <div className="std-container">
 
-        {/* Back navigation */}
-        <nav className="mb-16">
-          <Link
-            href="/"
-            className="text-sm text-stone-500 hover:text-stone-800 transition-colors"
-          >
-            ← Alex Roginski
-          </Link>
+        <nav className="std-nav">
+          <BackLink label="← Alex Roginski" />
         </nav>
 
-        {/* Title */}
-        <header className="mb-12">
-          <h1 className="text-2xl font-semibold text-stone-900 mb-2">
-            Stuff To Do SF
-          </h1>
-          <p className="text-stone-500">
-            Free community events in San Francisco
-          </p>
-        </header>
+        <h1>Stuff To Do SF</h1>
 
-        {/* Introduction */}
-        <div className="space-y-5 mb-14">
-          <p className="text-lg leading-relaxed text-stone-700">
-            Hi, my name&apos;s Alex.
-          </p>
-          <p className="text-lg leading-relaxed text-stone-700">
-            I want to make it easier for people to find community in San
-            Francisco, for free.
-          </p>
-          <p className="text-lg leading-relaxed text-stone-700">
-            One thing that could help is making event discovery much easier
-            through public Google Calendars that aggregate events from across
-            the city.
+        <div className="std-intro">
+          <p>Hi, my name's Alex.</p>
+          <p>I want to make it easier for people to find community in San Francisco.</p>
+          <p>I take many events from across the city and put them into Google Calendars automatically.</p>
+          <p>It's all free. It's for you and your friends.</p>
+          <p>
+            For example, here's the Arts and Cultures event calendar. It takes the events from three SF arts
+            venues' calendars so that you don't have to go manually searching yourself:
           </p>
         </div>
 
-        {/* Example image */}
-        <div className="mb-14">
-          <p className="text-xs font-medium text-stone-400 uppercase tracking-widest mb-5">
-            Check out this example
-          </p>
+        <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture} />
 
-          {/*
-            REPLACE THIS IMAGE:
-            - To swap in a different screenshot, replace arts_and_cultures_example.png
-              in the /public folder and update the src below.
-            - Adjust width/height to match your image's actual dimensions.
-          */}
-          <Image
-            src="/arts_and_cultures_example.png"
-            alt="Example of a community event calendar aggregating arts and culture events in San Francisco"
-            width={1200}
-            height={800}
-            className="rounded-xl border border-stone-200 w-full h-auto"
-            priority
-          />
-        </div>
+        <p>The calendar above includes three venues:</p>
+        <ul>
+          <li>🔮 <a href="https://www.thefaight.com/events">The Faight</a> (Haight)</li>
+          <li>🤖 <a href="https://luma.com/tiat">TIAT Art and Tech</a> (Downtown)</li>
+          <li>😵‍💫 <a href="https://decentered.org/events">Decentered Featured Events</a> (SOMA)</li>
+        </ul>
+        <br></br>
+        <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
 
-        {/* Callout box */}
-        <div className="rounded-xl border border-orange-200 bg-orange-50 px-5 py-4 mb-14">
-          <p className="text-stone-700 text-sm leading-relaxed">
+        <p><b>Click on the + on the bottom right corner of the calendar to add it to your Google Calendar as shown in the red box here:</b></p>
+        <img src="/add_calendar_button.png" alt="Add to Google Calendar button" />
+
+        <br></br>
+        <p>Here are some more community calendars. I added these events manually since they're weekly and consistent.</p>
+
+        <h2>Sports</h2>
+        <p>Run Clubs, yoga, etc.</p>
+        <CalendarEmbed title="" src={CALENDARS.sports} />
+
+
+        <h2>Other</h2>
+        <p>This calendar includes a few other venues I wasn't sure how to categorize: </p>
+        <ul>
+          <li><a href="https://decentered.org/events">Decentered Community Submitted Events</a> (Various Locations)</li>
+          <li><a href="https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512">Manny's: Community, Politics, and Culture</a> (Mission)</li>
+          <li><a href="https://www.thesfnook.com/events">The SF Nook: SF Event Space</a> (on Market near Civic Center)</li>
+  
+        </ul>
+        <CalendarEmbed title="" src={CALENDARS.other} />
+
+
+        <h1>Non-Community Google Calendars</h1>
+        <p>
+          There are some additional calendars not specifically for community events.
+        </p>
+
+
+
+
+
+        <h2>Fun Cheap</h2>
+        <p>SF Fun Cheap is a good aggregator. It's just hard to manually go through their calendar
+          and find stuff to do. This calendar does that for you automatically.
+        </p>
+    
+
+        <h2>Luma</h2>
+        <CalendarEmbed title="" src={CALENDARS.funCheap} />
+        
+        <p>I found this way to scrape Luma for events. They are mostly tech events.
+        </p>
+        <CalendarEmbed title="Luma" src={CALENDARS.luma} />
+
+
+        <h2>Partiful</h2>
+        <p>This scrapes some events on the Partiful discover page for San Francisco.
+        </p>
+        <CalendarEmbed title="" src={CALENDARS.partiful} />
+
+        
+
+        <div className="std-callout">
+          <p>
             <span className="font-medium">Know a great community event source?</span>{' '}
-            Let me know and I&apos;ll consider adding it.
+            Let me know and I'll consider adding it.
           </p>
         </div>
 
-        {/*
-          ─────────────────────────────────────────────────
-          ADD CALENDAR EMBEDS BELOW
-          ─────────────────────────────────────────────────
-          To embed a Google Calendar, replace the comment block
-          with an iframe like:
-
-          <iframe
-            src="https://calendar.google.com/calendar/embed?src=YOUR_CALENDAR_ID&ctz=America%2FLos_Angeles"
-            className="w-full rounded-xl border border-stone-200"
-            height="600"
-            frameBorder="0"
-            scrolling="no"
-          />
-          ─────────────────────────────────────────────────
-        */}
-        <section className="mb-10" aria-label="Calendar embeds">
-          {/* Calendar embeds go here */}
-        </section>
-
-        {/*
-          ─────────────────────────────────────────────────
-          ADD EVENT RESOURCES BELOW
-          ─────────────────────────────────────────────────
-          Example:
-          <ul className="space-y-2 text-stone-700">
-            <li><a href="..." className="text-orange-600 hover:underline">SF Parks Events</a></li>
-          </ul>
-          ─────────────────────────────────────────────────
-        */}
-        <section className="mb-10" aria-label="Event resources">
-          {/* Event resource links go here */}
-        </section>
-
-        {/*
-          ─────────────────────────────────────────────────
-          ADD COMMUNITY LINKS BELOW
-          ─────────────────────────────────────────────────
-          Links to newsletters, community groups, subreddits, etc.
-          ─────────────────────────────────────────────────
-        */}
-        <section className="mb-16" aria-label="Community links">
-          {/* Community links go here */}
-        </section>
-
-        {/* Footer */}
-        <div className="pt-8 border-t border-stone-200">
-          <Link
-            href="/"
-            className="text-sm text-stone-500 hover:text-stone-800 transition-colors"
-          >
-            ← Back home
-          </Link>
+        <div className="std-footer">
+          <BackLink />
         </div>
 
       </div>
