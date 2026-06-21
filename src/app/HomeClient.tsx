@@ -2,55 +2,62 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 const SLOT_X = 50
 const SLOT_Y = 52
 
-const LINES = [
-  'Lorem ipsum dolor sit amet,',
-  'consectetur adipiscing elit.',
-  'Sed do eiusmod tempor',
-  'incididunt ut labore et dolore',
-  'magna aliqua.',
-  '',
-  'Ut enim ad minim veniam,',
-  'quis nostrud exercitation',
-  'ullamco laboris nisi ut aliquip',
-  'ex ea commodo consequat.',
-  '',
-  'Duis aute irure dolor in',
-  'reprehenderit in voluptate velit',
-  'esse cillum dolore eu fugiat',
-  'nulla pariatur.',
-  '',
-  'Excepteur sint occaecat',
-  'cupidatat non proident,',
-  'sunt in culpa qui officia',
-  'deserunt mollit anim',
-  'id est laborum.',
-  '',
-  'Sed ut perspiciatis unde omnis',
-  'iste natus error sit voluptatem',
-  'accusantium doloremque',
-  'laudantium, totam rem aperiam.',
-  '',
-  'Eaque ipsa quae ab illo',
-  'inventore veritatis et quasi',
-  'architecto beatae vitae dicta',
-  'sunt explicabo.',
-  '',
-  'Nemo enim ipsam voluptatem',
-  'quia voluptas sit aspernatur',
-  'aut odit aut fugit.',
-  '',
-  '— ❖ —',
+type Line = { text: string; href?: string }
+
+const LINES: Line[] = [
+  { text: '  FIRST NATIONAL BANK' },
+  { text: '    OF CALIFORNIA' },
+  { text: '  SAN FRANCISCO BRANCH' },
+  { text: '' },
+  { text: '---' },
+  { text: '' },
+  { text: '  STATEMENT OF ACCOUNT' },
+  { text: '' },
+  { text: '---' },
+  { text: '' },
+  { text: 'ACCOUNT HOLDER:' },
+  { text: '' },
+  { text: '  ROGINSKI, ALEX' },
+  { text: '  SAN FRANCISCO, CA' },
+  { text: '' },
+  { text: 'DATE:     JUNE 1950' },
+  { text: 'ACCT NO:  SF-0042-7719' },
+  { text: '' },
+  { text: '---' },
+  { text: '' },
+  { text: 'ACCOUNT SUMMARY' },
+  { text: '' },
+  { text: '  OPENING BAL... $   0.00' },
+  { text: '  DEPOSITS...... $   0.00' },
+  { text: '  WITHDRAWALS... $   0.00' },
+  { text: '  CLOSING BAL... $   0.00' },
+  { text: '' },
+  { text: '---' },
+  { text: '' },
+  { text: 'OUTSTANDING BILLS' },
+  { text: '' },
+  { text: '  THINGS TO ACCOMPLISH' },
+  { text: '  AMT: CONSIDERABLE' },
+  { text: '' },
+  { text: '  >> VIEW BILL <<', href: '/stuff_to_do' },
+  { text: '' },
+  { text: '---' },
+  { text: '' },
+  { text: '  FIRST NATIONAL BANK' },
+  { text: '    OF CALIFORNIA' },
+  { text: '  EST. 1906' },
+  { text: '  * MEMBER FDIC *' },
 ]
 
-const TOTAL_CHARS = LINES.reduce((sum, l) => sum + l.length + 1, 0)
+const TOTAL_CHARS = LINES.reduce((sum, l) => sum + l.text.length + 1, 0)
 
-// Cumulative char count at the end of each line (including the implicit newline unit)
 const LINE_BOUNDARIES = LINES.reduce<number[]>((acc, line, i) => {
-  acc.push((acc[i - 1] ?? 0) + line.length + 1)
+  acc.push((acc[i - 1] ?? 0) + line.text.length + 1)
   return acc
 }, [])
 
@@ -66,12 +73,67 @@ function snapToLineBoundary(chars: number): number {
   return snapped
 }
 
+const BANK_STYLE: React.CSSProperties = {
+  fontFamily: 'var(--font-f25)',
+  fontSize: '12px',
+  lineHeight: '1.85',
+  color: '#1a1712',
+  whiteSpace: 'pre',
+  letterSpacing: '0.03em',
+}
+
+function renderLine(line: Line, displayText: string, showCursor: boolean, key: number) {
+  const isLink = !!line.href && !showCursor
+
+  const inner = isLink ? (
+    <Link
+      href={line.href!}
+      style={{ color: '#1a1712', textDecoration: 'underline', pointerEvents: 'auto' }}
+    >
+      {displayText || ' '}
+    </Link>
+  ) : (
+    <>
+      {displayText || ' '}
+      {showCursor && <span className="typewriter-cursor">&#x2588;</span>}
+    </>
+  )
+
+  return (
+    <div
+      key={key}
+      style={{
+        ...BANK_STYLE,
+        minHeight: displayText === '' ? '1.85em' : undefined,
+        pointerEvents: isLink ? 'auto' : undefined,
+      }}
+    >
+      {inner}
+    </div>
+  )
+}
+
 export default function HomeClient() {
   const [displayedChars, setDisplayedChars] = useState(0)
+  const prevCharsRef = useRef(0)
   const prevScrollRef = useRef(0)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const audioBufferRef = useRef<AudioBuffer | null>(null)
+  const lastPlayedRef = useRef(0)
 
   useEffect(() => {
     const onScroll = () => {
+      // Bootstrap AudioContext on first user scroll (required by browser policy)
+      if (!audioCtxRef.current) {
+        const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+        audioCtxRef.current = ctx
+        fetch('/sounds/typewriter_keypress.wav')
+          .then(r => r.arrayBuffer())
+          .then(buf => ctx.decodeAudioData(buf))
+          .then(decoded => { audioBufferRef.current = decoded })
+          .catch(() => {})
+      }
+
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight
       const ratio = maxScroll > 0 ? Math.min(window.scrollY / maxScroll, 1) : 0
       const exactChars = Math.round(ratio * TOTAL_CHARS)
@@ -85,24 +147,42 @@ export default function HomeClient() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Split displayedChars into completed lines + a partial current line
-  const completedLines: string[] = []
-  let partialLine: string | null = null
+  // Play keypress sound whenever new characters are revealed
+  useEffect(() => {
+    if (displayedChars <= prevCharsRef.current) {
+      prevCharsRef.current = displayedChars
+      return
+    }
+    prevCharsRef.current = displayedChars
+
+    if (!audioCtxRef.current || !audioBufferRef.current || displayedChars === 0) return
+    const now = Date.now()
+    if (now - lastPlayedRef.current < 50) return
+    lastPlayedRef.current = now
+
+    const source = audioCtxRef.current.createBufferSource()
+    source.buffer = audioBufferRef.current
+    source.connect(audioCtxRef.current.destination)
+    source.start()
+  }, [displayedChars])
+
+  const completedLines: Line[] = []
+  let partialEntry: { line: Line; partial: string } | null = null
   let acc = 0
 
   for (let i = 0; i < LINES.length; i++) {
-    const lineLen = LINES[i].length + 1
+    const lineLen = LINES[i].text.length + 1
     if (acc + lineLen <= displayedChars) {
       completedLines.push(LINES[i])
       acc += lineLen
     } else {
       const remaining = displayedChars - acc
-      partialLine = LINES[i].slice(0, remaining)
+      partialEntry = { line: LINES[i], partial: LINES[i].text.slice(0, remaining) }
       break
     }
   }
 
-  const hasContent = completedLines.length > 0 || (partialLine !== null && partialLine.length > 0)
+  const hasContent = completedLines.length > 0 || (partialEntry !== null && partialEntry.partial.length > 0)
   const atStart = displayedChars === 0
 
   return (
@@ -119,23 +199,17 @@ export default function HomeClient() {
         />
       </div>
 
-      {/* Scroll-to-start hint — fades once typing begins */}
+      {/* Scroll hint */}
       <div
         className="fixed bottom-10 w-full flex justify-center pointer-events-none"
-        style={{
-          zIndex: 20,
-          opacity: atStart ? 1 : 0,
-          transition: 'opacity 0.6s ease',
-        }}
+        style={{ zIndex: 20, opacity: atStart ? 1 : 0, transition: 'opacity 0.6s ease' }}
       >
-        <span
-          style={{
-            fontFamily: 'var(--font-rough-typewriter)',
-            fontSize: '13px',
-            letterSpacing: '0.12em',
-            color: 'rgba(255,255,255,0.65)',
-          }}
-        >
+        <span style={{
+          fontFamily: 'var(--font-rough-typewriter)',
+          fontSize: '13px',
+          letterSpacing: '0.12em',
+          color: 'rgba(255,255,255,0.65)',
+        }}>
           scroll to type
         </span>
       </div>
@@ -161,48 +235,16 @@ export default function HomeClient() {
               maskImage: 'linear-gradient(to top, transparent 0px, black 14px)',
             }}
           >
-            {completedLines.map((line, i) => (
-              <div
-                key={i}
-                style={{
-                  fontFamily: 'var(--font-rough-typewriter)',
-                  fontSize: '13.5px',
-                  lineHeight: '1.75',
-                  color: '#1a1712',
-                  minHeight: line === '' ? '1.75em' : undefined,
-                  whiteSpace: 'pre',
-                }}
-              >
-                {line || ' '}
-              </div>
-            ))}
-
-            {partialLine !== null && (
-              <div
-                style={{
-                  fontFamily: 'var(--font-rough-typewriter)',
-                  fontSize: '13.5px',
-                  lineHeight: '1.75',
-                  color: '#1a1712',
-                  whiteSpace: 'pre',
-                }}
-              >
-                {partialLine}
-                <span className="typewriter-cursor">&#x2588;</span>
-              </div>
-            )}
+            {completedLines.map((line, i) => renderLine(line, line.text, false, i))}
+            {partialEntry !== null && renderLine(partialEntry.line, partialEntry.partial, true, completedLines.length)}
           </div>
         </div>
       )}
 
-      {/* Bottom fade to black — sits above everything so the page bleeds into darkness */}
+      {/* Bottom fade to black */}
       <div
         className="fixed bottom-0 left-0 right-0 pointer-events-none"
-        style={{
-          zIndex: 30,
-          height: '18vh',
-          background: 'linear-gradient(to bottom, transparent 0%, black 100%)',
-        }}
+        style={{ zIndex: 30, height: '18vh', background: 'linear-gradient(to bottom, transparent 0%, black 100%)' }}
       />
     </div>
   )
