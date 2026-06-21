@@ -14,7 +14,6 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@next/swc-darwin-arm64": "^15.5.19",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
