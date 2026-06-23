@@ -7,51 +7,19 @@ import Link from 'next/link'
 const SLOT_X = 50
 const SLOT_Y = 52
 
-type Line = { text: string; href?: string }
+type Line = { text: string; href?: string; font?: 'moms' | 'rough' }
 
 const LINES: Line[] = [
-  { text: '  FIRST NATIONAL BANK' },
-  { text: '    OF CALIFORNIA' },
-  { text: '  SAN FRANCISCO BRANCH' },
-  { text: '' },
-  { text: '---' },
-  { text: '' },
-  { text: '  STATEMENT OF ACCOUNT' },
-  { text: '' },
-  { text: '---' },
-  { text: '' },
-  { text: 'ACCOUNT HOLDER:' },
-  { text: '' },
-  { text: '  ROGINSKI, ALEX' },
-  { text: '  SAN FRANCISCO, CA' },
-  { text: '' },
-  { text: 'DATE:     JUNE 1950' },
-  { text: 'ACCT NO:  SF-0042-7719' },
-  { text: '' },
-  { text: '---' },
-  { text: '' },
-  { text: 'ACCOUNT SUMMARY' },
-  { text: '' },
-  { text: '  OPENING BAL... $   0.00' },
-  { text: '  DEPOSITS...... $   0.00' },
-  { text: '  WITHDRAWALS... $   0.00' },
-  { text: '  CLOSING BAL... $   0.00' },
-  { text: '' },
-  { text: '---' },
-  { text: '' },
-  { text: 'OUTSTANDING BILLS' },
-  { text: '' },
-  { text: '  THINGS TO ACCOMPLISH' },
-  { text: '  AMT: CONSIDERABLE' },
-  { text: '' },
-  { text: '  >> VIEW BILL <<', href: '/stuff_to_do' },
-  { text: '' },
-  { text: '---' },
-  { text: '' },
-  { text: '  FIRST NATIONAL BANK' },
-  { text: '    OF CALIFORNIA' },
-  { text: '  EST. 1906' },
-  { text: '  * MEMBER FDIC *' },
+  { text: '  STATEMENT OF ACCOUNT', font: 'rough' },
+  { text: '----------------------', font: 'moms' },
+  { text: 'ACCOUNT HOLDER:', font: 'rough' },
+  { text: '  ALEX ROGINSKI', font: 'moms' },
+  { text: '  SAN FRANCISCO, CA', font: 'moms' },
+  { text: '----------------------', font: 'moms' },
+  { text: 'ACCOUNT SUMMARY', font: 'rough' },
+  { text: '  SF STUFF TO DO', href: '/stuff_to_do', font: 'moms' },
+  { text: '  RECORDS OF WORK', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
+  { text: '----------------------', font: 'moms' },
 ]
 
 const TOTAL_CHARS = LINES.reduce((sum, l) => sum + l.text.length + 1, 0)
@@ -73,17 +41,20 @@ function snapToLineBoundary(chars: number): number {
   return snapped
 }
 
-const BANK_STYLE: React.CSSProperties = {
-  fontFamily: 'var(--font-f25)',
-  fontSize: '12px',
-  lineHeight: '1.85',
-  color: '#1a1712',
-  whiteSpace: 'pre',
-  letterSpacing: '0.03em',
+function lineStyle(font: 'moms' | 'rough' = 'moms'): React.CSSProperties {
+  return {
+    fontFamily: font === 'moms' ? 'var(--font-moms-typewriter)' : 'var(--font-rough-typewriter)',
+    fontSize: '12px',
+    lineHeight: '1.85',
+    color: '#1a1712',
+    whiteSpace: 'pre',
+    letterSpacing: '0.03em',
+  }
 }
 
 function renderLine(line: Line, displayText: string, showCursor: boolean, key: number) {
   const isLink = !!line.href && !showCursor
+  const style = lineStyle(line.font)
 
   const inner = isLink ? (
     <Link
@@ -103,7 +74,7 @@ function renderLine(line: Line, displayText: string, showCursor: boolean, key: n
     <div
       key={key}
       style={{
-        ...BANK_STYLE,
+        ...style,
         minHeight: displayText === '' ? '1.85em' : undefined,
         pointerEvents: isLink ? 'auto' : undefined,
       }}
@@ -119,7 +90,14 @@ export default function HomeClient() {
   const prevScrollRef = useRef(0)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const audioBufferRef = useRef<AudioBuffer | null>(null)
+  const dingBufferRef = useRef<AudioBuffer | null>(null)
   const lastPlayedRef = useRef(0)
+  const dingPlayedRef = useRef(false)
+  const everFullyTypedRef = useRef(false)
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [])
 
   useEffect(() => {
     const onScroll = () => {
@@ -132,15 +110,25 @@ export default function HomeClient() {
           .then(buf => ctx.decodeAudioData(buf))
           .then(decoded => { audioBufferRef.current = decoded })
           .catch(() => {})
+        fetch('/sounds/typewriter_ding.wav')
+          .then(r => r.arrayBuffer())
+          .then(buf => ctx.decodeAudioData(buf))
+          .then(decoded => { dingBufferRef.current = decoded })
+          .catch(() => {})
       }
 
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight
       const ratio = maxScroll > 0 ? Math.min(window.scrollY / maxScroll, 1) : 0
       const exactChars = Math.round(ratio * TOTAL_CHARS)
       const scrollingDown = window.scrollY >= prevScrollRef.current
-
-      setDisplayedChars(scrollingDown ? exactChars : snapToLineBoundary(exactChars))
       prevScrollRef.current = window.scrollY
+
+      if (everFullyTypedRef.current) {
+        // After being fully typed once: always snap to line boundaries, no sounds
+        setDisplayedChars(snapToLineBoundary(exactChars))
+      } else {
+        setDisplayedChars(scrollingDown ? exactChars : snapToLineBoundary(exactChars))
+      }
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
@@ -151,13 +139,29 @@ export default function HomeClient() {
   useEffect(() => {
     if (displayedChars <= prevCharsRef.current) {
       prevCharsRef.current = displayedChars
+      if (displayedChars < TOTAL_CHARS) dingPlayedRef.current = false
       return
     }
     prevCharsRef.current = displayedChars
 
-    if (!audioCtxRef.current || !audioBufferRef.current || displayedChars === 0) return
+    // Suppress all sounds after text has been fully typed once
+    if (everFullyTypedRef.current) return
+
+    if (!audioCtxRef.current || displayedChars === 0) return
+
+    if (displayedChars >= TOTAL_CHARS && !dingPlayedRef.current && dingBufferRef.current) {
+      dingPlayedRef.current = true
+      everFullyTypedRef.current = true
+      const ding = audioCtxRef.current.createBufferSource()
+      ding.buffer = dingBufferRef.current
+      ding.connect(audioCtxRef.current.destination)
+      ding.start()
+      return
+    }
+
+    if (!audioBufferRef.current) return
     const now = Date.now()
-    if (now - lastPlayedRef.current < 50) return
+    if (now - lastPlayedRef.current < 150) return
     lastPlayedRef.current = now
 
     const source = audioCtxRef.current.createBufferSource()
@@ -236,7 +240,7 @@ export default function HomeClient() {
             }}
           >
             {completedLines.map((line, i) => renderLine(line, line.text, false, i))}
-            {partialEntry !== null && renderLine(partialEntry.line, partialEntry.partial, true, completedLines.length)}
+            {partialEntry !== null && renderLine(partialEntry.line, partialEntry.partial, false, completedLines.length)}
           </div>
         </div>
       )}
