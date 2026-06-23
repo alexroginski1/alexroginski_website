@@ -11,8 +11,7 @@
   "dependencies": {
     "next": "^15.3.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "sharp": "^0.35.2"
+    "react-dom": "^19.0.0"
   },
   "optionalDependencies": {
     "@next/swc-darwin-arm64": "^15.5.19"
