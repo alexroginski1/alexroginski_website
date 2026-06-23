@@ -4,29 +4,59 @@ import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
-const SLOT_X = 61
-const SLOT_Y = 62.3
+// Corners of the paper area as fractions of the image's natural dimensions (4187×2722).
+// Adjust these to reposition or resize the paper overlay relative to the typewriter photo.
+const PAPER_BL = { x: 0.512, y: 0.607 } // bottom-left corner of the paper slot
+const PAPER_TR = { x: 0.718, y: 0.350 } // top-right corner of the paper slot
+const IMAGE_W = 4187
+const IMAGE_H = 2722
 
-const MUSIC_TRACKS = [
-  '/music/homepage_background_music/2021-06-03_-_Rio_After_Dark_-_www.FesliyanStudios.com.mp3',
-  '/music/homepage_background_music/2021-08-06_-_Latin_Nights_-_www.FesliyanStudios.com.mp3',
-  '/music/homepage_background_music/2021-08-06_-_Swinging_Sixties_-_www.FesliyanStudios.com.mp3',
-]
+type SlotPos = { leftPx: number; widthPx: number; maxHeightPx: number; bottomPx: number }
+
+function calcDesktopSlot(vpW: number, vpH: number): SlotPos {
+  const scale = Math.min(vpW / IMAGE_W, vpH / IMAGE_H)
+  const rendW = IMAGE_W * scale
+  const rendH = IMAGE_H * scale
+  const offsetX = (vpW - rendW) / 2
+  const offsetY = (vpH - rendH) / 2
+  return {
+    leftPx: offsetX + PAPER_BL.x * rendW,
+    widthPx: (PAPER_TR.x - PAPER_BL.x) * rendW,
+    maxHeightPx: (PAPER_BL.y - PAPER_TR.y) * rendH,
+    bottomPx: vpH - (offsetY + PAPER_BL.y * rendH),
+  }
+}
+
+function calcMobileSlot(vpW: number, vpH: number): SlotPos {
+  // cover: scale so the image fills the viewport, centered
+  const scale = Math.max(vpW / IMAGE_W, vpH / IMAGE_H)
+  const rendW = IMAGE_W * scale
+  const rendH = IMAGE_H * scale
+  const offsetX = (vpW - rendW) / 2
+  const offsetY = (vpH - rendH) / 2
+  return {
+    leftPx: offsetX + PAPER_BL.x * rendW,
+    widthPx: (PAPER_TR.x - PAPER_BL.x) * rendW,
+    maxHeightPx: (PAPER_BL.y - PAPER_TR.y) * rendH,
+    bottomPx: vpH - (offsetY + PAPER_BL.y * rendH),
+  }
+}
+
 
 type Line = { text: string; href?: string; font?: 'moms' | 'rough' }
 
 const LINES: Line[] = [
-  { text: '  STATEMENT OF ACCOUNT', font: 'rough' },
-  { text: '----------------------', font: 'moms' },
+  { text: '  STATEMENT OF ACCOUNT', font: 'moms' },
+  { text: '---------------', font: 'moms' },
   { text: 'ACCOUNT HOLDER:', font: 'rough' },
   { text: '  ALEX ROGINSKI', font: 'moms' },
   { text: '  SAN FRANCISCO, CA', font: 'moms' },
-  { text: '----------------------', font: 'moms' },
+  { text: '---------------', font: 'moms' },
   { text: 'ACCOUNT SUMMARY', font: 'rough' },
   { text: '  SF STUFF TO DO', href: '/stuff_to_do', font: 'moms' },
-  { text: '----------------------', font: 'moms' },
+  { text: '---------------', font: 'moms' },
   { text: '  LINKEDIN', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
-  { text: '----------------------', font: 'moms' },
+  { text: '---------------', font: 'moms' },
   
 ]
 
@@ -55,7 +85,7 @@ function lineStyle(font: 'moms' | 'rough' = 'moms'): React.CSSProperties {
     fontSize: '12px',
     lineHeight: '1.85',
     color: '#1a1712',
-    whiteSpace: 'pre',
+    whiteSpace: 'pre-wrap',
     letterSpacing: '0.03em',
   }
 }
@@ -94,6 +124,7 @@ function renderLine(line: Line, displayText: string, showCursor: boolean, key: n
 
 export default function HomeClient() {
   const [displayedChars, setDisplayedChars] = useState(0)
+  const [slotPos, setSlotPos] = useState<SlotPos>({ leftPx: 0, widthPx: 0, maxHeightPx: 0, bottomPx: 0 })
   const prevCharsRef = useRef(0)
   const maxCharsRef = useRef(0)
   const prevScrollRef = useRef(0)
@@ -103,12 +134,24 @@ export default function HomeClient() {
   const lastPlayedRef = useRef(0)
   const dingPlayedRef = useRef(false)
   const everFullyTypedRef = useRef(false)
-  const musicRef = useRef<HTMLAudioElement | null>(null)
   const cafeRef = useRef<HTMLAudioElement | null>(null)
-  const musicStartedRef = useRef(false)
+  const cafeStartedRef = useRef(false)
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
+    document.documentElement.classList.add('no-scrollbar')
+    return () => document.documentElement.classList.remove('no-scrollbar')
+  }, [])
+
+  useEffect(() => {
+    const update = () => {
+      const vpW = window.innerWidth
+      const vpH = window.innerHeight
+      setSlotPos(vpW < 768 ? calcMobileSlot(vpW, vpH) : calcDesktopSlot(vpW, vpH))
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
   }, [])
 
   useEffect(() => {
@@ -127,37 +170,23 @@ export default function HomeClient() {
 
     const cafe = new Audio('/music/background_cafe_noise.mp3')
     cafe.loop = true
-    cafe.volume = 0.12
+    cafe.volume = 0.15
     cafeRef.current = cafe
 
-    const playTrack = (index: number) => {
-      const audio = new Audio(MUSIC_TRACKS[index])
-      audio.volume = 0.3
-      musicRef.current?.pause()
-      musicRef.current = audio
-      audio.onended = () => playTrack((index + 1) % MUSIC_TRACKS.length)
-      audio.play().catch(() => {})
-    }
-
-    const startMusic = () => {
-      if (musicStartedRef.current) return
-      musicStartedRef.current = true
+    const startCafe = () => {
+      if (cafeStartedRef.current) return
+      cafeStartedRef.current = true
       cafe.play().catch(() => {})
-      playTrack(0)
     }
 
-    // Attempt immediate autoplay; browsers that allow it will start right away.
-    // Otherwise, start on the first user gesture.
     const tryAutoplay = cafe.play()
     if (tryAutoplay !== undefined) {
       tryAutoplay.then(() => {
-        musicStartedRef.current = true
-        playTrack(0)
+        cafeStartedRef.current = true
       }).catch(() => {
-        // Autoplay blocked — wait for first user gesture
         const events = ['scroll', 'click', 'keydown', 'touchstart'] as const
         const onGesture = () => {
-          startMusic()
+          startCafe()
           events.forEach(e => window.removeEventListener(e, onGesture))
         }
         events.forEach(e => window.addEventListener(e, onGesture, { passive: true, once: true }))
@@ -178,14 +207,26 @@ export default function HomeClient() {
       maxCharsRef.current = clamped
       setDisplayedChars(clamped)
     }
+
+    const CHARS_PER_KEY = 3
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.key.length !== 1 && e.key !== 'Enter') || e.metaKey || e.ctrlKey || e.altKey) return
+      const next = Math.min(maxCharsRef.current + CHARS_PER_KEY, TOTAL_CHARS)
+      maxCharsRef.current = next
+      setDisplayedChars(next)
+    }
+
     window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('keydown', onKeyDown)
     onScroll()
     return () => {
       window.removeEventListener('scroll', onScroll)
-      musicRef.current?.pause()
+      window.removeEventListener('keydown', onKeyDown)
       cafeRef.current?.pause()
     }
   }, [])
+
+  
 
   // Play keypress sound whenever new characters are revealed
   useEffect(() => {
@@ -195,6 +236,8 @@ export default function HomeClient() {
       return
     }
     prevCharsRef.current = displayedChars
+
+    const VOLUME = 0.15
 
     // Suppress all sounds after text has been fully typed once
     if (everFullyTypedRef.current) return
@@ -206,7 +249,10 @@ export default function HomeClient() {
       everFullyTypedRef.current = true
       const ding = audioCtxRef.current.createBufferSource()
       ding.buffer = dingBufferRef.current
-      ding.connect(audioCtxRef.current.destination)
+      const dingGain = audioCtxRef.current.createGain()
+      dingGain.gain.value = VOLUME
+      ding.connect(dingGain)
+      dingGain.connect(audioCtxRef.current.destination)
       ding.start()
       return
     }
@@ -218,7 +264,10 @@ export default function HomeClient() {
 
     const source = audioCtxRef.current.createBufferSource()
     source.buffer = audioBufferRef.current
-    source.connect(audioCtxRef.current.destination)
+    const keypressGain = audioCtxRef.current.createGain()
+    keypressGain.gain.value = VOLUME
+    source.connect(keypressGain)
+    keypressGain.connect(audioCtxRef.current.destination)
     source.start()
   }, [displayedChars])
 
@@ -245,14 +294,27 @@ export default function HomeClient() {
     <div style={{ height: '350vh', position: 'relative' }}>
 
       {/* Fixed typewriter background */}
-      <div className="fixed inset-0 bg-stone-900" style={{ zIndex: 0 }}>
-        <Image
-          src="/new_typewriter.jpg"
-          alt="Vintage typewriter"
-          fill
-          style={{ objectFit: 'contain' }}
-          priority
-        />
+      <div className="fixed inset-0 bg-stone-900 pointer-events-none" style={{ zIndex: 0, overflow: 'hidden' }}>
+        {/* Mobile: cover the viewport, centered on the image */}
+        <div className="md:hidden absolute inset-0">
+          <Image
+            src="/new_typewriter.jpg"
+            alt="Vintage typewriter"
+            fill
+            style={{ objectFit: 'cover' }}
+            priority
+          />
+        </div>
+        {/* Desktop: full image contained */}
+        <div className="hidden md:block absolute inset-0">
+          <Image
+            src="/new_typewriter.jpg"
+            alt="Vintage typewriter"
+            fill
+            style={{ objectFit: 'contain' }}
+            priority
+          />
+        </div>
       </div>
 
       {/* Scroll hint */}
@@ -267,7 +329,7 @@ export default function HomeClient() {
           color: 'rgba(255,255,255,0.9)',
           textShadow: '0 1px 4px rgba(0,0,0,0.6)',
         }}>
-          scroll to type
+          scroll or type
         </span>
       </div>
 
@@ -277,10 +339,9 @@ export default function HomeClient() {
           className="fixed pointer-events-none"
           style={{
             zIndex: 10,
-            bottom: `${100 - SLOT_Y}%`,
-            left: `${SLOT_X}%`,
-            transform: 'translateX(-50%)',
-            width: 'min(260px, 72vw)',
+            bottom: `${slotPos.bottomPx}px`,
+            left: `${slotPos.leftPx}px`,
+            width: `${slotPos.widthPx}px`,
           }}
         >
           <div
@@ -288,7 +349,6 @@ export default function HomeClient() {
               background: '#f5f0e5',
               boxShadow: '2px 0 6px rgba(0,0,0,0.18), -2px 0 6px rgba(0,0,0,0.18)',
               padding: '10px 18px 0 18px',
-
             }}
           >
             {completedLines.map((line, i) => renderLine(line, line.text, false, i))}
