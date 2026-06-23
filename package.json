@@ -17,6 +17,7 @@
     "@next/swc-darwin-arm64": "^15.5.19"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260623.1",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
