@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
 import CalendarLink from '@/components/CalendarLink'
+import SurveyForm from '@/components/SurveyForm'
 
 export const metadata: Metadata = {
   title: 'Stuff To Do SF',
@@ -20,7 +21,7 @@ function CalendarEmbed({ title, src }: { title: string; src: string }) {
 function cal(id: string) {
   return {
     add: `https://calendar.google.com/calendar/u/0/r?cid=${id}@group.calendar.google.com`,
-    preview: `https://calendar.google.com/calendar/embed?src=${id}%40group.calendar.google.com&ctz=America%2FLos_Angeles&mode=WEEK`,
+    preview: `https://calendar.google.com/calendar/embed?src=${id}%40group.calendar.google.com&ctz=America%2FLos_Angeles&mode=AGENDA`,
   }
 }
 
@@ -76,6 +77,7 @@ export default function StuffToDo() {
 
         <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture.preview} />
 
+        
 
         <p>Here are the venues:</p>
         <ul>
@@ -89,6 +91,8 @@ export default function StuffToDo() {
         <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
         
         <br></br>
+
+        <SurveyForm />
         <p>Here are some more community calendars.</p>
         <br></br>
         <h2>Sports</h2>
