@@ -87,7 +87,7 @@ export default function StuffToDo() {
         </ul>
         
         <br></br>
-        <p>These venues all have their own calendars. It's a headache to check each one manually whenever you want to find events.</p>
+        <p>These venues all have their own websites. It's a headache to check each one manually whenever you want to find events.</p>
         <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
         
         <br></br>
@@ -113,7 +113,7 @@ export default function StuffToDo() {
         <p>This calendar can get really dense. It's good to look at it on the "Day" or "Schedule" level.</p>
         <br></br>
 
-        <h1>Non-Community Google Calendars</h1>
+        <h1>Extra Google Calendars</h1>
         <p>
           There are some additional calendars not specifically for community events.
         </p>
@@ -138,12 +138,7 @@ export default function StuffToDo() {
 
         
 
-        <div className="std-callout">
-          <p>
-            <span className="font-medium">Know a great community event source?</span>{' '}
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSd9Wt0kFxIYOafqI-jn7lMs7IQ95XxQ7aZk7P_fup24Ng4clw/viewform?usp=sharing&ouid=101189593015983846180">Let me know!</a>
-          </p>
-        </div>
+        
 
         <h2>Origins of this project</h2>
         <p>Last year, I lived in Sunnyvale where there wasn't much to do. Once I moved to the city,

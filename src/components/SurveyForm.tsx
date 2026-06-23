@@ -39,7 +39,7 @@ export default function SurveyForm() {
       <p className="survey-header">Quick survey if you have time</p>
 
       <div className="survey-question">
-        <label className="survey-question-label">Do you find this useful?</label>
+        <label className="survey-question-label">Do you find these calendars useful?</label>
         <div className="survey-radio-group">
           {['Yes', 'Kind of', 'Not yet'].map((opt) => (
             <label key={opt} className="survey-radio-option">
@@ -58,9 +58,9 @@ export default function SurveyForm() {
 
       <div className="survey-question">
         <label className="survey-question-label">
-          What are your favorite community events in the city? Where have you made your friends?
+          What are your favorite community spaces in the city? Where have you made your friends?
           <br />
-          <span className="survey-question-label-hint">I will add it to the calendar : )</span>
+          <span className="survey-question-label-hint">I will add it to the calendar :)</span>
         </label>
         <textarea
           value={events}
