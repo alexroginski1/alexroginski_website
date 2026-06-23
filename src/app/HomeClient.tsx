@@ -48,7 +48,7 @@ type Line = { text: string; href?: string; font?: 'moms' | 'rough' }
 const LINES: Line[] = [
   { text: '  STATEMENT OF ACCOUNT', font: 'moms' },
   { text: '---------------', font: 'moms' },
-  { text: 'ACCOUNT HOLDER:', font: 'rough' },
+  { text: 'ACCOUNT HOLDER', font: 'rough' },
   { text: '  ALEX ROGINSKI', font: 'moms' },
   { text: '  SAN FRANCISCO, CA', font: 'moms' },
   { text: '---------------', font: 'moms' },
