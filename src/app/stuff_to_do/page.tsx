@@ -1,32 +1,36 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
+import CalendarLink from '@/components/CalendarLink'
 
 export const metadata: Metadata = {
   title: 'Stuff To Do SF',
   description: 'Making it easier to find free community events in San Francisco.',
 }
 
-const BASE_CALENDAR_URL = 'https://calendar.google.com/calendar/embed'
-const TIMEZONE = 'America%2FLos_Angeles'
-
 function CalendarEmbed({ title, src }: { title: string; src: string }) {
-  const url = `${BASE_CALENDAR_URL}?mode=WEEK&src=${src}&ctz=${TIMEZONE}`
   return (
     <div className="std-calendar">
       <h2>{title}</h2>
-      <iframe src={url} className="std-calendar-iframe" title={`${title} Calendar`} />
+      <iframe src={src} className="std-calendar-iframe" title={`${title} Calendar`} />
     </div>
   )
 }
 
+function cal(id: string) {
+  return {
+    add: `https://calendar.google.com/calendar/u/0/r?cid=${id}@group.calendar.google.com`,
+    preview: `https://calendar.google.com/calendar/embed?src=${id}%40group.calendar.google.com&ctz=America%2FLos_Angeles&mode=WEEK`,
+  }
+}
+
 const CALENDARS = {
-  funCheap: '60a19fdad14c75dc604082f022416e48c2d30dc440502a5e80bf410d32570d1d%40group.calendar.google.com',
-  luma: '45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15%40group.calendar.google.com',
-  partiful: '9d7c77c609ffc954909e2a0cb72e2c2b5029048fe87d0ba6a035ccac18e1472a%40group.calendar.google.com',
-  sports: '2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f%40group.calendar.google.com',
-  other: 'c40ce35591588f6a8cf1d14e96f4ec215f2d812857382a0fb7253eabea1a0154%40group.calendar.google.com',
-  arts_and_culture: "7f66e10ca74622780fdf0db852f0dc8e4be2272cf206bfc8cf83f2eaefc8abdf%40group.calendar.google.com"
+  funCheap:        cal('60a19fdad14c75dc604082f022416e48c2d30dc440502a5e80bf410d32570d1d'),
+  luma:            cal('45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15'),
+  partiful:        cal('9d7c77c609ffc954909e2a0cb72e2c2b5029048fe87d0ba6a035ccac18e1472a'),
+  sports:          cal('2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f'),
+  other:           cal('c40ce35591588f6a8cf1d14e96f4ec215f2d812857382a0fb7253eabea1a0154'),
+  arts_and_culture:cal('7f66e10ca74622780fdf0db852f0dc8e4be2272cf206bfc8cf83f2eaefc8abdf'),
 }
 
 export default function StuffToDo() {
@@ -48,12 +52,12 @@ export default function StuffToDo() {
 
           <p><b>Click these links to add to your Google Calendar:</b></p>
 
-          <a href="https://calendar.google.com/calendar/embed?src=7f66e10ca74622780fdf0db852f0dc8e4be2272cf206bfc8cf83f2eaefc8abdf%40group.calendar.google.com&ctz=America%2FLos_Angeles">Arts and Culture</a><br></br>
-          <a href="https://calendar.google.com/calendar/embed?src=c40ce35591588f6a8cf1d14e96f4ec215f2d812857382a0fb7253eabea1a0154%40group.calendar.google.com&ctz=America%2FLos_Angeles">Other (community venues)</a><br></br>
-          <a href="https://calendar.google.com/calendar/embed?src=60a19fdad14c75dc604082f022416e48c2d30dc440502a5e80bf410d32570d1d%40group.calendar.google.com&ctz=America%2FLos_Angeles">SF Fun Cheap</a><br></br>
-          <a href="https://calendar.google.com/calendar/embed?src=9d7c77c609ffc954909e2a0cb72e2c2b5029048fe87d0ba6a035ccac18e1472a%40group.calendar.google.com&ctz=America%2FLos_Angeles">Partiful</a><br></br>
-          <a href="https://calendar.google.com/calendar/embed?src=2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f%40group.calendar.google.com&ctz=America%2FLos_Angeles">Sports/Exercise</a><br></br>
-          <a href="https://calendar.google.com/calendar/embed?src=45264416fab34dddf5fff1ca40931d59a13f865ec441d158030be512b30d6b15%40group.calendar.google.com&ctz=America%2FLos_Angeles">Luma</a>
+          <CalendarLink href={CALENDARS.arts_and_culture.add} label="Arts and Culture" /><br></br>
+          <CalendarLink href={CALENDARS.other.add} label="Other (community venues)" /><br></br>
+          <CalendarLink href={CALENDARS.funCheap.add} label="SF Fun Cheap" /><br></br>
+          <CalendarLink href={CALENDARS.partiful.add} label="Partiful" /><br></br>
+          <CalendarLink href={CALENDARS.sports.add} label="Sports/Exercise" /><br></br>
+          <CalendarLink href={CALENDARS.luma.add} label="Luma" />
           
           
           
@@ -70,7 +74,7 @@ export default function StuffToDo() {
           </p>
         </div>
 
-        <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture} />
+        <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture.preview} />
 
 
         <p>Here are the venues:</p>
@@ -89,7 +93,7 @@ export default function StuffToDo() {
         <br></br>
         <h2>Sports</h2>
         <p>Run Clubs, yoga, etc.   I added these events manually since they're weekly and consistent.</p>
-        <CalendarEmbed title="" src={CALENDARS.sports} />
+        <CalendarEmbed title="" src={CALENDARS.sports.preview} />
 
 
         <h2>Other</h2>
@@ -98,9 +102,10 @@ export default function StuffToDo() {
           <li><a href="https://decentered.org/events">👥 Decentered Community Submitted Events</a> (Various Locations)</li>
           <li><a href="https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512">👨‍🦰 Manny's: Community, Politics, and Culture</a> (Mission)</li>
           <li><a href="https://www.thesfnook.com/events">🏠 The SF Nook: Event Space</a> (on Market near Civic Center)</li>
+          <li><a href="https://luma.com/thecommons">🏛️ The Commons: Third Space and Coworking</a> (Hayes Valley)</li>
   
         </ul>
-        <CalendarEmbed title="" src={CALENDARS.other} />
+        <CalendarEmbed title="" src={CALENDARS.other.preview} />
 
         <p>This calendar can get really dense. It's good to look at it on the "Day" or "Schedule" level.</p>
         <br></br>
@@ -113,19 +118,19 @@ export default function StuffToDo() {
         <h2>Partiful Discover Page</h2>
         <p>This scrapes some events on the Partiful discover page for San Francisco. I have found some really fun stuff here.
         </p>
-        <CalendarEmbed title="" src={CALENDARS.partiful} />
+        <CalendarEmbed title="" src={CALENDARS.partiful.preview} />
 
         <h2>SF Fun Cheap</h2>
         <p>SF Fun Cheap aggregates tons of stuff happening in the city. It's just hard to manually go through their calendar
           and find stuff to do. This calendar does that for you automatically.
         </p>
     
-        <CalendarEmbed title="" src={CALENDARS.funCheap} />
+        <CalendarEmbed title="" src={CALENDARS.funCheap.preview} />
         
         <h2>Luma Discover Page</h2>
         <p>Mostly tech events. I haven't found this calendar useful yet.
         </p>
-        <CalendarEmbed title="" src={CALENDARS.luma} />
+        <CalendarEmbed title="" src={CALENDARS.luma.preview} />
 
 
         

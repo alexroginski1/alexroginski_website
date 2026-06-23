@@ -18,8 +18,9 @@ const LINES: Line[] = [
   { text: '----------------------', font: 'moms' },
   { text: 'ACCOUNT SUMMARY', font: 'rough' },
   { text: '  SF STUFF TO DO', href: '/stuff_to_do', font: 'moms' },
-  { text: '  RECORDS OF WORK', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
   { text: '----------------------', font: 'moms' },
+  { text: '  LINKEDIN', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
+  
 ]
 
 const TOTAL_CHARS = LINES.reduce((sum, l) => sum + l.text.length + 1, 0)
