@@ -97,6 +97,8 @@ function renderLine(line: Line, displayText: string, showCursor: boolean, key: n
   const inner = isLink ? (
     <Link
       href={line.href!}
+      target="_blank"
+      rel="noopener noreferrer"
       style={{ color: '#1a1712', textDecoration: 'underline', pointerEvents: 'auto' }}
     >
       {displayText || ' '}
@@ -168,30 +170,77 @@ export default function HomeClient() {
       .then(decoded => { dingBufferRef.current = decoded })
       .catch(() => {})
 
-    const cafe = new Audio('/music/background_cafe_noise.mp3')
+    const TARGET_VOL = 0.15
+    const FADE_STEP_MS = 50
+    const FADE_IN_MS = 5000
+    const FADE_OUT_BEFORE_END_S = 4
+
+    const cafe = new Audio('/music/homepage_background_music/tunetank-cafe-music-349477.mp3')
     cafe.loop = true
-    cafe.volume = 0.15
+    cafe.volume = 0.1
     cafeRef.current = cafe
+
+    let fadeTimer: ReturnType<typeof setInterval> | null = null
+    let isFadingOut = false
+
+    const clearFadeTimer = () => {
+      if (fadeTimer !== null) { clearInterval(fadeTimer); fadeTimer = null }
+    }
+
+    const fadeIn = () => {
+      clearFadeTimer()
+      isFadingOut = false
+      const step = TARGET_VOL / (FADE_IN_MS / FADE_STEP_MS)
+      fadeTimer = setInterval(() => {
+        const el = cafeRef.current
+        if (!el) return clearFadeTimer()
+        const next = Math.min(el.volume + step, TARGET_VOL)
+        el.volume = next
+        if (next >= TARGET_VOL) clearFadeTimer()
+      }, FADE_STEP_MS)
+    }
+
+    const fadeOut = () => {
+      if (isFadingOut) return
+      clearFadeTimer()
+      isFadingOut = true
+      const el = cafeRef.current
+      const fadeMs = el ? Math.min((el.duration - el.currentTime) * 900, 3000) : 3000
+      const step = TARGET_VOL / (fadeMs / FADE_STEP_MS)
+      fadeTimer = setInterval(() => {
+        const audio = cafeRef.current
+        if (!audio) return clearFadeTimer()
+        const next = Math.max(audio.volume - step, 0)
+        audio.volume = next
+        if (next <= 0) clearFadeTimer()
+      }, FADE_STEP_MS)
+    }
+
+    const onTimeUpdate = () => {
+      const el = cafeRef.current
+      if (!el || !el.duration) return
+      if (isFadingOut && el.currentTime < 0.5) {
+        fadeIn()
+      } else if (!isFadingOut && el.duration - el.currentTime < FADE_OUT_BEFORE_END_S) {
+        fadeOut()
+      }
+    }
+    cafe.addEventListener('timeupdate', onTimeUpdate)
 
     const startCafe = () => {
       if (cafeStartedRef.current) return
       cafeStartedRef.current = true
-      cafe.play().catch(() => {})
+      const el = cafeRef.current
+      if (!el) return
+      el.play().then(() => fadeIn()).catch(() => {})
     }
 
-    const tryAutoplay = cafe.play()
-    if (tryAutoplay !== undefined) {
-      tryAutoplay.then(() => {
-        cafeStartedRef.current = true
-      }).catch(() => {
-        const events = ['scroll', 'click', 'keydown', 'touchstart'] as const
-        const onGesture = () => {
-          startCafe()
-          events.forEach(e => window.removeEventListener(e, onGesture))
-        }
-        events.forEach(e => window.addEventListener(e, onGesture, { passive: true, once: true }))
-      })
+    const gestureEvents = ['scroll', 'click', 'keydown', 'touchstart'] as const
+    const onGesture = () => {
+      startCafe()
+      gestureEvents.forEach(e => window.removeEventListener(e, onGesture))
     }
+    gestureEvents.forEach(e => window.addEventListener(e, onGesture, { passive: true, once: true }))
 
     const onScroll = () => {
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight
@@ -220,9 +269,13 @@ export default function HomeClient() {
     window.addEventListener('keydown', onKeyDown)
     onScroll()
     return () => {
+      gestureEvents.forEach(e => window.removeEventListener(e, onGesture))
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('keydown', onKeyDown)
+      clearFadeTimer()
+      cafe.removeEventListener('timeupdate', onTimeUpdate)
       cafeRef.current?.pause()
+      cafeStartedRef.current = false
     }
   }, [])
 
@@ -237,7 +290,7 @@ export default function HomeClient() {
     }
     prevCharsRef.current = displayedChars
 
-    const VOLUME = 0.15
+    const VOLUME = 0.05
 
     // Suppress all sounds after text has been fully typed once
     if (everFullyTypedRef.current) return
