@@ -43,22 +43,27 @@ function calcMobileSlot(vpW: number, vpH: number): SlotPos {
 }
 
 
-type Line = { text: string; href?: string; font?: 'moms' | 'rough' }
+type Line = { text: string; href?: string; font?: 'moms' | 'rough'; newTab?: boolean }
 
 const LINES: Line[] = [
-  { text: '  STATEMENT OF ACCOUNT', font: 'moms' },
+  { text: 'BANK STATEMENT', font: 'moms' },
   { text: '---------------', font: 'moms' },
   { text: 'ACCOUNT HOLDER', font: 'rough' },
   { text: '  ALEX ROGINSKI', font: 'moms' },
   { text: '  SAN FRANCISCO, CA', font: 'moms' },
   { text: '---------------', font: 'moms' },
   { text: 'ACCOUNT SUMMARY', font: 'rough' },
-  { text: '  SF STUFF TO DO', href: '/stuff_to_do', font: 'moms' },
+  { text: '  SF STUFF TO DO', href: '/stuff_to_do', font: 'moms', newTab: true },
   { text: '---------------', font: 'moms' },
   { text: '  LINKEDIN', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
+  { text: '  RESUME', href: '/resume', font: 'moms', newTab: true },
   { text: '---------------', font: 'moms' },
-  
+
 ]
+
+const MUSIC_VOLUME = 0.01
+const CAFE_NOISE_VOLUME = 0.1
+const TYPEWRITER_VOLUME = 0.1
 
 const TOTAL_CHARS = LINES.reduce((sum, l) => sum + l.text.length + 1, 0)
 
@@ -94,11 +99,11 @@ function renderLine(line: Line, displayText: string, showCursor: boolean, key: n
   const isLink = !!line.href && !showCursor
   const style = lineStyle(line.font)
 
+  const opensNewTab = (!!line.href && line.href.startsWith('http')) || !!line.newTab
   const inner = isLink ? (
     <Link
       href={line.href!}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...(opensNewTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       style={{ color: '#1a1712', textDecoration: 'underline', pointerEvents: 'auto' }}
     >
       {displayText || ' '}
@@ -137,6 +142,7 @@ export default function HomeClient() {
   const dingPlayedRef = useRef(false)
   const everFullyTypedRef = useRef(false)
   const cafeRef = useRef<HTMLAudioElement | null>(null)
+  const cafeNoiseRef = useRef<HTMLAudioElement | null>(null)
   const cafeStartedRef = useRef(false)
 
   useEffect(() => {
@@ -170,18 +176,20 @@ export default function HomeClient() {
       .then(decoded => { dingBufferRef.current = decoded })
       .catch(() => {})
 
-    const TARGET_VOL = 0.15
     const FADE_STEP_MS = 50
     const FADE_IN_MS = 5000
-    const FADE_OUT_BEFORE_END_S = 4
 
-    const cafe = new Audio('/music/homepage_background_music/tunetank-cafe-music-349477.mp3')
-    cafe.loop = true
-    cafe.volume = 0.1
-    cafeRef.current = cafe
+    const music = new Audio('/music/homepage_background_music/tunetank-cafe-music-349477.mp3')
+    music.loop = true
+    music.volume = 0
+    cafeRef.current = music
+
+    const cafeNoise = new Audio('/music/background_cafe_noise.mp3')
+    cafeNoise.loop = true
+    cafeNoise.volume = 0
+    cafeNoiseRef.current = cafeNoise
 
     let fadeTimer: ReturnType<typeof setInterval> | null = null
-    let isFadingOut = false
 
     const clearFadeTimer = () => {
       if (fadeTimer !== null) { clearInterval(fadeTimer); fadeTimer = null }
@@ -189,50 +197,25 @@ export default function HomeClient() {
 
     const fadeIn = () => {
       clearFadeTimer()
-      isFadingOut = false
-      const step = TARGET_VOL / (FADE_IN_MS / FADE_STEP_MS)
+      const musicStep = MUSIC_VOLUME / (FADE_IN_MS / FADE_STEP_MS)
+      const noiseStep = CAFE_NOISE_VOLUME / (FADE_IN_MS / FADE_STEP_MS)
       fadeTimer = setInterval(() => {
-        const el = cafeRef.current
-        if (!el) return clearFadeTimer()
-        const next = Math.min(el.volume + step, TARGET_VOL)
-        el.volume = next
-        if (next >= TARGET_VOL) clearFadeTimer()
+        const music = cafeRef.current
+        const noise = cafeNoiseRef.current
+        if (!music && !noise) return clearFadeTimer()
+        if (music) music.volume = Math.min(music.volume + musicStep, MUSIC_VOLUME)
+        if (noise) noise.volume = Math.min(noise.volume + noiseStep, CAFE_NOISE_VOLUME)
+        if ((!music || music.volume >= MUSIC_VOLUME) && (!noise || noise.volume >= CAFE_NOISE_VOLUME)) clearFadeTimer()
       }, FADE_STEP_MS)
     }
-
-    const fadeOut = () => {
-      if (isFadingOut) return
-      clearFadeTimer()
-      isFadingOut = true
-      const el = cafeRef.current
-      const fadeMs = el ? Math.min((el.duration - el.currentTime) * 900, 3000) : 3000
-      const step = TARGET_VOL / (fadeMs / FADE_STEP_MS)
-      fadeTimer = setInterval(() => {
-        const audio = cafeRef.current
-        if (!audio) return clearFadeTimer()
-        const next = Math.max(audio.volume - step, 0)
-        audio.volume = next
-        if (next <= 0) clearFadeTimer()
-      }, FADE_STEP_MS)
-    }
-
-    const onTimeUpdate = () => {
-      const el = cafeRef.current
-      if (!el || !el.duration) return
-      if (isFadingOut && el.currentTime < 0.5) {
-        fadeIn()
-      } else if (!isFadingOut && el.duration - el.currentTime < FADE_OUT_BEFORE_END_S) {
-        fadeOut()
-      }
-    }
-    cafe.addEventListener('timeupdate', onTimeUpdate)
 
     const startCafe = () => {
       if (cafeStartedRef.current) return
       cafeStartedRef.current = true
-      const el = cafeRef.current
-      if (!el) return
-      el.play().then(() => fadeIn()).catch(() => {})
+      Promise.all([
+        cafeRef.current?.play() ?? Promise.resolve(),
+        cafeNoiseRef.current?.play() ?? Promise.resolve(),
+      ]).then(() => fadeIn()).catch(() => {})
     }
 
     const gestureEvents = ['scroll', 'click', 'keydown', 'touchstart'] as const
@@ -273,8 +256,8 @@ export default function HomeClient() {
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('keydown', onKeyDown)
       clearFadeTimer()
-      cafe.removeEventListener('timeupdate', onTimeUpdate)
       cafeRef.current?.pause()
+      cafeNoiseRef.current?.pause()
       cafeStartedRef.current = false
     }
   }, [])
@@ -290,8 +273,6 @@ export default function HomeClient() {
     }
     prevCharsRef.current = displayedChars
 
-    const VOLUME = 0.05
-
     // Suppress all sounds after text has been fully typed once
     if (everFullyTypedRef.current) return
 
@@ -303,7 +284,7 @@ export default function HomeClient() {
       const ding = audioCtxRef.current.createBufferSource()
       ding.buffer = dingBufferRef.current
       const dingGain = audioCtxRef.current.createGain()
-      dingGain.gain.value = VOLUME
+      dingGain.gain.value = TYPEWRITER_VOLUME
       ding.connect(dingGain)
       dingGain.connect(audioCtxRef.current.destination)
       ding.start()
@@ -318,7 +299,7 @@ export default function HomeClient() {
     const source = audioCtxRef.current.createBufferSource()
     source.buffer = audioBufferRef.current
     const keypressGain = audioCtxRef.current.createGain()
-    keypressGain.gain.value = VOLUME
+    keypressGain.gain.value = TYPEWRITER_VOLUME
     source.connect(keypressGain)
     keypressGain.connect(audioCtxRef.current.destination)
     source.start()
