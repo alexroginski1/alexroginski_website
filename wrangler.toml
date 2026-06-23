@@ -1,2 +1,7 @@
 name = "alexroginski-website"
 pages_build_output_dir = "out"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "stuff-to-do-survey"
+database_id = "474ebaef-ea04-4093-a44e-a71d3a09ac6a"

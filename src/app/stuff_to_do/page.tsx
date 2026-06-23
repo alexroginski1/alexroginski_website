@@ -54,7 +54,7 @@ export default function StuffToDo() {
           <p><b>Click these links to add to your Google Calendar:</b></p>
 
           <CalendarLink href={CALENDARS.arts_and_culture.add} label="Arts and Culture" /><br></br>
-          <CalendarLink href={CALENDARS.other.add} label="Other (community venues)" /><br></br>
+          <CalendarLink href={CALENDARS.other.add} label="Community" /><br></br>
           <CalendarLink href={CALENDARS.funCheap.add} label="SF Fun Cheap" /><br></br>
           <CalendarLink href={CALENDARS.partiful.add} label="Partiful" /><br></br>
           <CalendarLink href={CALENDARS.sports.add} label="Sports/Exercise" /><br></br>
@@ -100,8 +100,7 @@ export default function StuffToDo() {
         <CalendarEmbed title="" src={CALENDARS.sports.preview} />
 
 
-        <h2>Other</h2>
-        <p>This calendar includes a few other venues I wasn't sure how to categorize: </p>
+        <h2>Community</h2>
         <ul>
           <li><a href="https://decentered.org/events">👥 Decentered Community Submitted Events</a> (Various Locations)</li>
           <li><a href="https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512">👨‍🦰 Manny's: Community, Politics, and Culture</a> (Mission)</li>

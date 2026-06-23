@@ -2,23 +2,30 @@
 
 import { useState } from 'react'
 
+type Status = 'idle' | 'submitting' | 'success' | 'error'
+
 export default function SurveyForm() {
   const [useful, setUseful] = useState('')
   const [events, setEvents] = useState('')
   const [other, setOther] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [status, setStatus] = useState<Status>('idle')
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault()
-    const subject = encodeURIComponent('Stuff To Do SF — Survey Response')
-    const body = encodeURIComponent(
-      `Do you find this useful? ${useful}\n\nFavorite community events / where have you made friends:\n${events}\n\nOther feedback / out-of-date events:\n${other}`
-    )
-    window.open(`mailto:roginskialexr@gmail.com?subject=${subject}&body=${body}`, '_blank')
-    setSubmitted(true)
+    setStatus('submitting')
+    try {
+      const res = await fetch('/api/survey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ useful, events, other }),
+      })
+      setStatus(res.ok ? 'success' : 'error')
+    } catch {
+      setStatus('error')
+    }
   }
 
-  if (submitted) {
+  if (status === 'success') {
     return (
       <div className="survey-success">
         <p className="survey-success-title">Thank you so much for sharing!</p>
@@ -51,7 +58,8 @@ export default function SurveyForm() {
 
       <div className="survey-question">
         <label className="survey-question-label">
-          What are your favorite community events in the city? Where have you made your friends?{' '}
+          What are your favorite community events in the city? Where have you made your friends?
+          <br />
           <span className="survey-question-label-hint">I will add it to the calendar : )</span>
         </label>
         <textarea
@@ -76,8 +84,12 @@ export default function SurveyForm() {
         />
       </div>
 
-      <button type="submit" className="survey-submit">
-        Submit
+      {status === 'error' && (
+        <p className="text-red-500 text-sm">Something went wrong — please try again.</p>
+      )}
+
+      <button type="submit" className="survey-submit" disabled={status === 'submitting'}>
+        {status === 'submitting' ? 'Submitting...' : 'Submit'}
       </button>
     </form>
   )
