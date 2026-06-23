@@ -7,6 +7,12 @@ import Link from 'next/link'
 const SLOT_X = 50
 const SLOT_Y = 52
 
+const MUSIC_TRACKS = [
+  '/music/homepage_background_music/2021-06-03_-_Rio_After_Dark_-_www.FesliyanStudios.com.mp3',
+  '/music/homepage_background_music/2021-08-06_-_Latin_Nights_-_www.FesliyanStudios.com.mp3',
+  '/music/homepage_background_music/2021-08-06_-_Swinging_Sixties_-_www.FesliyanStudios.com.mp3',
+]
+
 type Line = { text: string; href?: string; font?: 'moms' | 'rough' }
 
 const LINES: Line[] = [
@@ -20,6 +26,7 @@ const LINES: Line[] = [
   { text: '  SF STUFF TO DO', href: '/stuff_to_do', font: 'moms' },
   { text: '----------------------', font: 'moms' },
   { text: '  LINKEDIN', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
+  { text: '----------------------', font: 'moms' },
   
 ]
 
@@ -88,6 +95,7 @@ function renderLine(line: Line, displayText: string, showCursor: boolean, key: n
 export default function HomeClient() {
   const [displayedChars, setDisplayedChars] = useState(0)
   const prevCharsRef = useRef(0)
+  const maxCharsRef = useRef(0)
   const prevScrollRef = useRef(0)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const audioBufferRef = useRef<AudioBuffer | null>(null)
@@ -95,6 +103,9 @@ export default function HomeClient() {
   const lastPlayedRef = useRef(0)
   const dingPlayedRef = useRef(false)
   const everFullyTypedRef = useRef(false)
+  const musicRef = useRef<HTMLAudioElement | null>(null)
+  const cafeRef = useRef<HTMLAudioElement | null>(null)
+  const musicStartedRef = useRef(false)
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
@@ -118,22 +129,46 @@ export default function HomeClient() {
           .catch(() => {})
       }
 
+      if (!musicStartedRef.current) {
+        musicStartedRef.current = true
+
+        const cafe = new Audio('/music/background_cafe_noise.mp3')
+        cafe.loop = true
+        cafe.volume = 0.12
+        cafeRef.current = cafe
+        cafe.play().catch(() => {})
+
+        const playTrack = (index: number) => {
+          const audio = new Audio(MUSIC_TRACKS[index])
+          audio.volume = 0.3
+          musicRef.current?.pause()
+          musicRef.current = audio
+          audio.onended = () => playTrack((index + 1) % MUSIC_TRACKS.length)
+          audio.play().catch(() => {})
+        }
+        playTrack(0)
+      }
+
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight
       const ratio = maxScroll > 0 ? Math.min(window.scrollY / maxScroll, 1) : 0
       const exactChars = Math.round(ratio * TOTAL_CHARS)
       const scrollingDown = window.scrollY >= prevScrollRef.current
       prevScrollRef.current = window.scrollY
 
-      if (everFullyTypedRef.current) {
-        // After being fully typed once: always snap to line boundaries, no sounds
-        setDisplayedChars(snapToLineBoundary(exactChars))
-      } else {
-        setDisplayedChars(scrollingDown ? exactChars : snapToLineBoundary(exactChars))
-      }
+      const desired = everFullyTypedRef.current
+        ? snapToLineBoundary(exactChars)
+        : scrollingDown ? exactChars : snapToLineBoundary(exactChars)
+      const clamped = Math.max(desired, maxCharsRef.current)
+      maxCharsRef.current = clamped
+      setDisplayedChars(clamped)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      musicRef.current?.pause()
+      cafeRef.current?.pause()
+    }
   }, [])
 
   // Play keypress sound whenever new characters are revealed
