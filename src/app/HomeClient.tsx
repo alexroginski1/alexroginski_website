@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
-const SLOT_X = 50
-const SLOT_Y = 52
+const SLOT_X = 61
+const SLOT_Y = 62.3
 
 const MUSIC_TRACKS = [
   '/music/homepage_background_music/2021-06-03_-_Rio_After_Dark_-_www.FesliyanStudios.com.mp3',
@@ -112,43 +112,59 @@ export default function HomeClient() {
   }, [])
 
   useEffect(() => {
-    const onScroll = () => {
-      // Bootstrap AudioContext on first user scroll (required by browser policy)
-      if (!audioCtxRef.current) {
-        const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-        audioCtxRef.current = ctx
-        fetch('/sounds/typewriter_keypress.wav')
-          .then(r => r.arrayBuffer())
-          .then(buf => ctx.decodeAudioData(buf))
-          .then(decoded => { audioBufferRef.current = decoded })
-          .catch(() => {})
-        fetch('/sounds/typewriter_ding.wav')
-          .then(r => r.arrayBuffer())
-          .then(buf => ctx.decodeAudioData(buf))
-          .then(decoded => { dingBufferRef.current = decoded })
-          .catch(() => {})
-      }
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    audioCtxRef.current = ctx
+    fetch('/sounds/typewriter_keypress.wav')
+      .then(r => r.arrayBuffer())
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { audioBufferRef.current = decoded })
+      .catch(() => {})
+    fetch('/sounds/typewriter_ding.wav')
+      .then(r => r.arrayBuffer())
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { dingBufferRef.current = decoded })
+      .catch(() => {})
 
-      if (!musicStartedRef.current) {
+    const cafe = new Audio('/music/background_cafe_noise.mp3')
+    cafe.loop = true
+    cafe.volume = 0.12
+    cafeRef.current = cafe
+
+    const playTrack = (index: number) => {
+      const audio = new Audio(MUSIC_TRACKS[index])
+      audio.volume = 0.3
+      musicRef.current?.pause()
+      musicRef.current = audio
+      audio.onended = () => playTrack((index + 1) % MUSIC_TRACKS.length)
+      audio.play().catch(() => {})
+    }
+
+    const startMusic = () => {
+      if (musicStartedRef.current) return
+      musicStartedRef.current = true
+      cafe.play().catch(() => {})
+      playTrack(0)
+    }
+
+    // Attempt immediate autoplay; browsers that allow it will start right away.
+    // Otherwise, start on the first user gesture.
+    const tryAutoplay = cafe.play()
+    if (tryAutoplay !== undefined) {
+      tryAutoplay.then(() => {
         musicStartedRef.current = true
-
-        const cafe = new Audio('/music/background_cafe_noise.mp3')
-        cafe.loop = true
-        cafe.volume = 0.12
-        cafeRef.current = cafe
-        cafe.play().catch(() => {})
-
-        const playTrack = (index: number) => {
-          const audio = new Audio(MUSIC_TRACKS[index])
-          audio.volume = 0.3
-          musicRef.current?.pause()
-          musicRef.current = audio
-          audio.onended = () => playTrack((index + 1) % MUSIC_TRACKS.length)
-          audio.play().catch(() => {})
-        }
         playTrack(0)
-      }
+      }).catch(() => {
+        // Autoplay blocked — wait for first user gesture
+        const events = ['scroll', 'click', 'keydown', 'touchstart'] as const
+        const onGesture = () => {
+          startMusic()
+          events.forEach(e => window.removeEventListener(e, onGesture))
+        }
+        events.forEach(e => window.addEventListener(e, onGesture, { passive: true, once: true }))
+      })
+    }
 
+    const onScroll = () => {
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight
       const ratio = maxScroll > 0 ? Math.min(window.scrollY / maxScroll, 1) : 0
       const exactChars = Math.round(ratio * TOTAL_CHARS)
@@ -231,7 +247,7 @@ export default function HomeClient() {
       {/* Fixed typewriter background */}
       <div className="fixed inset-0 bg-stone-900" style={{ zIndex: 0 }}>
         <Image
-          src="/typewriter.png"
+          src="/new_typewriter.jpg"
           alt="Vintage typewriter"
           fill
           style={{ objectFit: 'contain' }}
@@ -246,9 +262,10 @@ export default function HomeClient() {
       >
         <span style={{
           fontFamily: 'var(--font-rough-typewriter)',
-          fontSize: '13px',
+          fontSize: '16px',
           letterSpacing: '0.12em',
-          color: 'rgba(255,255,255,0.65)',
+          color: 'rgba(255,255,255,0.9)',
+          textShadow: '0 1px 4px rgba(0,0,0,0.6)',
         }}>
           scroll to type
         </span>
@@ -263,7 +280,7 @@ export default function HomeClient() {
             bottom: `${100 - SLOT_Y}%`,
             left: `${SLOT_X}%`,
             transform: 'translateX(-50%)',
-            width: 'min(310px, 72vw)',
+            width: 'min(260px, 72vw)',
           }}
         >
           <div
@@ -271,8 +288,7 @@ export default function HomeClient() {
               background: '#f5f0e5',
               boxShadow: '2px 0 6px rgba(0,0,0,0.18), -2px 0 6px rgba(0,0,0,0.18)',
               padding: '10px 18px 0 18px',
-              WebkitMaskImage: 'linear-gradient(to top, transparent 0px, black 14px)',
-              maskImage: 'linear-gradient(to top, transparent 0px, black 14px)',
+
             }}
           >
             {completedLines.map((line, i) => renderLine(line, line.text, false, i))}
@@ -281,11 +297,7 @@ export default function HomeClient() {
         </div>
       )}
 
-      {/* Bottom fade to black */}
-      <div
-        className="fixed bottom-0 left-0 right-0 pointer-events-none"
-        style={{ zIndex: 30, height: '18vh', background: 'linear-gradient(to bottom, transparent 0%, black 100%)' }}
-      />
+
     </div>
   )
 }
