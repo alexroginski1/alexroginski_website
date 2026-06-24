@@ -54,6 +54,7 @@ const LINES: Line[] = [
   { text: '---------------', font: 'moms' },
   { text: 'ACCOUNT SUMMARY', font: 'rough' },
   { text: '  SF STUFF TO DO', href: '/stuff_to_do', font: 'moms', newTab: true },
+  { text: '  SAVE TIME: SCREENZEN SETUP', href: '/screenzen', font: 'moms' },
   { text: '---------------', font: 'moms' },
   { text: '  LINKEDIN', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
   { text: '  RESUME', href: '/resume', font: 'moms', newTab: true },
@@ -332,7 +333,7 @@ export default function HomeClient() {
         {/* Mobile: cover the viewport, centered on the image */}
         <div className="md:hidden absolute inset-0">
           <Image
-            src="/new_typewriter.jpg"
+            src="/pictures/homepage/new_typewriter.jpg"
             alt="Vintage typewriter"
             fill
             style={{ objectFit: 'cover' }}
@@ -342,7 +343,7 @@ export default function HomeClient() {
         {/* Desktop: full image contained */}
         <div className="hidden md:block absolute inset-0">
           <Image
-            src="/new_typewriter.jpg"
+            src="/pictures/homepage/new_typewriter.jpg"
             alt="Vintage typewriter"
             fill
             style={{ objectFit: 'contain' }}

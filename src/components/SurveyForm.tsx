@@ -85,7 +85,7 @@ export default function SurveyForm() {
       </div>
 
       {status === 'error' && (
-        <p className="text-red-500 text-sm">Something went wrong — please try again.</p>
+        <p className="survey-error">Something went wrong — please try again.</p>
       )}
 
       <button type="submit" className="survey-submit" disabled={status === 'submitting'}>

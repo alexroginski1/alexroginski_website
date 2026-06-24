@@ -10,11 +10,8 @@ export default function PageHeader({
   backLabel = '← Alex Roginski',
 }: PageHeaderProps) {
   return (
-    <nav className="mb-16">
-      <Link
-        href={backHref}
-        className="text-sm text-stone-500 hover:text-stone-800 transition-colors"
-      >
+    <nav className="std-nav">
+      <Link href={backHref} className="std-back-link">
         {backLabel}
       </Link>
     </nav>

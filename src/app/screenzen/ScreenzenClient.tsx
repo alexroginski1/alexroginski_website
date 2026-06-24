@@ -1,0 +1,214 @@
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+
+const IMG_BASE = '/pictures/screenzen_page/'
+
+type StepData = { img: string; text: string }
+
+const STEP_DIRECTIONS: StepData[] = [
+
+  { img: 'IMG-7069.PNG', text: `
+Do you have problems with scrolling? Wasting time on your phone?
+This might fix that. It did for me.
+
+This tutorial will:
+1. Set a bedtime for you to block most apps 
+(no more night time scrolling)
+2. Strict block specific apps you want to cut out of your life (Reddit, Instagram, etc.)
+3. Set up a lock on the app so that you cannot unblock it when you're in a scrolling mood. 
+A friend must set up the lock and remember the password (send an email with the code or something to themselves)
+and vow to never unlock without a good justification.
+
+I believe Step 3 is essential to any app blocker. If you are able to bypass the block, it's not a real block.
+
+This helps me save time and focus on more important things in my life.
+
+Step 1: look up ScreenZen on the App Store and download it.` },
+
+
+  { img: 'IMG-7090.PNG', text: `
+    Quick setup: setting a bedtime block for most apps.
+    On your IPhone, go to Settings -> Screen Time -> Always Allowed
+    Any apps added here will bypass ScreenZen blocking.
+    Scroll down to "Choose Apps" and select apps you would like to always have enabled, such as:
+    Messages, Maps, Camera, Calculator, Contacts, Docs, Google Calendar, Google Maps, Notes, Weather, etc.
+    ` },
+
+
+  { img: 'IMG-7070.jpg', text: `
+    Now, go to the Screenzen app and press Skip here` },
+
+  { img: 'IMG-7071.PNG', text: `Press "Continue"` },
+
+  { img: 'IMG-7072.PNG', text: `Allow` },
+
+  { img: 'IMG-7073.PNG', text: `
+    At this point, ScreenZen forces you do test out how the blocking works.
+    You have to choose a website just for this example, any website.
+
+    Important note: This app/website search (shown in the screenshot) is really buggy. 
+    Sometimes it just loses your search. If you type really fast, you are less likely to lose your search.
+    ` },
+
+  
+  { img: 'IMG-7074.PNG', text: `If you chose a website, tap "Keep Website"` },
+  
+  { img: 'IMG-7075.PNG', text: `Now you have to go to that site and see the Screenzen block screen.` },
+  
+  { img: 'IMG-7076.PNG', text: `Once you've seen the block screen, return to app and you'll see this example block.` },
+  
+  { img: 'IMG-7077.PNG', text: `Press the x to delete the example block.` },
+  
+  { img: 'IMG-7078.PNG', text: `
+    Task 1: setting up the bedtime block.
+    
+    Select "All Apps and Categories" here to select all apps. Your apps in "Always Allowed" will not be included.
+    ` },
+  
+  { img: 'IMG-7079.PNG', text: `Choose "Strict Block"` },
+  
+  { img: 'IMG-7080.PNG', text: `Just choose "Done" here or set it to the hours you would like. ` },
+  
+  { img: 'IMG-7081.PNG', text: `Now that block is working!` },
+  
+  { img: 'IMG-7082.PNG', text: `Task 2: strict blocking specific apps.
+
+    On the screen on the previous step, press the + button to add a new app, then "Select apps".
+    Within the "select apps" screen, you can search for websites and apps. As noted before, it's important that you type fast.
+    For some reason, the search sometimes clears and you have refresh the search page.
+
+    Go one by one adding all the apps that are wasting your time. Reddit, Instagram, etc.
+
+    In my case, I only selected websites (since I deleted the apps). So I'll press "Keep websites".
+    ` },
+  
+  { img: 'IMG-7083.PNG', text: `
+    Press strict block.
+    ` },
+  
+  { img: 'IMG-7084.PNG', text: `
+    24/7 blocking.
+    ` },
+  
+  { img: 'IMG-7085.PNG', text: `
+    Press done here.` },
+  
+  { img: 'IMG-7086.PNG', text: `
+    Task 3: Lock Settings Passcode (requires a friend nearby)
+    
+    Don't skip this step! This is the only way to make sure you hold yourself to your app blocks.
+
+    Press the "Lock Settings Passcode". Have the friend input a password. Then make them email to themselves or something.
+    ` },
+  
+  { img: 'IMG-7087.PNG', text: `
+    Complete! Now the app should be locked and your app blocks must be respected.
+    
+    I hope this helps you dedicate more time to what really matters in your life.
+    ` },
+  
+]
+
+export default function ScreenzenClient() {
+  const [current, setCurrent] = useState(0)
+  const touchStartX = useRef<number | null>(null)
+
+  const prev = useCallback(() => setCurrent(i => Math.max(0, i - 1)), [])
+  const next = useCallback(() => setCurrent(i => Math.min(STEP_DIRECTIONS.length - 1, i + 1)), [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') prev()
+      if (e.key === 'ArrowRight') next()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [prev, next])
+
+  const imgSrc = IMG_BASE + STEP_DIRECTIONS[current].img
+  const isFirst = current === 0
+  const isLast = current === STEP_DIRECTIONS.length - 1
+  const progress = ((current + 1) / STEP_DIRECTIONS.length) * 100
+
+  return (
+    <div className="std-root">
+      <div className="std-container screenzen-page">
+        <nav className="std-nav">
+          <Link href="/" className="std-back-link">← Alex Roginski</Link>
+        </nav>
+
+        <div className="std-intro">
+          <h1>Save time: Screenzen</h1>
+        </div>
+
+        <div className="screenzen-layout">
+          {/* Image */}
+          <div
+            className="screenzen-image-wrapper"
+            onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX }}
+            onTouchEnd={(e) => {
+              if (touchStartX.current === null) return
+              const delta = e.changedTouches[0].clientX - touchStartX.current
+              if (delta > 50) prev()
+              else if (delta < -50) next()
+              touchStartX.current = null
+            }}
+          >
+            <Image
+              key={imgSrc}
+              src={imgSrc}
+              alt={`Step ${current + 1}`}
+              width={390}
+              height={844}
+              className="screenzen-image"
+            />
+          </div>
+
+          {/* Text + navigation */}
+          <div className="screenzen-text-col">
+            <div className="screenzen-section">
+              <h5>Step {current + 1} of {STEP_DIRECTIONS.length}</h5>
+              {STEP_DIRECTIONS[current].text.trim() ? (
+                <div className="screenzen-directions">
+                  {STEP_DIRECTIONS[current].text.split('\n').map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="screenzen-step-text-empty">No description yet.</p>
+              )}
+            </div>
+
+            <div className="screenzen-section">
+              <div className="screenzen-btn-row">
+                <button
+                  onClick={prev}
+                  disabled={isFirst}
+                  className="screenzen-btn"
+                >
+                  ← Prev
+                </button>
+                <button
+                  onClick={next}
+                  disabled={isLast}
+                  className="screenzen-btn"
+                >
+                  Next →
+                </button>
+              </div>
+              <div className="screenzen-progress">
+                <div
+                  className="screenzen-progress-fill"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
