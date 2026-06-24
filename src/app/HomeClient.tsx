@@ -54,7 +54,7 @@ const LINES: Line[] = [
   { text: '---------------', font: 'moms' },
   { text: 'ACCOUNT SUMMARY', font: 'rough' },
   { text: '  SF STUFF TO DO', href: '/stuff_to_do', font: 'moms', newTab: true },
-  { text: '  SAVE TIME: SCREENZEN SETUP', href: '/screenzen', font: 'moms' },
+  { text: '  APP BLOCKER SETUP', href: '/screenzen', font: 'moms' },
   { text: '---------------', font: 'moms' },
   { text: '  LINKEDIN', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
   { text: '  RESUME', href: '/resume', font: 'moms', newTab: true },
@@ -62,7 +62,7 @@ const LINES: Line[] = [
 
 ]
 
-const MUSIC_VOLUME = 0.01
+const MUSIC_VOLUME = 0.03
 const CAFE_NOISE_VOLUME = 0.1
 const TYPEWRITER_VOLUME = 0.1
 

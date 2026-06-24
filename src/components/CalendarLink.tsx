@@ -19,6 +19,7 @@ export default function CalendarLink({ href, label }: { href: string; label: str
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ calendar: label, visitorId }),
+      keepalive: true,
     }).catch(() => {})
   }
 
