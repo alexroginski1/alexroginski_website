@@ -176,6 +176,18 @@
     @apply bg-stone-700 h-1 rounded-full transition-all duration-300;
   }
 
+  .screenzen-section-block {
+    @apply space-y-6 pt-8 border-t border-stone-200;
+  }
+
+  .screenzen-layout-landscape {
+    @apply flex flex-col gap-8;
+  }
+
+  .screenzen-image-wrapper-landscape {
+    @apply relative w-full;
+  }
+
   .survey-form {
     @apply rounded-xl border border-stone-200 bg-white px-6 py-8 mb-14 space-y-6;
   }

@@ -14,7 +14,7 @@ const IMAGE_H = 2722
 type SlotPos = { leftPx: number; widthPx: number; maxHeightPx: number; bottomPx: number }
 
 function calcDesktopSlot(vpW: number, vpH: number): SlotPos {
-  const scale = Math.min(vpW / IMAGE_W, vpH / IMAGE_H)
+  const scale = Math.max(vpW / IMAGE_W, vpH / IMAGE_H)
   const rendW = IMAGE_W * scale
   const rendH = IMAGE_H * scale
   const offsetX = (vpW - rendW) / 2
@@ -54,7 +54,7 @@ const LINES: Line[] = [
   { text: '---------------', font: 'moms' },
   { text: 'ACCOUNT SUMMARY', font: 'rough' },
   { text: '  SF STUFF TO DO', href: '/stuff_to_do', font: 'moms', newTab: true },
-  { text: '  APP BLOCKER SETUP', href: '/screenzen', font: 'moms' },
+  { text: '  APP BLOCKER SETUP', href: '/screenzen_iphone', font: 'moms' },
   { text: '---------------', font: 'moms' },
   { text: '  LINKEDIN', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
   { text: '  RESUME', href: '/resume', font: 'moms', newTab: true },
@@ -100,7 +100,7 @@ function renderLine(line: Line, displayText: string, showCursor: boolean, key: n
   const isLink = !!line.href && !showCursor
   const style = lineStyle(line.font)
 
-  const opensNewTab = (!!line.href && line.href.startsWith('http')) || !!line.newTab
+  const opensNewTab = !!line.href
   const inner = isLink ? (
     <Link
       href={line.href!}
@@ -340,13 +340,13 @@ export default function HomeClient() {
             priority
           />
         </div>
-        {/* Desktop: full image contained */}
+        {/* Desktop: cover the viewport */}
         <div className="hidden md:block absolute inset-0">
           <Image
             src="/pictures/homepage/new_typewriter.jpg"
             alt="Vintage typewriter"
             fill
-            style={{ objectFit: 'contain' }}
+            style={{ objectFit: 'cover' }}
             priority
           />
         </div>
