@@ -108,23 +108,59 @@ Step 1: look up ScreenZen on the App Store and download it.` },
 
     I hope this helps you dedicate more time to what really matters in your life.
     ` },
+
+    { img: 'nextdns_step1.png', text: `
+    BONUS STEP: Fine grained blocking control with NextDNS (free)
+
+    I was having this issue with watching YouTube videos through the YouTube Videos preview. Basically, when you look up a video,
+    you can click on the little expand button in the thumbnail and watch the video as if you're in YouTube. 
+    You can block this with an app called NextDNS.
+
+    Go to NextDNS and add these to your Denylist.
+
+    Now, download NextDNS app on your IPhone and follow the instructions it shows on the setup. Then, these blocking rules should apply.
+
+    
+    ` },
 ]
 
 const MAC_STEPS: StepData[] = [
-  { img: 'step1.png', text: `Coming soon — Mac screenshots will go here.` },
+  { img: 'example.png', text: `You can set up ScreenZen on Mac like on IPhone shown above. I won't go through every step here.
+
+    In the next step, I'll show how you can get more fine grained control.
+    ` },
+
+   {img:"", text:`
+    Open Terminal and run:
+
+    sudo nano /etc/hosts
+    Input your password
+
+    Then use the arrow keys to navigate to the bottom and add the sites you want to block, like this:
+    
+    0.0.0.0 youtube.com
+    0.0.0.0 www.youtube.com
+    0.0.0.0 m.youtube.com
+    0.0.0.0 youtu.be
+    0.0.0.0 googlevideo.com
+    0.0.0.0 ytimg.com
+    
+    These sites will block YouTube and mini youtube players on other sites.
+    Then do Control + X, then Y if it asks.
+    `},
+
+    {img:"example_end_goal.png", text:`
+    example output
+    `} 
 ]
 
 function StepWizard({
   steps,
   imgBase,
-  imgWidth,
-  imgHeight,
   layout = 'portrait',
 }: {
   steps: StepData[]
   imgBase: string
-  imgWidth: number
-  imgHeight: number
   layout?: 'portrait' | 'landscape'
 }) {
   const [current, setCurrent] = useState(0)
@@ -188,8 +224,8 @@ function StepWizard({
             key={imgSrc}
             src={imgSrc}
             alt={`Step ${current + 1}`}
-            width={imgWidth}
-            height={imgHeight}
+            fill
+            style={{ objectFit: 'contain' }}
             className="screenzen-image"
           />
         </div>
@@ -212,8 +248,8 @@ function StepWizard({
           key={imgSrc}
           src={imgSrc}
           alt={`Step ${current + 1}`}
-          width={imgWidth}
-          height={imgHeight}
+          fill
+          style={{ objectFit: 'contain' }}
           className="screenzen-image"
         />
       </div>
@@ -242,8 +278,6 @@ export default function ScreenzenClient() {
           <StepWizard
             steps={IPHONE_STEPS}
             imgBase={IPHONE_IMG_BASE}
-            imgWidth={390}
-            imgHeight={844}
             layout="portrait"
           />
         </section>
@@ -253,8 +287,6 @@ export default function ScreenzenClient() {
           <StepWizard
             steps={MAC_STEPS}
             imgBase={MAC_IMG_BASE}
-            imgWidth={1280}
-            imgHeight={800}
             layout="landscape"
           />
         </section>

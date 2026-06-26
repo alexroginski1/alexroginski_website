@@ -137,15 +137,17 @@
   }
 
   .screenzen-image-wrapper {
-    @apply relative mx-auto w-full max-w-xs flex-shrink-0;
+    @apply relative mx-auto w-full flex-shrink-0;
+    height: 280px;
   }
 
   .screenzen-image {
-    @apply w-full h-auto rounded-2xl border border-stone-200 shadow-sm;
+    @apply rounded-2xl border border-stone-200 shadow-sm;
   }
 
   .screenzen-text-col {
-    @apply flex flex-col justify-between gap-8;
+    @apply flex flex-col gap-6;
+    min-height: 0;
   }
 
   .screenzen-section {
@@ -181,11 +183,53 @@
   }
 
   .screenzen-layout-landscape {
-    @apply flex flex-col gap-8;
+    @apply flex flex-col gap-6 md:flex-row md:gap-8;
   }
 
   .screenzen-image-wrapper-landscape {
-    @apply relative w-full;
+    @apply relative w-full aspect-[8/5] md:w-2/5 md:flex-shrink-0;
+  }
+
+  .screenzen-no-photo {
+    @apply flex items-center justify-center w-full h-full rounded-2xl border border-dashed border-stone-300 bg-stone-50 text-stone-400 text-sm italic;
+  }
+
+  .screenzen-directions {
+    @apply text-stone-700 text-sm leading-relaxed;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    min-height: 0;
+    height: 8rem;
+  }
+
+  /* Step text section grows to fill text column */
+  .screenzen-text-col > .screenzen-section:first-child {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Desktop: both wizard layouts locked to same fixed height */
+  @media (min-width: 768px) {
+    .screenzen-layout,
+    .screenzen-layout-landscape {
+      height: 520px;
+    }
+
+    .screenzen-image-wrapper {
+      height: 100%;
+    }
+
+    .screenzen-image-wrapper-landscape {
+      aspect-ratio: unset;
+    }
+
+    .screenzen-directions,
+    .screenzen-step-text-empty {
+      height: auto;
+      flex: 1;
+    }
   }
 
   .survey-form {
