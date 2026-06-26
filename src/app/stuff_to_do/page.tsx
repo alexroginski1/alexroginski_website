@@ -3,6 +3,7 @@ import Image from 'next/image'
 import PageHeader from '@/components/PageHeader'
 import CalendarLink from '@/components/CalendarLink'
 import SurveyForm from '@/components/SurveyForm'
+import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: 'Stuff To Do SF',
@@ -36,6 +37,7 @@ const CALENDARS = {
 
 export default function StuffToDo() {
   return (
+    <>
     <main className="std-root">
       <div className="std-container">
 
@@ -155,5 +157,7 @@ export default function StuffToDo() {
 
       </div>
     </main>
+    <Footer />
+    </>
   )
 }

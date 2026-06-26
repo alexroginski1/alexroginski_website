@@ -6,8 +6,8 @@ import Link from 'next/link'
 
 type StepData = { img: string; text: string }
 
-const IPHONE_IMG_BASE = '/pictures/screenzen_page/'
-const MAC_IMG_BASE = '/pictures/screenzen_mac_page/'
+const IPHONE_IMG_BASE = '/pictures/screenzen_iphone/'
+const MAC_IMG_BASE = '/pictures/screenzen_mac/'
 
 const IPHONE_STEPS: StepData[] = [
   { img: 'IMG-7069.PNG', text: `
@@ -116,7 +116,8 @@ Step 1: look up ScreenZen on the App Store and download it.` },
     you can click on the little expand button in the thumbnail and watch the video as if you're in YouTube. 
     You can block this with an app called NextDNS.
 
-    Go to NextDNS and add these to your Denylist.
+    Go to NextDNS and add these to your Denylist. I think you need to create an account for NextDNS. You do not need to download anything to your phone.
+    It just simply worked for me.
 
     Now, download NextDNS app on your IPhone and follow the instructions it shows on the setup. Then, these blocking rules should apply.
 
@@ -169,6 +170,7 @@ function StepWizard({
   const prev = useCallback(() => setCurrent(i => Math.max(0, i - 1)), [])
   const next = useCallback(() => setCurrent(i => Math.min(steps.length - 1, i + 1)), [steps.length])
 
+  const hasImg = !!steps[current].img
   const imgSrc = imgBase + steps[current].img
   const isFirst = current === 0
   const isLast = current === steps.length - 1
@@ -202,9 +204,10 @@ function StepWizard({
       <h5>Step {current + 1} of {steps.length}</h5>
       {steps[current].text.trim() ? (
         <div className="screenzen-directions">
-          {steps[current].text.split('\n').map((line, i) => (
-            <p key={i}>{line}</p>
-          ))}
+          {steps[current].text.trim().split('\n').map((line, i) => {
+            const trimmed = line.trim()
+            return trimmed ? <p key={i}>{trimmed}</p> : <br key={i} />
+          })}
         </div>
       ) : (
         <p className="screenzen-step-text-empty">No description yet.</p>
@@ -220,14 +223,18 @@ function StepWizard({
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          <Image
-            key={imgSrc}
-            src={imgSrc}
-            alt={`Step ${current + 1}`}
-            fill
-            style={{ objectFit: 'contain' }}
-            className="screenzen-image"
-          />
+          {hasImg ? (
+            <Image
+              key={imgSrc}
+              src={imgSrc}
+              alt={`Step ${current + 1}`}
+              fill
+              style={{ objectFit: 'contain' }}
+              className="screenzen-image"
+            />
+          ) : (
+            <div className="screenzen-no-photo">no image included</div>
+          )}
         </div>
         <div className="screenzen-text-col">
           {stepText}
@@ -244,14 +251,18 @@ function StepWizard({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <Image
-          key={imgSrc}
-          src={imgSrc}
-          alt={`Step ${current + 1}`}
-          fill
-          style={{ objectFit: 'contain' }}
-          className="screenzen-image"
-        />
+        {hasImg ? (
+          <Image
+            key={imgSrc}
+            src={imgSrc}
+            alt={`Step ${current + 1}`}
+            fill
+            style={{ objectFit: 'contain' }}
+            className="screenzen-image"
+          />
+        ) : (
+          <div className="screenzen-no-photo">no image included</div>
+        )}
       </div>
       <div className="screenzen-text-col">
         {stepText}

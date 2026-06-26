@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
-import Footer from '@/components/Footer'
 
 const momsTypewriter = localFont({
   src: '../fonts/moms_typewriter/Mom差___.ttf',
@@ -67,7 +66,6 @@ export default function RootLayout({
         className={`${f25BankPrinter.variable} ${roughTypewriter.variable} ${momsTypewriter.variable} ${f25BankPrinter.className} bg-stone-50 text-stone-900 antialiased flex flex-col min-h-screen`}
       >
         <div className="flex-1">{children}</div>
-        <Footer />
       </body>
     </html>
   )

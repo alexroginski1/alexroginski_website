@@ -146,8 +146,9 @@
   }
 
   .screenzen-text-col {
-    @apply flex flex-col gap-6;
+    @apply flex flex-col gap-6 flex-1;
     min-height: 0;
+    min-width: 0;
   }
 
   .screenzen-section {
@@ -214,7 +215,7 @@
   @media (min-width: 768px) {
     .screenzen-layout,
     .screenzen-layout-landscape {
-      height: 520px;
+      height: 600px;
     }
 
     .screenzen-image-wrapper {

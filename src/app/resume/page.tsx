@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: 'Resume',
@@ -12,7 +13,8 @@ const DOC_DOWNLOAD_URL = `https://docs.google.com/document/d/${DOC_ID}/export?fo
 
 export default function Resume() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#fafaf9' }}>
+    <>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#fafaf9' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '0.75rem 1.5rem', borderBottom: '1px solid #e7e5e4', flexShrink: 0 }}>
         <Link
           href="/"
@@ -43,5 +45,7 @@ export default function Resume() {
         allowFullScreen
       />
     </div>
+    <Footer />
+    </>
   )
 }
