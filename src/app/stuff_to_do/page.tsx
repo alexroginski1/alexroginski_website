@@ -94,6 +94,15 @@ export default function StuffToDo() {
         
         <br></br>
 
+        <video
+          src="/gifs/using_calendar_example_iphone.MP4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{ width: '100%', maxWidth: '320px', borderRadius: '12px', display: 'block', margin: '1rem auto' }}
+        />
+
         <SurveyForm />
         <p>Here are some more community calendars.</p>
         <br></br>
