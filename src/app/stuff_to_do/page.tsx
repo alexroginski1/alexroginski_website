@@ -41,8 +41,6 @@ export default function StuffToDo() {
     <main className="std-root">
       <div className="std-container">
 
-        <PageHeader />
-
         <div className="std-hero">
           <video
             src="/gifs/stuff_to_do_calendar_scroll.mp4"
