@@ -68,7 +68,7 @@
 
   .std-hero {
     @apply relative w-full mb-14 rounded-xl overflow-hidden bg-black;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 16 / 10;
   }
 
   .std-hero-video {
@@ -76,7 +76,7 @@
   }
 
   .std-hero-title {
-    @apply absolute top-6 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-lg;
+    @apply absolute top-6 left-0 right-0 mx-6 bg-white px-6 py-3 rounded-lg text-center;
   }
 
   .std-hero-title h1 {
