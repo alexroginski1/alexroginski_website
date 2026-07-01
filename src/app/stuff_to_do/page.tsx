@@ -43,7 +43,19 @@ export default function StuffToDo() {
 
         <PageHeader />
 
-        <h1>Stuff To Do SF</h1>
+        <div className="std-hero">
+          <video
+            src="/gifs/stuff_to_do_calendar_scroll.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="std-hero-video"
+          />
+          <div className="std-hero-title">
+            <h1>Stuff To Do</h1>
+          </div>
+        </div>
 
         <div className="std-intro">
 

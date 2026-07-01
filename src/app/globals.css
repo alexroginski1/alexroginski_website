@@ -66,6 +66,23 @@
     @apply mb-16;
   }
 
+  .std-hero {
+    @apply relative w-full mb-14 rounded-xl overflow-hidden bg-black;
+    aspect-ratio: 16 / 9;
+  }
+
+  .std-hero-video {
+    @apply absolute inset-0 w-full h-full object-cover;
+  }
+
+  .std-hero-title {
+    @apply absolute top-6 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-lg;
+  }
+
+  .std-hero-title h1 {
+    @apply text-black mb-0;
+  }
+
   .std-intro {
     @apply space-y-5 mb-14;
   }
