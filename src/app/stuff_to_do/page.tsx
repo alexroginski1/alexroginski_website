@@ -21,6 +21,7 @@ function CalendarEmbed({ title, src }: { title: string; src: string }) {
 
 function cal(id: string) {
   return {
+    id,
     add: `https://calendar.google.com/calendar/u/0/r?cid=${id}@group.calendar.google.com`,
     preview: `https://calendar.google.com/calendar/embed?src=${id}%40group.calendar.google.com&ctz=America%2FLos_Angeles&mode=AGENDA`,
   }
@@ -34,6 +35,12 @@ const CALENDARS = {
   other:           cal('c40ce35591588f6a8cf1d14e96f4ec215f2d812857382a0fb7253eabea1a0154'),
   arts_and_culture:cal('7f66e10ca74622780fdf0db852f0dc8e4be2272cf206bfc8cf83f2eaefc8abdf'),
 }
+
+const CALENDAR_COLORS = ['%23F4511E', '%237986CB', '%2333B679', '%23D50000', '%23039BE5', '%238E24AA']
+
+const combinedPreviewSrc = `https://calendar.google.com/calendar/embed?${Object.values(CALENDARS)
+  .map((c, i) => `src=${c.id}%40group.calendar.google.com&color=${CALENDAR_COLORS[i % CALENDAR_COLORS.length]}`)
+  .join('&')}&ctz=America%2FLos_Angeles&mode=AGENDA`
 
 export default function StuffToDo() {
   return (
@@ -79,9 +86,19 @@ export default function StuffToDo() {
 
 
           <p>
-            Here's an example of how it works: 
+            Here's a preview of all events on the calendar:
           </p>
-        
+
+        </div>
+
+        <CalendarEmbed title="" src={combinedPreviewSrc} />
+
+        <div className="std-intro">
+
+          <p>
+            Here's an example of how it works:
+          </p>
+
           <p>
             This is the Arts and Cultures event calendar. It tracks the events from three SF art venues and some other reoccuring art events.
           </p>

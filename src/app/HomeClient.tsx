@@ -57,6 +57,7 @@ const LINES: Line[] = [
   { text: '  APP BLOCKER SETUP', href: '/screenzen_iphone', font: 'moms' },
   { text: '---------------', font: 'moms' },
   { text: '  LINKEDIN', href: 'https://linkedin.com/in/alex-roginski-68b40219a', font: 'moms' },
+  { text: '  GITHUB', href: 'https://github.com/alexroginski1', font: 'moms' },
   { text: '  RESUME', href: '/resume', font: 'moms', newTab: true },
   { text: '---------------', font: 'moms' },
 
