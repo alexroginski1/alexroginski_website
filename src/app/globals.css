@@ -132,6 +132,49 @@
     @apply text-blue-600 hover:text-blue-800 transition-colors;
   }
 
+  .std-container h1,
+  .std-container h2 {
+    scroll-margin-top: 2rem;
+  }
+
+  .std-toc-toggle {
+    @apply fixed top-6 left-6 z-50 flex items-center justify-center w-11 h-11 rounded-full bg-white border border-stone-200 text-stone-600 shadow-sm hover:text-stone-900 hover:border-stone-300 transition-colors;
+  }
+
+  .std-toc-toggle svg {
+    @apply w-5 h-5;
+  }
+
+  .std-toc-backdrop {
+    @apply fixed inset-0 z-40 bg-black/20;
+  }
+
+  .std-toc-panel {
+    @apply fixed top-0 left-0 z-40 h-screen w-72 max-w-[80vw] overflow-y-auto bg-white border-r border-stone-200 shadow-lg text-sm px-6 pt-24 pb-8;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .std-toc-panel-open {
+    transform: translateX(0);
+  }
+
+  .std-toc-title {
+    @apply text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3;
+  }
+
+  .std-toc-item-nested {
+    @apply pl-3;
+  }
+
+  .std-toc-link {
+    @apply block py-1 pl-3 -ml-3 border-l-2 border-transparent text-stone-500 hover:text-stone-900 transition-colors;
+  }
+
+  .std-toc-link-active {
+    @apply border-orange-400 text-stone-900 font-medium;
+  }
+
   .footer {
     @apply border-t border-stone-200 py-6 mt-12 bg-stone-50;
   }

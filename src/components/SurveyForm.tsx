@@ -36,7 +36,6 @@ export default function SurveyForm() {
 
   return (
     <form onSubmit={handleSubmit} className="survey-form">
-      <p className="survey-header">Quick survey</p>
 
       <div className="survey-question">
         <label className="survey-question-label">Do you find these calendars useful?</label>

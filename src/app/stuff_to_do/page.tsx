@@ -4,6 +4,7 @@ import PageHeader from '@/components/PageHeader'
 import CalendarLink from '@/components/CalendarLink'
 import SurveyForm from '@/components/SurveyForm'
 import Footer from '@/components/Footer'
+import TableOfContents from '@/components/TableOfContents'
 
 export const metadata: Metadata = {
   title: 'Stuff To Do SF',
@@ -46,6 +47,7 @@ export default function StuffToDo() {
   return (
     <>
     <main className="std-root">
+      <TableOfContents />
       <div className="std-container">
 
         <div className="std-hero">
@@ -63,7 +65,6 @@ export default function StuffToDo() {
         </div>
 
         <div className="std-intro">
-
           <p>Hi, I'm Alex.</p>
           <p>I want to make it easier for people to find community in San Francisco.</p>
           <p>I automatically collect events happening across the city and organize them into Google Calendars, so you can discover what's going on without searching several websites.</p>
@@ -78,49 +79,33 @@ export default function StuffToDo() {
           <CalendarLink href={CALENDARS.partiful.add} label="Partiful" /><br></br>
           <CalendarLink href={CALENDARS.sports.add} label="Sports/Exercise" /><br></br>
           <CalendarLink href={CALENDARS.luma.add} label="Luma" />
-          
-          
-          
-
-
-
-
-          <p>
-            Here's a preview of all events on the calendar:
-          </p>
-
         </div>
-
+          
+          
+        <h2>Preview all events on calendar</h2>
         <CalendarEmbed title="" src={combinedPreviewSrc} />
 
-        <div className="std-intro">
-
-          <p>
-            Here's an example of how it works:
-          </p>
-
+        
+        <div>
+          <h2>Single calendar example</h2>
           <p>
             This is the Arts and Cultures event calendar. It tracks the events from three SF art venues and some other reoccuring art events.
           </p>
+          <br></br>
+          <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture.preview} />
+          <p>Here are the venues:</p>
+          <ul>
+            <li>🔮 <a href="https://www.thefaight.com/events">The Faight</a> (Haight)</li>
+            <li>🤖 <a href="https://luma.com/tiat">TIAT Art and Tech</a> (Downtown)</li>
+            <li>😵‍💫 <a href="https://decentered.org/events">Decentered Featured Events</a> (SOMA)</li>
+          </ul>
+          <br></br>
+          <p>These venues all have their own websites. It's a headache to check each one manually whenever you want to find events.</p>
+          <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
         </div>
-
-        <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture.preview} />
-
-        
-
-        <p>Here are the venues:</p>
-        <ul>
-          <li>🔮 <a href="https://www.thefaight.com/events">The Faight</a> (Haight)</li>
-          <li>🤖 <a href="https://luma.com/tiat">TIAT Art and Tech</a> (Downtown)</li>
-          <li>😵‍💫 <a href="https://decentered.org/events">Decentered Featured Events</a> (SOMA)</li>
-        </ul>
         
         <br></br>
-        <p>These venues all have their own websites. It's a headache to check each one manually whenever you want to find events.</p>
-        <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
-        
-        <br></br>
-
+        <h2>Live Demo</h2>
         <video
           src="/gifs/using_calendar_example_iphone.MP4"
           autoPlay
@@ -130,7 +115,11 @@ export default function StuffToDo() {
           style={{ width: '100%', maxWidth: '320px', borderRadius: '12px', display: 'block', margin: '1rem auto' }}
         />
 
+
+        <h2>Quick Survey</h2>
         <SurveyForm />
+
+
         <p>Here are some more community calendars.</p>
         <br></br>
         <h2>Sports</h2>
