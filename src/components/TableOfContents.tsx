@@ -21,7 +21,7 @@ export default function TableOfContents() {
     const container = document.querySelector('.std-container')
     if (!container) return
 
-    const nodes = Array.from(container.querySelectorAll<HTMLHeadingElement>('h1, h2')).filter(
+    const nodes = Array.from(container.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5')).filter(
       (node) => Boolean(node.textContent?.trim()) && !node.closest('.std-hero-title')
     )
 
@@ -32,7 +32,7 @@ export default function TableOfContents() {
       const count = seen.get(base) ?? 0
       seen.set(base, count + 1)
       if (!node.id) node.id = count === 0 ? base : `${base}-${count + 1}`
-      return { id: node.id, text, level: node.tagName === 'H1' ? 1 : 2 }
+      return { id: node.id, text, level: Number(node.tagName[1]) }
     })
     setHeadings(items)
 
@@ -86,7 +86,11 @@ export default function TableOfContents() {
         <p className="std-toc-title">On this page</p>
         <ul>
           {headings.map((heading) => (
-            <li key={heading.id} className={heading.level === 2 ? 'std-toc-item-nested' : undefined}>
+            <li
+              key={heading.id}
+              className="std-toc-item"
+              style={{ '--toc-level': heading.level - 1 } as React.CSSProperties}
+            >
               <a
                 href={`#${heading.id}`}
                 className={`std-toc-link${activeId === heading.id ? ' std-toc-link-active' : ''}`}

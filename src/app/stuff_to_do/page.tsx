@@ -82,17 +82,35 @@ export default function StuffToDo() {
         </div>
           
           
-        <h2>Preview all events on calendar</h2>
+        <h2>Preview all events</h2>
         <CalendarEmbed title="" src={combinedPreviewSrc} />
 
-        
+
+        <br></br>
+        <h2>Demo</h2>
+        <video
+          src="/gifs/using_calendar_example_iphone.MP4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{ width: '100%', maxWidth: '320px', borderRadius: '12px', display: 'block', margin: '1rem auto' }}
+        />
+
+
+        <br></br>
+        <h2>Quick Survey</h2>
+        <SurveyForm />
+
+
+        <h2>Preview each calendar</h2>
         <div>
-          <h2>Single calendar example</h2>
+          <h3>Arts and Culture</h3>
           <p>
             This is the Arts and Cultures event calendar. It tracks the events from three SF art venues and some other reoccuring art events.
           </p>
           <br></br>
-          <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture.preview} />
+          <CalendarEmbed title="" src={CALENDARS.arts_and_culture.preview} />
           <p>Here are the venues:</p>
           <ul>
             <li>🔮 <a href="https://www.thefaight.com/events">The Faight</a> (Haight)</li>
@@ -104,30 +122,14 @@ export default function StuffToDo() {
           <p>Web scrapers go through each art venue's calendar and add them to the Google Calendar.</p>
         </div>
         
+    
         <br></br>
-        <h2>Live Demo</h2>
-        <video
-          src="/gifs/using_calendar_example_iphone.MP4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          style={{ width: '100%', maxWidth: '320px', borderRadius: '12px', display: 'block', margin: '1rem auto' }}
-        />
-
-
-        <h2>Quick Survey</h2>
-        <SurveyForm />
-
-
-        <p>Here are some more community calendars.</p>
-        <br></br>
-        <h2>Sports</h2>
+        <h3>Sports</h3>
         <p>Run Clubs, yoga, etc.   I added these events manually since they're weekly and consistent.</p>
         <CalendarEmbed title="" src={CALENDARS.sports.preview} />
 
 
-        <h2>Community</h2>
+        <h3>Community</h3>
         <ul>
           <li><a href="https://decentered.org/events">👥 Decentered Community Submitted Events</a> (Various Locations)</li>
           <li><a href="https://www.eventbrite.com/o/mannys-community-politics-and-culture-15114280512">👨‍🦰 Manny's: Community, Politics, and Culture</a> (Mission)</li>
@@ -140,24 +142,23 @@ export default function StuffToDo() {
         <p>This calendar can get really dense. It's good to look at it on the "Day" or "Schedule" level.</p>
         <br></br>
 
-        <h1>Extra Google Calendars</h1>
         <p>
           There are some additional calendars not specifically for community events.
         </p>
 
-        <h2>Partiful Discover Page</h2>
+        <h3>Partiful Discover Page</h3>
         <p>This scrapes some events on the Partiful discover page for San Francisco. I have found some really fun stuff here.
         </p>
         <CalendarEmbed title="" src={CALENDARS.partiful.preview} />
 
-        <h2>SF Fun Cheap</h2>
+        <h3>SF Fun Cheap</h3>
         <p>SF Fun Cheap aggregates tons of stuff happening in the city. It's just hard to manually go through their calendar
           and find stuff to do. This calendar does that for you automatically.
         </p>
     
         <CalendarEmbed title="" src={CALENDARS.funCheap.preview} />
         
-        <h2>Luma Discover Page</h2>
+        <h3>Luma Discover Page</h3>
         <p>Mostly tech events. I haven't found this calendar useful yet.
         </p>
         <CalendarEmbed title="" src={CALENDARS.luma.preview} />
