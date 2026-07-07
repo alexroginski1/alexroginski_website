@@ -83,7 +83,6 @@ export default function TableOfContents() {
       {isOpen && <div className="std-toc-backdrop" onClick={() => setIsOpen(false)} />}
 
       <nav className={`std-toc-panel${isOpen ? ' std-toc-panel-open' : ''}`} aria-label="Table of contents">
-        <p className="std-toc-title">On this page</p>
         <ul>
           {headings.map((heading) => (
             <li

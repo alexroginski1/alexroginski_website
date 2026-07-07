@@ -108,6 +108,26 @@
     height: 600px;
   }
 
+  .calendar-source-group {
+    @apply mb-1;
+  }
+
+  .calendar-link-row {
+    @apply inline-flex items-center gap-2;
+  }
+
+  .calendar-source-toggle {
+    @apply bg-transparent border-0 p-0 m-0 cursor-pointer text-left text-stone-700 text-lg;
+  }
+
+  .calendar-link-toggle {
+    @apply inline-flex items-center justify-center w-5 h-5 rounded border border-stone-300 text-sm leading-none text-stone-600 hover:bg-stone-100;
+  }
+
+  .calendar-link-sources {
+    @apply mt-1 mb-2 ml-7 space-y-1 text-sm text-stone-600;
+  }
+
   .std-callout {
     @apply rounded-xl border border-orange-200 bg-orange-50 px-5 py-4 mb-14;
   }

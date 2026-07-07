@@ -65,26 +65,26 @@ export default function StuffToDo() {
 
 
 
-
+{/* 
           <p>
             Here's an example of how it works: 
           </p>
         
           <p>
             This is the Arts and Cultures event calendar. It tracks the events from three SF art venues and some other reoccuring art events.
-          </p>
+          </p> */}
         </div>
 
-        <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture.preview} />
+        {/* <CalendarEmbed title="Arts and Culture" src={CALENDARS.arts_and_culture.preview} /> */}
 
         
 
-        <p>Here are the venues:</p>
+        {/* <p>Here are the venues:</p>
         <ul>
           <li>🔮 <a href="https://www.thefaight.com/events">The Faight</a> (Haight)</li>
           <li>🤖 <a href="https://luma.com/tiat">TIAT Art and Tech</a> (Downtown)</li>
           <li>😵‍💫 <a href="https://decentered.org/events">Decentered Featured Events</a> (SOMA)</li>
-        </ul>
+        </ul> */}
         
         <br></br>
         <p>These venues all have their own websites. It's a headache to check each one manually whenever you want to find events.</p>
