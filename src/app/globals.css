@@ -103,6 +103,14 @@
     @apply mb-14;
   }
 
+  .std-calendar-links {
+    @apply border-collapse;
+  }
+
+  .std-calendar-links td {
+    @apply border-0 bg-transparent p-0 pb-3 pr-4 align-top;
+  }
+
   .std-calendar-iframe {
     @apply w-full rounded-xl border border-stone-200;
     height: 600px;

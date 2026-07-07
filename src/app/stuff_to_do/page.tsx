@@ -36,6 +36,7 @@ const CALENDARS = {
   sports:          cal('2a8d48b484e0b7d54bd801ad4849798902dbb347781ab1371b06f6cddaad9a9f'),
   other:           cal('c40ce35591588f6a8cf1d14e96f4ec215f2d812857382a0fb7253eabea1a0154'),
   arts_and_culture:cal('7f66e10ca74622780fdf0db852f0dc8e4be2272cf206bfc8cf83f2eaefc8abdf'),
+  dancing:         cal('704367c0fe7ec0383a79ab3bd6a4388d8c867642120862ffa11191fdb27e407f'),
 }
 
 const SOURCES: Record<string, CalendarSource> = {
@@ -230,22 +231,41 @@ export default function StuffToDo() {
 
           <p><b>Click these links to add to your Google Calendar:</b></p>
 
-          <CalendarLink href={CALENDARS.arts_and_culture.add} label="Arts and Culture" /><br></br>
-          <CalendarLink href={CALENDARS.other.add} label="Community" /><br></br>
-          <CalendarLink href={CALENDARS.sports.add} label="Sports/Exercise" /><br></br>
-          <CalendarLink href={CALENDARS.luma.add} label="Luma" /><br></br>
-          <CalendarLink href={CALENDARS.funCheap.add} label="SF Fun Cheap" /><br></br>
-          <CalendarLink href={CALENDARS.partiful.add} label="Partiful" />
+          <table className="std-calendar-links">
+            <tbody>
+              <tr>
+                <td><CalendarLink href={CALENDARS.other.add} label="Community" /></td>
+                <td>third spaces, community events</td>
+              </tr>
+              <tr>
+                <td><CalendarLink href={CALENDARS.sports.add} label="Sports/Exercise" /></td>
+                <td>run clubs, yoga, workouts</td>
+              </tr>
+              <tr>
+                <td><CalendarLink href={CALENDARS.luma.add} label="Tech" /></td>
+                <td>Luma featured events</td>
+              </tr>
+              <tr>
+                <td><CalendarLink href={CALENDARS.funCheap.add} label="SF Fun Cheap" /></td>
+                <td>well known aggregator</td>
+              </tr>
+              <tr>
+                <td><CalendarLink href={CALENDARS.partiful.add} label="Partiful" /></td>
+                <td>featured public events</td>
+              </tr>
+              <tr>
+                <td><CalendarLink href={CALENDARS.arts_and_culture.add} label="Arts and Culture" /></td>
+                <td>art openings, figure drawing</td>
+              </tr>
+              <tr>
+                <td><CalendarLink href={CALENDARS.dancing.add} label="Dancing" /></td>
+                <td>salsa, bachata, swing dancing</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <div className="std-intro">
-          <p><b>See where each calendar's events come from:</b></p>
-
-          <CalendarSourceGroup label="Arts and Culture" sources={ARTS_AND_CULTURE_SOURCES} />
-          <CalendarSourceGroup label="Community" sources={COMMUNITY_SOURCES} />
-          <CalendarSourceGroup label="Sports/Exercise" sources={SPORTS_SOURCES} />
-          <CalendarSourceGroup label="Luma" sources={LUMA_SOURCES} />
-        </div>
+       
 
         <h2>Preview all events</h2>
         <CalendarEmbed title="" src={combinedPreviewSrc} />
@@ -261,6 +281,15 @@ export default function StuffToDo() {
           playsInline
           style={{ width: '100%', maxWidth: '320px', borderRadius: '12px', display: 'block', margin: '1rem auto' }}
         />
+
+         <div className="std-intro">
+          <p><b>See where each calendar's events come from:</b></p>
+
+          <CalendarSourceGroup label="Arts and Culture" sources={ARTS_AND_CULTURE_SOURCES} />
+          <CalendarSourceGroup label="Community" sources={COMMUNITY_SOURCES} />
+          <CalendarSourceGroup label="Sports/Exercise" sources={SPORTS_SOURCES} />
+          <CalendarSourceGroup label="Luma" sources={LUMA_SOURCES} />
+        </div>
 
 
         <br></br>
