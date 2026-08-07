@@ -34,6 +34,17 @@ function transportLabel(mode: TransportMode): string {
   return mode.charAt(0).toUpperCase() + mode.slice(1)
 }
 
+// Events are San Francisco events, so "today" and date filtering are always
+// computed in SF's timezone regardless of the viewer's own location.
+function sfDateKey(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+}
+
 export default function EventsMapSection() {
   const [weekCount, setWeekCount] = useState<number | null>(null)
   const [events, setEvents] = useState<ApiEvent[]>([])
@@ -44,6 +55,8 @@ export default function EventsMapSection() {
   const [transportMode, setTransportMode] = useState<TransportMode>('walk')
   const [minutes, setMinutes] = useState(20)
   const [enabledSources, setEnabledSources] = useState<Set<MapCalendarKey>>(new Set(ALL_SOURCE_KEYS))
+  const [dateFrom, setDateFrom] = useState(() => sfDateKey(new Date()))
+  const [dateTo, setDateTo] = useState(() => sfDateKey(new Date()))
   const [searchOrigin, setSearchOrigin] = useState<{ lat: number; lng: number } | null>(null)
   const [lastGeocode, setLastGeocode] = useState<LastGeocode | null>(null)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -119,6 +132,30 @@ export default function EventsMapSection() {
     })
   }
 
+  function isolateSource(key: MapCalendarKey) {
+    setEnabledSources((prev) => {
+      // Double-clicking an already-isolated chip restores all sources.
+      if (prev.size === 1 && prev.has(key)) return new Set(ALL_SOURCE_KEYS)
+      return new Set([key])
+    })
+  }
+
+  function handleDateFromChange(value: string) {
+    setDateFrom(value)
+    setDateTo((prev) => (prev < value ? value : prev))
+  }
+
+  function handleDateToChange(value: string) {
+    setDateTo(value)
+    setDateFrom((prev) => (prev > value ? value : prev))
+  }
+
+  function resetToToday() {
+    const today = sfDateKey(new Date())
+    setDateFrom(today)
+    setDateTo(today)
+  }
+
   async function handleLocationSearch(e: React.FormEvent) {
     e.preventDefault()
     const text = locationText.trim()
@@ -154,6 +191,8 @@ export default function EventsMapSection() {
     const kw = keyword.trim().toLowerCase()
     return (events ?? []).filter((event) => {
       if (!enabledSources.has(event.calendar)) return false
+      const eventDateKey = sfDateKey(new Date(event.start))
+      if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
       if (kw) {
         const haystack = `${event.title} ${event.description ?? ''}`.toLowerCase()
         if (!haystack.includes(kw)) return false
@@ -164,7 +203,7 @@ export default function EventsMapSection() {
       }
       return true
     })
-  }, [events, enabledSources, keyword, searchOrigin, activeRadiusMiles])
+  }, [events, enabledSources, keyword, dateFrom, dateTo, searchOrigin, activeRadiusMiles])
 
   return (
     <section className="std-map-section">
@@ -223,6 +262,32 @@ export default function EventsMapSection() {
         {geocodeStatus === 'error' && (
           <p className="std-map-empty">Couldn&apos;t find that location — showing all events instead.</p>
         )}
+
+        <div className="std-map-filter-row">
+          <label className="std-map-empty" style={{ padding: 0 }} htmlFor="std-map-date-from">
+            Date
+          </label>
+          <input
+            id="std-map-date-from"
+            type="date"
+            className="std-map-select"
+            value={dateFrom}
+            onChange={(e) => handleDateFromChange(e.target.value)}
+          />
+          <span className="std-map-empty" style={{ padding: 0 }}>
+            to
+          </span>
+          <input
+            type="date"
+            className="std-map-select"
+            value={dateTo}
+            onChange={(e) => handleDateToChange(e.target.value)}
+            aria-label="End date"
+          />
+          <button type="button" className="std-map-today-btn" onClick={resetToToday}>
+            Today
+          </button>
+        </div>
       </form>
 
       <div className="std-map-legend">
@@ -235,7 +300,9 @@ export default function EventsMapSection() {
               type="button"
               className={`std-map-legend-chip${on ? '' : ' std-map-legend-chip-off'}`}
               onClick={() => toggleSource(key)}
+              onDoubleClick={() => isolateSource(key)}
               aria-pressed={on}
+              title="Double-click to show only this calendar"
             >
               <span className="std-map-legend-dot" style={{ backgroundColor: color }} />
               {label}

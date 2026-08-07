@@ -117,16 +117,28 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const missingKeys = allKeys.filter((k) => !geocodes.has(k)).slice(0, MAX_NEW_GEOCODES_PER_REQUEST)
   const contactEmail = env.NOMINATIM_CONTACT_EMAIL ?? ''
 
-  for (let i = 0; i < missingKeys.length; i++) {
-    const key = missingKeys[i]
-    const raw = locationKeyToRaw.get(key)!
-    const query = /san francisco|,\s*ca\b/i.test(raw) ? raw : `${raw}, San Francisco, CA`
-    const result = await geocodeAddress(query, contactEmail)
-    if (result) {
-      geocodes.set(key, { lat: result.lat, lng: result.lng })
-      context.waitUntil(upsertGeocode(env.DB, key, raw, result.lat, result.lng, result.displayName))
-    }
-    if (i < missingKeys.length - 1) await sleep(GEOCODE_THROTTLE_MS)
+  // Geocoding new locations against Nominatim is rate-limited to ~1 req/sec
+  // (GEOCODE_THROTTLE_MS), so resolving a full batch of missing keys inline
+  // used to block the response for up to ~15-20s. Instead, return this
+  // response with whatever's already cached and resolve the rest in the
+  // background — they'll show up once the D1 geocode cache is warm on a
+  // future request (this response is itself edge-cached for
+  // CACHE_TTL_SECONDS, so that's the worst-case delay).
+  if (missingKeys.length) {
+    context.waitUntil(
+      (async () => {
+        for (let i = 0; i < missingKeys.length; i++) {
+          const key = missingKeys[i]
+          const raw = locationKeyToRaw.get(key)!
+          const query = /san francisco|,\s*ca\b/i.test(raw) ? raw : `${raw}, San Francisco, CA`
+          const result = await geocodeAddress(query, contactEmail)
+          if (result) {
+            await upsertGeocode(env.DB, key, raw, result.lat, result.lng, result.displayName)
+          }
+          if (i < missingKeys.length - 1) await sleep(GEOCODE_THROTTLE_MS)
+        }
+      })()
+    )
   }
 
   // Locations we couldn't geocode within this request's budget (or that are
