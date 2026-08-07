@@ -5,6 +5,9 @@
 /.next/
 /out/
 
+# wrangler local dev state (D1, cache)
+/.wrangler/
+
 # misc
 .DS_Store
 *.pem

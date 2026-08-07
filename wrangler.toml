@@ -1,6 +1,9 @@
 name = "alexroginski-website"
 pages_build_output_dir = "out"
 
+[vars]
+NOMINATIM_CONTACT_EMAIL = "roginskialexr@gmail.com"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "stuff-to-do-survey"

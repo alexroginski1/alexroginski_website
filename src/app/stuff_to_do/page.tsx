@@ -6,6 +6,7 @@ import CalendarSourceGroup, { CalendarSource } from '@/components/CalendarSource
 import SurveyForm from '@/components/SurveyForm'
 import Footer from '@/components/Footer'
 import TableOfContents from '@/components/TableOfContents'
+import EventsMapSection from '@/components/mapview/EventsMapSection'
 
 export const metadata: Metadata = {
   title: 'Stuff To Do SF',
@@ -207,6 +208,8 @@ export default function StuffToDo() {
     <main className="std-root">
       <TableOfContents />
       <div className="std-container">
+
+        <EventsMapSection />
 
         <div className="std-hero">
           <video

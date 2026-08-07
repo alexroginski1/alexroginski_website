@@ -9,15 +9,19 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "ical.js": "^2.2.1",
+    "leaflet": "^1.9.4",
     "next": "^15.3.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0"
   },
   "optionalDependencies": {
     "@next/swc-darwin-arm64": "^15.5.19"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260623.1",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
