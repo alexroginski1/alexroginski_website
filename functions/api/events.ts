@@ -22,7 +22,7 @@ export type ApiEvent = {
 
 type EventsResponse = {
   weekCount: number
-  today: ApiEvent[]
+  events: ApiEvent[]
   generatedAt: string
   calendarsFetched: MapCalendarKey[]
   errors: { calendar: MapCalendarKey; error: string }[]
@@ -30,55 +30,8 @@ type EventsResponse = {
 
 const FETCH_TIMEOUT_MS = 5000
 const CACHE_TTL_SECONDS = 300
-const MAX_NEW_GEOCODES_PER_REQUEST = 8
+const MAX_NEW_GEOCODES_PER_REQUEST = 15
 const GEOCODE_THROTTLE_MS = 1100
-const TIMEZONE = 'America/Los_Angeles'
-
-function getTimeZoneOffsetMinutes(date: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(date)
-
-  const map: Record<string, string> = {}
-  for (const p of parts) map[p.type] = p.value
-
-  const asUTC = Date.UTC(
-    Number(map.year),
-    Number(map.month) - 1,
-    Number(map.day),
-    Number(map.hour) === 24 ? 0 : Number(map.hour),
-    Number(map.minute),
-    Number(map.second)
-  )
-  return (asUTC - date.getTime()) / 60000
-}
-
-// Computes the [start, end) window for "today" in a given IANA timezone,
-// so the map's day boundary matches SF local time rather than UTC.
-function localDayWindow(now: Date, timeZone: string): { start: Date; end: Date } {
-  const offsetMin = getTimeZoneOffsetMinutes(now, timeZone)
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now)
-  const map: Record<string, string> = {}
-  for (const p of parts) map[p.type] = p.value
-
-  const startUTCms =
-    Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day), 0, 0, 0) - offsetMin * 60000
-  const start = new Date(startUTCms)
-  const end = new Date(startUTCms + 24 * 60 * 60 * 1000)
-  return { start, end }
-}
 
 async function fetchIcs(calendarId: string): Promise<string> {
   const controller = new AbortController()
@@ -109,7 +62,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   const now = new Date()
   const weekWindowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-  const { start: todayStart, end: todayEnd } = localDayWindow(now, TIMEZONE)
 
   const calendarEntries = Object.entries(CALENDAR_IDS) as [MapCalendarKey, string][]
 
@@ -138,16 +90,13 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     }
   })
 
-  const weekCount = perCalendarOccurrences.filter(({ occ }) => occ.end >= now && occ.start <= weekWindowEnd).length
+  // All events still in progress or upcoming within the next 7 days — this
+  // is both the "events this week" count and the full pool of map pins.
+  const upcoming = perCalendarOccurrences.filter(({ occ }) => occ.end >= now && occ.start <= weekWindowEnd)
+  const weekCount = upcoming.length
 
-  const todayOccurrences = perCalendarOccurrences.filter(
-    ({ occ }) => occ.end >= now && occ.start < todayEnd && occ.end >= todayStart
-  )
-
-  // Geocode only the unique locations needed for today's pins — the week
-  // count above doesn't depend on geocoding at all.
   const locationKeyToRaw = new Map<string, string>()
-  for (const { occ } of todayOccurrences) {
+  for (const { occ } of upcoming) {
     if (!occ.location) continue
     const key = normalizeLocationKey(occ.location)
     if (!locationKeyToRaw.has(key)) locationKeyToRaw.set(key, occ.location)
@@ -171,14 +120,16 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     if (i < missingKeys.length - 1) await sleep(GEOCODE_THROTTLE_MS)
   }
 
-  // Locations we couldn't geocode within this request's budget are simply
-  // dropped from the map (they still counted toward weekCount above).
-  const today: ApiEvent[] = []
-  for (const { calendar, occ } of todayOccurrences) {
+  // Locations we couldn't geocode within this request's budget (or that are
+  // missing entirely) are simply dropped from the map — they still counted
+  // toward weekCount above. As the D1 geocode cache fills up over repeated
+  // requests, fewer events fall into this bucket.
+  const events: ApiEvent[] = []
+  for (const { calendar, occ } of upcoming) {
     if (!occ.location) continue
     const coords = geocodes.get(normalizeLocationKey(occ.location))
     if (!coords) continue
-    today.push({
+    events.push({
       id: `${calendar}:${occ.uid}`,
       calendar,
       title: occ.title,
@@ -193,7 +144,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   const body: EventsResponse = {
     weekCount,
-    today,
+    events,
     generatedAt: now.toISOString(),
     calendarsFetched,
     errors,

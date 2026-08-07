@@ -2,19 +2,30 @@ export function normalizeLocationKey(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+// D1 caps the number of bound parameters per query well below SQLite's own
+// default limit, so a whole week's worth of unique locations (can be 100+)
+// has to be looked up in batches rather than one IN (...) with every key.
+const D1_MAX_BOUND_PARAMS = 90
+
 export async function getCachedGeocodes(
   db: D1Database,
   keys: string[]
 ): Promise<Map<string, { lat: number; lng: number }>> {
-  if (keys.length === 0) return new Map()
+  const out = new Map<string, { lat: number; lng: number }>()
+  if (keys.length === 0) return out
 
-  const placeholders = keys.map(() => '?').join(',')
-  const { results } = await db
-    .prepare(`SELECT location_key, lat, lng FROM geocode_cache WHERE location_key IN (${placeholders})`)
-    .bind(...keys)
-    .all<{ location_key: string; lat: number; lng: number }>()
+  for (let i = 0; i < keys.length; i += D1_MAX_BOUND_PARAMS) {
+    const batch = keys.slice(i, i + D1_MAX_BOUND_PARAMS)
+    const placeholders = batch.map(() => '?').join(',')
+    const { results } = await db
+      .prepare(`SELECT location_key, lat, lng FROM geocode_cache WHERE location_key IN (${placeholders})`)
+      .bind(...batch)
+      .all<{ location_key: string; lat: number; lng: number }>()
 
-  return new Map((results ?? []).map((r) => [r.location_key, { lat: r.lat, lng: r.lng }]))
+    for (const r of results ?? []) out.set(r.location_key, { lat: r.lat, lng: r.lng })
+  }
+
+  return out
 }
 
 export async function upsertGeocode(

@@ -14,7 +14,7 @@ export type ApiEvent = {
 
 export type EventsResponse = {
   weekCount: number
-  today: ApiEvent[]
+  events: ApiEvent[]
   generatedAt: string
   calendarsFetched: MapCalendarKey[]
   errors: { calendar: MapCalendarKey; error: string }[]

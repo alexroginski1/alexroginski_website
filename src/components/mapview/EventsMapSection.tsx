@@ -56,7 +56,7 @@ export default function EventsMapSection() {
       .then((res) => res.json())
       .then((data: EventsResponse) => {
         setWeekCount(data.weekCount)
-        setEvents(data.today)
+        setEvents(data.events)
       })
       .catch(() => setLoadError(true))
   }, [])
@@ -247,7 +247,7 @@ export default function EventsMapSection() {
       {visibleEvents.length === 0 && (
         <p className="std-map-empty">
           {loadError
-            ? "Couldn't load today's events right now — try again shortly."
+            ? "Couldn't load this week's events right now — try again shortly."
             : 'No events match your current filters.'}
         </p>
       )}
