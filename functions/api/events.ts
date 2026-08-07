@@ -33,6 +33,13 @@ const CACHE_TTL_SECONDS = 300
 const MAX_NEW_GEOCODES_PER_REQUEST = 15
 const GEOCODE_THROTTLE_MS = 1100
 
+// Bump this whenever EventsResponse's shape changes. The edge cache
+// (caches.default) isn't cleared on deploy, so without a version in the
+// cache key, a stale pre-deploy response can still be served for up to
+// CACHE_TTL_SECONDS after a shape change ships — which crashes any client
+// expecting the new shape.
+const RESPONSE_SHAPE_VERSION = 'v2'
+
 async function fetchIcs(calendarId: string): Promise<string> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
@@ -55,7 +62,9 @@ function sleep(ms: number) {
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { request, env } = context
   const cache = caches.default
-  const cacheKey = new Request(request.url, request)
+  const cacheUrl = new URL(request.url)
+  cacheUrl.searchParams.set('shapeVersion', RESPONSE_SHAPE_VERSION)
+  const cacheKey = new Request(cacheUrl.toString(), request)
 
   const cached = await cache.match(cacheKey)
   if (cached) return cached

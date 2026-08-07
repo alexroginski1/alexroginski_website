@@ -55,8 +55,10 @@ export default function EventsMapSection() {
     fetch('/api/events')
       .then((res) => res.json())
       .then((data: EventsResponse) => {
-        setWeekCount(data.weekCount)
-        setEvents(data.events)
+        // Defensive against a stale edge-cached response from a previous
+        // deploy whose shape doesn't match this build's expectations.
+        if (typeof data?.weekCount === 'number') setWeekCount(data.weekCount)
+        if (Array.isArray(data?.events)) setEvents(data.events)
       })
       .catch(() => setLoadError(true))
   }, [])
@@ -150,7 +152,7 @@ export default function EventsMapSection() {
 
   const visibleEvents = useMemo(() => {
     const kw = keyword.trim().toLowerCase()
-    return events.filter((event) => {
+    return (events ?? []).filter((event) => {
       if (!enabledSources.has(event.calendar)) return false
       if (kw) {
         const haystack = `${event.title} ${event.description ?? ''}`.toLowerCase()
