@@ -209,8 +209,6 @@ export default function StuffToDo() {
       <TableOfContents />
       <div className="std-container">
 
-        <EventsMapSection />
-
         <div className="std-hero">
           <video
             src="/gifs/stuff_to_do_calendar_scroll.mp4"
@@ -339,6 +337,8 @@ export default function StuffToDo() {
           There are more resources there for finding fun stuff like partner dancing, jamming (instruments), trivia, and unique clubs.
 
         </p>
+
+        <EventsMapSection />
 
         <h2></h2>
 

@@ -75,6 +75,7 @@ export default function EventsMapSection() {
   const [allDates, setAllDates] = useState(false)
   const [radiusEnabled, setRadiusEnabled] = useState(false)
   const [searchOrigin, setSearchOrigin] = useState<{ lat: number; lng: number } | null>(null)
+  const [recenterSignal, setRecenterSignal] = useState(0)
   const [lastGeocode, setLastGeocode] = useState<LastGeocode | null>(null)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'error'>('idle')
 
@@ -241,7 +242,7 @@ export default function EventsMapSection() {
 
   return (
     <section className="std-map-section">
-      <h2>Live SF Events Map</h2>
+      <h2>(WIP) Live SF Events Map</h2>
 
       <EventCountBanner count={loadError ? null : weekCount} />
 
@@ -260,16 +261,26 @@ export default function EventsMapSection() {
           <input
             type="text"
             className="std-map-input"
-            placeholder="e.g. 1448 Bush Street"
+            placeholder="e.g. 1 Dr Carlton B Goodlett Pl"
             value={locationText}
             onChange={(e) => setLocationText(e.target.value)}
           />
           <button type="submit" className="std-map-search-btn" disabled={geocodeStatus === 'loading'}>
             {geocodeStatus === 'loading' ? 'Searching…' : 'Search'}
           </button>
+          <button
+            type="button"
+            className="std-map-preset-btn"
+            onClick={() => setRecenterSignal((n) => n + 1)}
+          >
+            Recenter to SF
+          </button>
         </div>
         {geocodeStatus === 'error' && (
-          <p className="std-map-empty">Couldn&apos;t find that location — showing all events instead.</p>
+          <p className="std-map-empty">
+            Couldn&apos;t find that location — showing all events instead. Use &quot;Recenter to SF&quot; to
+            reset the map view.
+          </p>
         )}
 
         <div className="std-map-filter-row">
@@ -394,7 +405,12 @@ export default function EventsMapSection() {
         })}
       </div>
 
-      <LeafletMap events={visibleEvents} searchOrigin={searchOrigin} radiusMiles={activeRadiusMiles} />
+      <LeafletMap
+        events={visibleEvents}
+        searchOrigin={searchOrigin}
+        radiusMiles={activeRadiusMiles}
+        recenterSignal={recenterSignal}
+      />
 
       {visibleEvents.length === 0 && (
         <p className="std-map-empty">
