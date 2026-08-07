@@ -30,7 +30,7 @@ type EventsResponse = {
 
 const FETCH_TIMEOUT_MS = 5000
 const CACHE_TTL_SECONDS = 300
-const MAX_NEW_GEOCODES_PER_REQUEST = 15
+const MAX_NEW_GEOCODES_PER_REQUEST = 25
 const GEOCODE_THROTTLE_MS = 1100
 
 // Bump this whenever EventsResponse's shape changes. The edge cache
@@ -104,8 +104,13 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const upcoming = perCalendarOccurrences.filter(({ occ }) => occ.end >= now && occ.start <= weekWindowEnd)
   const weekCount = upcoming.length
 
+  // Soonest-starting occurrences first, so when the per-request geocode
+  // budget below is exhausted, it's next week's locations that get left
+  // behind rather than today's.
+  const byStartAscending = [...upcoming].sort((a, b) => a.occ.start.getTime() - b.occ.start.getTime())
+
   const locationKeyToRaw = new Map<string, string>()
-  for (const { occ } of upcoming) {
+  for (const { occ } of byStartAscending) {
     if (!occ.location) continue
     const key = normalizeLocationKey(occ.location)
     if (!locationKeyToRaw.has(key)) locationKeyToRaw.set(key, occ.location)

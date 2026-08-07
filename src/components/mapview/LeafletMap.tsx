@@ -1,7 +1,7 @@
 'use client'
 
 import 'leaflet/dist/leaflet.css'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
@@ -9,7 +9,6 @@ import { haversineMiles } from '@/lib/geo'
 import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
-const SF_DEFAULT_ZOOM = 12
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
 
@@ -18,22 +17,6 @@ function RecenterOnOrigin({ origin }: { origin: { lat: number; lng: number } | n
   useEffect(() => {
     if (origin) map.setView([origin.lat, origin.lng], 13)
   }, [origin, map])
-  return null
-}
-
-// `signal` increments each time the user clicks "Recenter to SF" — skip the
-// first (mount) run so this doesn't fight with RecenterOnOrigin restoring a
-// persisted search location on load.
-function RecenterToSF({ signal }: { signal: number }) {
-  const map = useMap()
-  const mounted = useRef(false)
-  useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true
-      return
-    }
-    map.setView(SF_CENTER, SF_DEFAULT_ZOOM)
-  }, [signal, map])
   return null
 }
 
@@ -86,12 +69,10 @@ export default function LeafletMap({
   events,
   searchOrigin,
   radiusMiles,
-  recenterSignal,
 }: {
   events: ApiEvent[]
   searchOrigin: { lat: number; lng: number } | null
   radiusMiles: number | null
-  recenterSignal: number
 }) {
   return (
     <MapContainer center={SF_CENTER} zoom={12} scrollWheelZoom={false} className="std-map-container">
@@ -103,7 +84,6 @@ export default function LeafletMap({
       />
 
       <RecenterOnOrigin origin={searchOrigin} />
-      <RecenterToSF signal={recenterSignal} />
 
       {searchOrigin && (
         <>

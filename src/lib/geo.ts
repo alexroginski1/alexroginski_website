@@ -18,7 +18,6 @@ export function haversineMiles(a: LatLng, b: LatLng): number {
 export const TRANSPORT_SPEEDS_MPH = {
   walk: 3,
   bike: 10,
-  bus: 12,
   car: 18,
 } as const
 

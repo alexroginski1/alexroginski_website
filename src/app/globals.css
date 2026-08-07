@@ -407,16 +407,20 @@
     @apply mb-14;
   }
 
-  .std-count-banner {
-    @apply rounded-xl border border-stone-200 bg-white px-6 py-8 mb-6 text-center;
+  .std-map-sentence {
+    @apply flex flex-wrap items-center gap-x-1.5 gap-y-2 mb-3 text-lg text-stone-700;
   }
 
-  .std-count-number {
-    @apply text-5xl md:text-6xl font-semibold text-orange-500 leading-none;
+  .std-map-sentence-select {
+    @apply rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-lg text-stone-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-300 transition;
   }
 
-  .std-count-label {
-    @apply mt-2 text-sm text-stone-500 uppercase tracking-widest;
+  .std-map-sentence-toggle {
+    @apply rounded-lg border border-dashed border-stone-300 px-2.5 py-1 text-lg text-orange-600 font-medium hover:bg-stone-50 active:bg-stone-100 transition-colors cursor-pointer;
+  }
+
+  .std-map-date-panel {
+    @apply flex flex-col gap-3 mb-4 rounded-xl border border-stone-200 bg-stone-50 p-3;
   }
 
   .std-map-filters {
@@ -468,15 +472,55 @@
   }
 
   .std-map-legend-chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium cursor-pointer select-none transition-opacity bg-white text-stone-700;
-  }
-
-  .std-map-legend-chip-off {
-    @apply opacity-35;
+    @apply inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium select-none bg-white text-stone-700;
   }
 
   .std-map-legend-dot {
     @apply w-2.5 h-2.5 rounded-full flex-shrink-0;
+  }
+
+  .std-event-list {
+    @apply flex flex-col gap-2 mt-4;
+  }
+
+  .std-event-item {
+    @apply flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3;
+  }
+
+  .std-event-item-main {
+    @apply min-w-0 flex-1;
+  }
+
+  .std-event-item-title-row {
+    @apply flex items-center gap-2;
+  }
+
+  .std-event-item-dot {
+    @apply w-2.5 h-2.5 rounded-full flex-shrink-0;
+  }
+
+  .std-event-item-title {
+    @apply text-sm font-medium text-stone-800 truncate;
+  }
+
+  .std-event-item-meta {
+    @apply mt-1 text-xs text-stone-500 truncate;
+  }
+
+  .std-upvote-btn {
+    @apply flex flex-col items-center justify-center gap-0.5 min-w-[3rem] min-h-[2.75rem] rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-stone-500 hover:bg-stone-100 active:bg-stone-200 transition-colors cursor-pointer flex-shrink-0;
+  }
+
+  .std-upvote-btn-active {
+    @apply border-orange-400 bg-orange-50 text-orange-600;
+  }
+
+  .std-upvote-arrow {
+    @apply text-xs leading-none;
+  }
+
+  .std-upvote-count {
+    @apply text-xs font-semibold leading-none;
   }
 
   .std-map-container {
