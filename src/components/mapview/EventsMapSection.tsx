@@ -6,7 +6,7 @@ import EventCountBanner from './EventCountBanner'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import type { ApiEvent, EventsResponse } from '@/lib/mapTypes'
-import { haversineMiles, radiusMiles as computeRadiusMiles, TRANSPORT_SPEEDS_MPH, type TransportMode } from '@/lib/geo'
+import { radiusMiles as computeRadiusMiles, TRANSPORT_SPEEDS_MPH, type TransportMode } from '@/lib/geo'
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
@@ -45,6 +45,21 @@ function sfDateKey(date: Date): string {
   }).format(date)
 }
 
+// Pure calendar-date arithmetic on a "YYYY-MM-DD" key — deliberately not
+// routed through a real SF-timezone Date so DST transitions can't shift it.
+function addDays(key: string, days: number): string {
+  const [y, m, d] = key.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  dt.setUTCDate(dt.getUTCDate() + days)
+  return dt.toISOString().slice(0, 10)
+}
+
+const MINUTES_STEP = 10
+const MINUTES_MIN = 10
+const MINUTES_MAX = 180
+
+type DatePreset = 'today' | 'next3' | 'week' | 'all'
+
 export default function EventsMapSection() {
   const [weekCount, setWeekCount] = useState<number | null>(null)
   const [events, setEvents] = useState<ApiEvent[]>([])
@@ -57,6 +72,8 @@ export default function EventsMapSection() {
   const [enabledSources, setEnabledSources] = useState<Set<MapCalendarKey>>(new Set(ALL_SOURCE_KEYS))
   const [dateFrom, setDateFrom] = useState(() => sfDateKey(new Date()))
   const [dateTo, setDateTo] = useState(() => sfDateKey(new Date()))
+  const [allDates, setAllDates] = useState(false)
+  const [radiusEnabled, setRadiusEnabled] = useState(false)
   const [searchOrigin, setSearchOrigin] = useState<{ lat: number; lng: number } | null>(null)
   const [lastGeocode, setLastGeocode] = useState<LastGeocode | null>(null)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -141,20 +158,37 @@ export default function EventsMapSection() {
   }
 
   function handleDateFromChange(value: string) {
+    setAllDates(false)
     setDateFrom(value)
     setDateTo((prev) => (prev < value ? value : prev))
   }
 
   function handleDateToChange(value: string) {
+    setAllDates(false)
     setDateTo(value)
     setDateFrom((prev) => (prev > value ? value : prev))
   }
 
-  function resetToToday() {
+  function applyDatePreset(preset: DatePreset) {
+    if (preset === 'all') {
+      setAllDates(true)
+      return
+    }
     const today = sfDateKey(new Date())
+    setAllDates(false)
     setDateFrom(today)
-    setDateTo(today)
+    setDateTo(preset === 'today' ? today : preset === 'next3' ? addDays(today, 3) : addDays(today, 7))
   }
+
+  const activeDatePreset: DatePreset | null = useMemo(() => {
+    if (allDates) return 'all'
+    const today = sfDateKey(new Date())
+    if (dateFrom !== today) return null
+    if (dateTo === today) return 'today'
+    if (dateTo === addDays(today, 3)) return 'next3'
+    if (dateTo === addDays(today, 7)) return 'week'
+    return null
+  }, [allDates, dateFrom, dateTo])
 
   async function handleLocationSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -185,25 +219,25 @@ export default function EventsMapSection() {
     }
   }
 
-  const activeRadiusMiles = searchOrigin ? computeRadiusMiles(transportMode, minutes) : null
+  const activeRadiusMiles = radiusEnabled && searchOrigin ? computeRadiusMiles(transportMode, minutes) : null
 
   const visibleEvents = useMemo(() => {
     const kw = keyword.trim().toLowerCase()
     return (events ?? []).filter((event) => {
       if (!enabledSources.has(event.calendar)) return false
-      const eventDateKey = sfDateKey(new Date(event.start))
-      if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
+      if (!allDates) {
+        const eventDateKey = sfDateKey(new Date(event.start))
+        if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
+      }
       if (kw) {
         const haystack = `${event.title} ${event.description ?? ''}`.toLowerCase()
         if (!haystack.includes(kw)) return false
       }
-      if (searchOrigin && activeRadiusMiles !== null) {
-        const distance = haversineMiles(searchOrigin, { lat: event.lat, lng: event.lng })
-        if (distance > activeRadiusMiles) return false
-      }
+      // Events outside the travel radius stay visible (dimmed in LeafletMap)
+      // rather than being dropped — the radius is a highlight, not a filter.
       return true
     })
-  }, [events, enabledSources, keyword, dateFrom, dateTo, searchOrigin, activeRadiusMiles])
+  }, [events, enabledSources, keyword, allDates, dateFrom, dateTo])
 
   return (
     <section className="std-map-section">
@@ -230,31 +264,6 @@ export default function EventsMapSection() {
             value={locationText}
             onChange={(e) => setLocationText(e.target.value)}
           />
-          <select
-            className="std-map-select"
-            value={transportMode}
-            onChange={(e) => setTransportMode(e.target.value as TransportMode)}
-          >
-            {TRANSPORT_MODES.map((mode) => (
-              <option key={mode} value={mode}>
-                {transportLabel(mode)}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            className="std-map-select"
-            min={5}
-            max={180}
-            step={5}
-            value={minutes}
-            onChange={(e) => setMinutes(Math.max(5, Number(e.target.value) || 5))}
-            aria-label="Minutes"
-            style={{ width: '5rem' }}
-          />
-          <span className="std-map-empty" style={{ padding: 0 }}>
-            min
-          </span>
           <button type="submit" className="std-map-search-btn" disabled={geocodeStatus === 'loading'}>
             {geocodeStatus === 'loading' ? 'Searching…' : 'Search'}
           </button>
@@ -262,6 +271,81 @@ export default function EventsMapSection() {
         {geocodeStatus === 'error' && (
           <p className="std-map-empty">Couldn&apos;t find that location — showing all events instead.</p>
         )}
+
+        <div className="std-map-filter-row">
+          <label className="std-map-checkbox-label">
+            <input
+              type="checkbox"
+              checked={radiusEnabled}
+              onChange={(e) => setRadiusEnabled(e.target.checked)}
+            />
+            Limit by travel radius
+          </label>
+          <select
+            className="std-map-select"
+            value={transportMode}
+            onChange={(e) => setTransportMode(e.target.value as TransportMode)}
+            disabled={!radiusEnabled}
+          >
+            {TRANSPORT_MODES.map((mode) => (
+              <option key={mode} value={mode}>
+                {transportLabel(mode)}
+              </option>
+            ))}
+          </select>
+          <div className="std-map-stepper">
+            <button
+              type="button"
+              className="std-map-stepper-btn"
+              onClick={() => setMinutes((m) => Math.max(MINUTES_MIN, m - MINUTES_STEP))}
+              disabled={!radiusEnabled || minutes <= MINUTES_MIN}
+              aria-label="Decrease minutes"
+            >
+              −
+            </button>
+            <span className="std-map-stepper-value">{minutes} min</span>
+            <button
+              type="button"
+              className="std-map-stepper-btn"
+              onClick={() => setMinutes((m) => Math.min(MINUTES_MAX, m + MINUTES_STEP))}
+              disabled={!radiusEnabled || minutes >= MINUTES_MAX}
+              aria-label="Increase minutes"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <div className="std-map-filter-row">
+          <button
+            type="button"
+            className={`std-map-preset-btn${activeDatePreset === 'today' ? ' std-map-preset-btn-active' : ''}`}
+            onClick={() => applyDatePreset('today')}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            className={`std-map-preset-btn${activeDatePreset === 'next3' ? ' std-map-preset-btn-active' : ''}`}
+            onClick={() => applyDatePreset('next3')}
+          >
+            Next 3 days
+          </button>
+          <button
+            type="button"
+            className={`std-map-preset-btn${activeDatePreset === 'week' ? ' std-map-preset-btn-active' : ''}`}
+            onClick={() => applyDatePreset('week')}
+          >
+            Next week
+          </button>
+          <button
+            type="button"
+            className={`std-map-preset-btn${activeDatePreset === 'all' ? ' std-map-preset-btn-active' : ''}`}
+            onClick={() => applyDatePreset('all')}
+          >
+            All
+          </button>
+        </div>
 
         <div className="std-map-filter-row">
           <label className="std-map-empty" style={{ padding: 0 }} htmlFor="std-map-date-from">
@@ -273,6 +357,7 @@ export default function EventsMapSection() {
             className="std-map-select"
             value={dateFrom}
             onChange={(e) => handleDateFromChange(e.target.value)}
+            disabled={allDates}
           />
           <span className="std-map-empty" style={{ padding: 0 }}>
             to
@@ -283,10 +368,8 @@ export default function EventsMapSection() {
             value={dateTo}
             onChange={(e) => handleDateToChange(e.target.value)}
             aria-label="End date"
+            disabled={allDates}
           />
-          <button type="button" className="std-map-today-btn" onClick={resetToToday}>
-            Today
-          </button>
         </div>
       </form>
 

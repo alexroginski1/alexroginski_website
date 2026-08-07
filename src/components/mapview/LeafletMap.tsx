@@ -5,9 +5,11 @@ import { useEffect } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
+import { haversineMiles } from '@/lib/geo'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
+const OUTSIDE_RADIUS_OPACITY = 0.25
 
 function RecenterOnOrigin({ origin }: { origin: { lat: number; lng: number } | null }) {
   const map = useMap()
@@ -56,17 +58,26 @@ export default function LeafletMap({
 
       {events.map((event) => {
         const legend = MAP_CALENDAR_LEGEND[event.calendar]
+        const withinRadius =
+          !searchOrigin || radiusMiles === null
+            ? true
+            : haversineMiles(searchOrigin, { lat: event.lat, lng: event.lng }) <= radiusMiles
+        const opacity = withinRadius ? 0.85 : OUTSIDE_RADIUS_OPACITY
         return (
           <CircleMarker
             key={event.id}
             center={[event.lat, event.lng]}
             radius={7}
-            pathOptions={{ color: legend.color, fillColor: legend.color, fillOpacity: 0.85, weight: 1.5 }}
+            pathOptions={{
+              color: legend.color,
+              fillColor: legend.color,
+              fillOpacity: opacity,
+              opacity,
+              weight: 1.5,
+            }}
           >
-            <Popup>
+            <Popup maxWidth={280}>
               <strong>{event.title}</strong>
-              <br />
-              {legend.label}
               <br />
               {new Date(event.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
               {event.location && (
@@ -74,6 +85,9 @@ export default function LeafletMap({
                   <br />
                   {event.location}
                 </>
+              )}
+              {event.description && (
+                <p style={{ whiteSpace: 'pre-wrap', marginTop: '0.4rem' }}>{event.description}</p>
               )}
             </Popup>
           </CircleMarker>
