@@ -17,18 +17,18 @@ const LeafletMap = dynamic(() => import('./LeafletMap'), {
 const ALL_SOURCE_KEYS = Object.keys(MAP_CALENDAR_LEGEND) as MapCalendarKey[]
 const TRANSPORT_MODES = Object.keys(TRANSPORT_SPEEDS_MPH) as TransportMode[]
 const STORAGE_KEY = 'std_map_filters'
-const STORAGE_VERSION = 2
+const STORAGE_VERSION = 3
 
-type EventType = MapCalendarKey | 'all'
 type LastGeocode = { text: string; lat: number; lng: number }
 
 type PersistedMapFilters = {
   version: typeof STORAGE_VERSION
   keyword: string
+  searchEnabled: boolean
   locationText: string
   transportMode: TransportMode
   minutes: number
-  eventType: EventType
+  selectedTypes: MapCalendarKey[]
   lastGeocode: LastGeocode | null
 }
 
@@ -67,7 +67,9 @@ export default function EventsMapSection() {
   const [loadError, setLoadError] = useState(false)
 
   const [keyword, setKeyword] = useState('')
-  const [eventType, setEventType] = useState<EventType>('sf_community')
+  const [searchEnabled, setSearchEnabled] = useState(false)
+  const [selectedTypes, setSelectedTypes] = useState<Set<MapCalendarKey>>(() => new Set(['sf_community']))
+  const [calendarDropdownOpen, setCalendarDropdownOpen] = useState(false)
   const [locationText, setLocationText] = useState('')
   const [transportMode, setTransportMode] = useState<TransportMode>('walk')
   const [minutes, setMinutes] = useState(20)
@@ -86,6 +88,7 @@ export default function EventsMapSection() {
 
   const hydratedRef = useRef(false)
   const [hydrated, setHydrated] = useState(false)
+  const calendarDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch('/api/events')
@@ -117,11 +120,15 @@ export default function EventsMapSection() {
         const parsed: PersistedMapFilters = JSON.parse(raw)
         if (parsed && parsed.version === STORAGE_VERSION) {
           setKeyword(parsed.keyword ?? '')
+          setSearchEnabled(parsed.searchEnabled ?? false)
           setLocationText(parsed.locationText ?? '')
           setTransportMode(TRANSPORT_MODES.includes(parsed.transportMode) ? parsed.transportMode : 'walk')
           setMinutes(parsed.minutes ?? 20)
-          if (parsed.eventType === 'all' || ALL_SOURCE_KEYS.includes(parsed.eventType as MapCalendarKey)) {
-            setEventType(parsed.eventType)
+          const validTypes = Array.isArray(parsed.selectedTypes)
+            ? parsed.selectedTypes.filter((key) => ALL_SOURCE_KEYS.includes(key))
+            : []
+          if (validTypes.length > 0) {
+            setSelectedTypes(new Set(validTypes))
           }
           if (parsed.lastGeocode) {
             setLastGeocode(parsed.lastGeocode)
@@ -144,10 +151,11 @@ export default function EventsMapSection() {
       const payload: PersistedMapFilters = {
         version: STORAGE_VERSION,
         keyword,
+        searchEnabled,
         locationText,
         transportMode,
         minutes,
-        eventType,
+        selectedTypes: Array.from(selectedTypes),
         lastGeocode,
       }
       try {
@@ -157,11 +165,30 @@ export default function EventsMapSection() {
       }
     }, 300)
     return () => clearTimeout(timeout)
-  }, [hydrated, keyword, locationText, transportMode, minutes, eventType, lastGeocode])
+  }, [hydrated, keyword, searchEnabled, locationText, transportMode, minutes, selectedTypes, lastGeocode])
 
-  const enabledSources = useMemo<Set<MapCalendarKey>>(() => {
-    return eventType === 'all' ? new Set(ALL_SOURCE_KEYS) : new Set([eventType])
-  }, [eventType])
+  useEffect(() => {
+    if (!calendarDropdownOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (calendarDropdownRef.current && !calendarDropdownRef.current.contains(e.target as Node)) {
+        setCalendarDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [calendarDropdownOpen])
+
+  function toggleCalendarType(key: MapCalendarKey) {
+    setSelectedTypes((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        if (next.size > 1) next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
 
   function handleDateFromChange(value: string) {
     setAllDates(false)
@@ -204,8 +231,21 @@ export default function EventsMapSection() {
     return dateFrom === dateTo ? `on ${dateFrom}` : `from ${dateFrom} to ${dateTo}`
   }, [allDates, activeDatePreset, dateFrom, dateTo])
 
+  const allTypesSelected = selectedTypes.size === ALL_SOURCE_KEYS.length
+
+  const calendarDropdownLabel = useMemo(() => {
+    if (allTypesSelected) return 'all types of'
+    if (selectedTypes.size === 1) {
+      const [only] = selectedTypes
+      return MAP_CALENDAR_LEGEND[only].label
+    }
+    return `${selectedTypes.size} types of`
+  }, [allTypesSelected, selectedTypes])
+
   const eventTypeSentence =
-    eventType === 'all' ? '' : `${MAP_CALENDAR_LEGEND[eventType].label.toLowerCase()} `
+    !allTypesSelected && selectedTypes.size === 1
+      ? `${MAP_CALENDAR_LEGEND[[...selectedTypes][0]].label.toLowerCase()} `
+      : ''
 
   async function handleLocationSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -277,23 +317,43 @@ export default function EventsMapSection() {
 
   const activeRadiusMiles = radiusEnabled && searchOrigin ? computeRadiusMiles(transportMode, minutes) : null
 
+  const activeKeyword = searchEnabled ? keyword.trim().toLowerCase() : ''
+
+  // Counts events matching the current date/keyword filters per calendar,
+  // independent of which calendars are checked, so the legend shows what's
+  // available for a source even while it's unchecked.
+  const eventCountsByCalendar = useMemo(() => {
+    const counts = Object.fromEntries(ALL_SOURCE_KEYS.map((key) => [key, 0])) as Record<MapCalendarKey, number>
+    for (const event of events ?? []) {
+      if (!allDates) {
+        const eventDateKey = sfDateKey(new Date(event.start))
+        if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
+      }
+      if (activeKeyword) {
+        const haystack = `${event.title} ${event.description ?? ''}`.toLowerCase()
+        if (!haystack.includes(activeKeyword)) continue
+      }
+      counts[event.calendar] = (counts[event.calendar] ?? 0) + 1
+    }
+    return counts
+  }, [events, allDates, dateFrom, dateTo, activeKeyword])
+
   const visibleEvents = useMemo(() => {
-    const kw = keyword.trim().toLowerCase()
     return (events ?? []).filter((event) => {
-      if (!enabledSources.has(event.calendar)) return false
+      if (!selectedTypes.has(event.calendar)) return false
       if (!allDates) {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
       }
-      if (kw) {
+      if (activeKeyword) {
         const haystack = `${event.title} ${event.description ?? ''}`.toLowerCase()
-        if (!haystack.includes(kw)) return false
+        if (!haystack.includes(activeKeyword)) return false
       }
       // Events outside the travel radius stay visible (dimmed in LeafletMap)
       // rather than being dropped — the radius is a highlight, not a filter.
       return true
     })
-  }, [events, enabledSources, keyword, allDates, dateFrom, dateTo])
+  }, [events, selectedTypes, activeKeyword, allDates, dateFrom, dateTo])
 
   return (
     <section className="std-map-section">
@@ -301,19 +361,48 @@ export default function EventsMapSection() {
 
       <div className="std-map-sentence">
         <span>Find me </span>
-        <select
-          className="std-map-sentence-select"
-          value={eventType}
-          onChange={(e) => setEventType(e.target.value as EventType)}
-          aria-label="Event type"
-        >
-          <option value="all">all types of</option>
-          {ALL_SOURCE_KEYS.map((key) => (
-            <option key={key} value={key}>
-              {MAP_CALENDAR_LEGEND[key].label}
-            </option>
-          ))}
-        </select>
+        <div className="std-map-calendar-dropdown" ref={calendarDropdownRef}>
+          <button
+            type="button"
+            className="std-map-sentence-select std-map-calendar-dropdown-trigger"
+            onClick={() => setCalendarDropdownOpen((v) => !v)}
+            aria-haspopup="listbox"
+            aria-expanded={calendarDropdownOpen}
+          >
+            {calendarDropdownLabel}
+          </button>
+          {calendarDropdownOpen && (
+            <div className="std-map-calendar-dropdown-panel" role="listbox" aria-multiselectable="true">
+              <div className="std-map-calendar-dropdown-actions">
+                <button
+                  type="button"
+                  className="std-map-calendar-dropdown-action"
+                  onClick={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  className="std-map-calendar-dropdown-action"
+                  onClick={() => setSelectedTypes(new Set([ALL_SOURCE_KEYS[0]]))}
+                >
+                  Clear
+                </button>
+              </div>
+              {ALL_SOURCE_KEYS.map((key) => (
+                <label key={key} className="std-map-calendar-dropdown-option">
+                  <input
+                    type="checkbox"
+                    checked={selectedTypes.has(key)}
+                    onChange={() => toggleCalendarType(key)}
+                  />
+                  <span className="std-map-legend-dot" style={{ backgroundColor: MAP_CALENDAR_LEGEND[key].color }} />
+                  {MAP_CALENDAR_LEGEND[key].label}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
         <span> events </span>
         <button
           type="button"
@@ -382,14 +471,28 @@ export default function EventsMapSection() {
       )}
 
       <div className="std-map-filter-row">
-        <input
-          type="text"
-          className="std-map-input"
-          placeholder="Search events by keyword… (optional)"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
+        <label className="std-map-checkbox-label">
+          <input
+            type="checkbox"
+            checked={searchEnabled}
+            onChange={(e) => setSearchEnabled(e.target.checked)}
+          />
+          search by keyword (optional)
+        </label>
       </div>
+
+      {searchEnabled && (
+        <div className="std-map-filter-row">
+          <input
+            type="text"
+            className="std-map-input"
+            placeholder="Search events by keyword…"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            autoFocus
+          />
+        </div>
+      )}
 
       <form className="std-map-filters" onSubmit={handleLocationSearch}>
         <div className="std-map-filter-row">
@@ -464,7 +567,7 @@ export default function EventsMapSection() {
           return (
             <span key={key} className="std-map-legend-chip">
               <span className="std-map-legend-dot" style={{ backgroundColor: color }} />
-              {label}
+              {label} ({eventCountsByCalendar[key] ?? 0})
             </span>
           )
         })}
