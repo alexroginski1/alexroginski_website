@@ -25,7 +25,12 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
       </div>
       <div className="std-map-popup-meta">
         {popupEventDateTime(event.start)}
-        {event.location ? ` · ${event.location}` : ''}
+        {event.location && (
+          <>
+            <br />
+            {event.location}
+          </>
+        )}
       </div>
       {descriptionHtml && (
         <p className="std-map-popup-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />

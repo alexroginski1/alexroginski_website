@@ -143,7 +143,12 @@ export default function EventsList({
           </div>
           <div className="std-event-item-meta">
             {dateTimeFormatter.format(new Date(event.start))}
-            {event.location ? ` · ${event.location}` : ''}
+            {event.location && (
+              <>
+                <br />
+                {event.location}
+              </>
+            )}
           </div>
         </button>
       </li>
