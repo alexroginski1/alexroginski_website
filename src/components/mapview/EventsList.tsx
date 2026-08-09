@@ -117,6 +117,16 @@ export default function EventsList({
 
   const showSectionHeaders = !!highlightedEventIds && within.length > 0 && outside.length > 0
 
+  function renderGroup(items: EventListItem[], header: string | null) {
+    if (items.length === 0) return null
+    return (
+      <div className="std-event-group">
+        {header && <div className="std-event-group-header">{header}</div>}
+        <ul className="std-event-list">{items.map(renderTile)}</ul>
+      </div>
+    )
+  }
+
   function renderTile(event: EventListItem) {
     const legend = MAP_CALENDAR_LEGEND[event.calendar]
     const highlighted = highlightedEventIds?.has(event.id) ?? false
@@ -144,20 +154,10 @@ export default function EventsList({
 
   return (
     <>
-      <ul className="std-event-list">
-        {within.length > 0 && (
-          <>
-            {showSectionHeaders && <li className="std-event-section-header">Events within region</li>}
-            {within.map(renderTile)}
-          </>
-        )}
-        {outside.length > 0 && (
-          <>
-            {showSectionHeaders && <li className="std-event-section-header">Events not in region</li>}
-            {outside.map(renderTile)}
-          </>
-        )}
-      </ul>
+      <div className="std-event-groups">
+        {renderGroup(within, showSectionHeaders ? 'Events within region' : null)}
+        {renderGroup(outside, showSectionHeaders ? 'Events not in region' : null)}
+      </div>
       {active && <EventTilePopup event={active.event} anchorRect={active.rect} />}
     </>
   )

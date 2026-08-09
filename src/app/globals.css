@@ -413,15 +413,15 @@
   }
 
   .std-map-sentence {
-    @apply flex flex-wrap items-center gap-x-2 gap-y-2 mb-3 text-3xl text-stone-700;
+    @apply flex flex-wrap items-center gap-x-2 gap-y-2 mb-3 text-2xl text-stone-700;
   }
 
   .std-map-sentence-select {
-    @apply rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-3xl text-stone-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-300 transition;
+    @apply rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-2xl text-stone-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-300 transition;
   }
 
   .std-map-sentence-toggle {
-    @apply rounded-lg border border-dashed border-stone-300 px-2.5 py-1 text-3xl text-orange-600 font-medium hover:bg-stone-50 active:bg-stone-100 transition-colors cursor-pointer;
+    @apply rounded-lg border border-dashed border-stone-300 px-2.5 py-1 text-2xl text-orange-600 font-medium hover:bg-stone-50 active:bg-stone-100 transition-colors cursor-pointer;
   }
 
   .std-map-filters {
@@ -488,9 +488,19 @@
     @apply w-[18px] h-[18px] rounded-full flex-shrink-0 flex items-center justify-center text-xs leading-none;
   }
 
+  .std-event-groups {
+    @apply flex flex-col gap-4 mt-4;
+  }
+
+  .std-event-group {
+    @apply flex flex-col gap-2;
+  }
+
   .std-event-list {
-    @apply flex flex-col gap-2 mt-4;
-    max-height: 46rem;
+    @apply flex flex-col gap-2;
+    /* Caps the list at 5 tiles (each ~4rem tall, plus gap-2 between them)
+       before it becomes its own scroll region. */
+    max-height: calc(5 * 4rem + 4 * 0.5rem);
     overflow-y: auto;
   }
 
@@ -498,8 +508,8 @@
     @apply flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3;
   }
 
-  .std-event-section-header {
-    @apply px-1 pt-2 text-xs font-semibold uppercase tracking-wide text-stone-500 first:pt-0;
+  .std-event-group-header {
+    @apply px-1 text-xs font-semibold uppercase tracking-wide text-stone-500;
   }
 
   .std-event-item-main {
@@ -579,13 +589,17 @@
     @apply text-lg font-medium text-stone-600 mb-3;
   }
 
+  .std-map-count-badge {
+    @apply ml-2 rounded-full px-2.5 py-0.5 text-sm font-medium text-stone-700 align-middle;
+  }
+
   .std-map-sentence-input {
-    @apply text-3xl py-1;
+    @apply text-2xl py-1;
     width: 14rem;
   }
 
   .std-map-sentence-remove {
-    @apply text-stone-400 hover:text-stone-600 text-3xl leading-none px-1 cursor-pointer;
+    @apply text-stone-400 hover:text-stone-600 text-2xl leading-none px-1 cursor-pointer;
   }
 
   .std-map-unknown-location-heading {

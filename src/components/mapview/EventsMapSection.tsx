@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import EventsList from './EventsList'
 import CalendarLegendControl from './CalendarLegendControl'
-import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
+import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
 import {
@@ -484,9 +484,18 @@ export default function EventsMapSection() {
       )}
 
       <p className="std-map-count">
-        {loadError
-          ? "Couldn't load events right now — try again shortly."
-          : `${visibleEvents.length} event${visibleEvents.length === 1 ? '' : 's'} found`}
+        {loadError ? (
+          "Couldn't load events right now — try again shortly."
+        ) : (
+          <>
+            {`${visibleEvents.length} event${visibleEvents.length === 1 ? '' : 's'} found`}
+            {highlightedEventIds && (
+              <span className="std-map-count-badge" style={{ backgroundColor: RADIUS_HIGHLIGHT_FILL_COLOR }}>
+                {`${highlightedEventIds.size} within region`}
+              </span>
+            )}
+          </>
+        )}
       </p>
 
       <div ref={mapWrapRef} style={mapWidth ? { width: mapWidth, maxWidth: 'none' } : undefined}>

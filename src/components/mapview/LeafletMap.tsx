@@ -232,20 +232,29 @@ function fitPopupWithinView(map: L.Map, popup: L.Popup) {
   const mapRect = map.getContainer().getBoundingClientRect()
   const popupRect = el.getBoundingClientRect()
 
+  // Clamp to whichever is smaller: the map's own box, or the browser
+  // viewport. A tall map can scroll partway off the top of the page, in
+  // which case mapRect.top is negative — clamping to that alone would still
+  // let the popup land above the visible screen.
+  const viewTop = Math.max(mapRect.top, 0)
+  const viewBottom = Math.min(mapRect.bottom, window.innerHeight)
+  const viewLeft = Math.max(mapRect.left, 0)
+  const viewRight = Math.min(mapRect.right, window.innerWidth)
+
   let shiftX = 0
-  if (popupRect.right > mapRect.right - POPUP_VIEW_PADDING) {
-    shiftX = mapRect.right - POPUP_VIEW_PADDING - popupRect.right
+  if (popupRect.right > viewRight - POPUP_VIEW_PADDING) {
+    shiftX = viewRight - POPUP_VIEW_PADDING - popupRect.right
   }
-  if (popupRect.left + shiftX < mapRect.left + POPUP_VIEW_PADDING) {
-    shiftX = mapRect.left + POPUP_VIEW_PADDING - popupRect.left
+  if (popupRect.left + shiftX < viewLeft + POPUP_VIEW_PADDING) {
+    shiftX = viewLeft + POPUP_VIEW_PADDING - popupRect.left
   }
 
   let shiftY = 0
-  if (popupRect.top < mapRect.top + POPUP_VIEW_PADDING) {
-    shiftY = mapRect.top + POPUP_VIEW_PADDING - popupRect.top
+  if (popupRect.top < viewTop + POPUP_VIEW_PADDING) {
+    shiftY = viewTop + POPUP_VIEW_PADDING - popupRect.top
   }
-  if (popupRect.bottom + shiftY > mapRect.bottom - POPUP_VIEW_PADDING) {
-    shiftY = mapRect.bottom - POPUP_VIEW_PADDING - popupRect.bottom
+  if (popupRect.bottom + shiftY > viewBottom - POPUP_VIEW_PADDING) {
+    shiftY = viewBottom - POPUP_VIEW_PADDING - popupRect.bottom
   }
 
   if (!shiftX && !shiftY) return
