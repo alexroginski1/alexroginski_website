@@ -610,26 +610,10 @@
     z-index: 600;
   }
 
-  .std-map-hover-preview {
-    @apply absolute rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs text-stone-700 shadow-lg;
-    max-width: 220px;
-    pointer-events: none;
-    z-index: 1000;
-  }
-
   .std-map-touch-hint {
     @apply absolute left-1/2 bottom-3 -translate-x-1/2 rounded-full bg-stone-900/80 text-white text-xs font-medium px-3 py-1.5;
     pointer-events: none;
     z-index: 1000;
-  }
-
-  .std-map-hover-preview-title {
-    @apply font-semibold text-stone-800 mb-1;
-  }
-
-  .std-map-hover-preview-desc {
-    @apply text-stone-600;
-    white-space: pre-wrap;
   }
 
   .std-map-marker-icon {
@@ -669,32 +653,26 @@
     @apply mt-2 inline-block rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white no-underline hover:bg-orange-600 transition-colors;
   }
 
-  .std-map-modal-backdrop {
-    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4;
+  /* Shared by the map marker popup and the event-tile popup below the map,
+     so both render identical event details. */
+  .std-map-popup-title-row {
+    @apply flex items-center gap-2 pr-1;
   }
 
-  .std-map-modal {
-    @apply relative w-full max-w-sm max-h-[80vh] overflow-y-auto rounded-xl bg-white p-5 shadow-xl;
+  .std-map-popup-meta {
+    @apply mt-1 text-xs text-stone-500;
   }
 
-  .std-map-modal-close {
-    @apply absolute top-3 right-3 text-lg leading-none text-stone-400 hover:text-stone-600 cursor-pointer;
+  .std-map-popup-desc {
+    @apply mt-2 text-xs text-stone-700 whitespace-pre-wrap;
   }
 
-  .std-map-modal-title-row {
-    @apply flex items-center gap-2 pr-6;
-  }
-
-  .std-map-modal-title {
-    @apply font-semibold text-stone-800;
-  }
-
-  .std-map-modal-meta {
-    @apply mt-1 text-sm text-stone-500;
-  }
-
-  .std-map-modal-desc {
-    @apply mt-3 text-sm text-stone-700 whitespace-pre-wrap;
+  /* Positioned to the right of the tile that opened it (see EventsList) so
+     it never covers neighboring tiles and block hovering between them. */
+  .std-event-popup {
+    @apply fixed z-50 rounded-xl border border-stone-200 bg-white p-4 shadow-xl text-sm text-stone-700;
+    max-height: 320px;
+    overflow-y: auto;
   }
 
   @media (min-width: 768px) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import EventsList, { dateTimeFormatter, type EventListItem } from './EventsList'
+import EventsList from './EventsList'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
@@ -13,8 +13,6 @@ import {
   type TransportMode,
 } from '@/lib/geo'
 import { getVisitorId } from '@/lib/visitorId'
-import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
-import { googleCalendarUrl } from '@/lib/googleCalendar'
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
@@ -100,48 +98,6 @@ const MINUTES_MAX = 180
 
 type DatePreset = 'today' | 'next3' | 'week' | 'all'
 
-function EventDetailModal({ event, onClose }: { event: EventListItem; onClose: () => void }) {
-  const legend = MAP_CALENDAR_LEGEND[event.calendar]
-  const descriptionHtml = useMemo(
-    () => (event.description ? sanitizeDescriptionHtml(event.description) : null),
-    [event.description]
-  )
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
-
-  return (
-    <div className="std-map-modal-backdrop" onClick={onClose}>
-      <div className="std-map-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <button type="button" className="std-map-modal-close" onClick={onClose} aria-label="Close">
-          ✕
-        </button>
-        <div className="std-map-modal-title-row">
-          <span className="std-map-legend-dot" style={{ backgroundColor: legend.color }}>
-            {legend.emoji}
-          </span>
-          <span className="std-map-modal-title">{event.title}</span>
-        </div>
-        <div className="std-map-modal-meta">
-          {dateTimeFormatter.format(new Date(event.start))}
-          {event.location ? ` · ${event.location}` : ''}
-        </div>
-        {descriptionHtml && (
-          <p className="std-map-modal-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
-        )}
-        <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer" className="std-map-gcal-link">
-          + Add to Google Calendar
-        </a>
-      </div>
-    </div>
-  )
-}
-
 export default function EventsMapSection() {
   const [events, setEvents] = useState<ApiEvent[]>([])
   const [unknownLocationEvents, setUnknownLocationEvents] = useState<UnknownLocationEvent[]>([])
@@ -165,7 +121,6 @@ export default function EventsMapSection() {
   const [visitorId, setVisitorId] = useState<string | null>(null)
   const [upvoteCounts, setUpvoteCounts] = useState<Record<string, number>>({})
   const [votedEventIds, setVotedEventIds] = useState<Set<string>>(new Set())
-  const [detailEvent, setDetailEvent] = useState<EventListItem | null>(null)
 
   const hydratedRef = useRef(false)
   const [hydrated, setHydrated] = useState(false)
@@ -669,7 +624,6 @@ export default function EventsMapSection() {
           upvoteCounts={upvoteCounts}
           votedEventIds={votedEventIds}
           onToggleUpvote={toggleUpvote}
-          onSelectEvent={setDetailEvent}
           highlightedEventIds={highlightedEventIds}
         />
       )}
@@ -682,13 +636,8 @@ export default function EventsMapSection() {
             upvoteCounts={upvoteCounts}
             votedEventIds={votedEventIds}
             onToggleUpvote={toggleUpvote}
-            onSelectEvent={setDetailEvent}
           />
         </>
-      )}
-
-      {detailEvent && (
-        <EventDetailModal event={detailEvent} onClose={() => setDetailEvent(null)} />
       )}
     </section>
   )
