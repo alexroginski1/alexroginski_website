@@ -10,31 +10,6 @@ const POPUP_GAP = 10
 const POPUP_MARGIN = 12
 const POPUP_CLOSE_DELAY = 200
 
-function UpvoteButton({
-  count,
-  voted,
-  onToggle,
-}: {
-  count: number
-  voted: boolean
-  onToggle: () => void
-}) {
-  return (
-    <button
-      type="button"
-      className={`std-upvote-btn${voted ? ' std-upvote-btn-active' : ''}`}
-      onClick={onToggle}
-      aria-pressed={voted}
-      aria-label={voted ? 'Remove upvote' : 'Upvote this event'}
-    >
-      <span className="std-upvote-arrow" aria-hidden="true">
-        ▲
-      </span>
-      <span className="std-upvote-count">{count}</span>
-    </button>
-  )
-}
-
 // Positioned to the right of the tile that opened it (clamped to stay
 // on-screen) so it never sits on top of neighboring tiles and block hovering
 // between them.
@@ -87,15 +62,9 @@ function EventTilePopup({
 
 export default function EventsList({
   events,
-  upvoteCounts,
-  votedEventIds,
-  onToggleUpvote,
   highlightedEventIds = null,
 }: {
   events: EventListItem[]
-  upvoteCounts: Record<string, number>
-  votedEventIds: Set<string>
-  onToggleUpvote: (eventId: string) => void
   // Events within the travel radius — shown bolded and pinned to the top.
   highlightedEventIds?: Set<string> | null
 }) {
@@ -115,7 +84,7 @@ export default function EventsList({
   }
 
   // Anchored to the whole tile (not just the title button) so the popup
-  // starts to the right of the upvote button too, instead of overlapping it.
+  // starts clear of the tile edge instead of overlapping it.
   function openFor(event: EventListItem, target: HTMLElement) {
     cancelClose()
     const tile = target.closest('.std-event-item') ?? target
@@ -194,11 +163,6 @@ export default function EventsList({
                   {event.location ? ` · ${event.location}` : ''}
                 </div>
               </button>
-              <UpvoteButton
-                count={upvoteCounts[event.id] ?? 0}
-                voted={votedEventIds.has(event.id)}
-                onToggle={() => onToggleUpvote(event.id)}
-              />
             </li>
           )
         })}

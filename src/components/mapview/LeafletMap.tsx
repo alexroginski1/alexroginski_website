@@ -2,7 +2,7 @@
 
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Popup, Tooltip, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
@@ -13,7 +13,7 @@ import EventPopupContent from './EventPopupContent'
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
-const MARKER_LABEL_MAX_WORDS = 6
+const MARKER_LABEL_MAX_WORDS = 9
 const MARKER_SIZE = 28
 const MARKER_POPUP_WIDTH = 220
 const POPUP_CLOSE_DELAY = 200
@@ -105,41 +105,118 @@ function RecenterOnOrigin({ origin }: { origin: { lat: number; lng: number } | n
   return null
 }
 
-// Hides overlapping "permanent" tooltip labels after Leaflet positions them,
-// keeping whichever label in each overlapping cluster was placed first (DOM
-// order == event render order) and hiding the rest — since Leaflet has no
+// Marker "permanent" tooltip labels default to sitting above their dot, but
+// dense clusters make that overlap. LabelPlacer re-checks each label after
+// Leaflet lays them out and, for any that collide with an already-placed
+// label, tries the next preferred side in turn (below, then left, then
+// right of the dot) before giving up and hiding it — since Leaflet has no
 // built-in collision detection for tooltips.
-function LabelDeclutter({ events }: { events: ApiEvent[] }) {
+const LABEL_DIRECTIONS = ['top', 'bottom', 'left', 'right'] as const
+type LabelDirection = (typeof LABEL_DIRECTIONS)[number]
+type LabelPlacement = { direction: LabelDirection; hidden: boolean }
+const DEFAULT_LABEL_PLACEMENT: LabelPlacement = { direction: 'top', hidden: false }
+const LABEL_GAP = MARKER_SIZE / 2 + 4
+
+function labelOffset(direction: LabelDirection): [number, number] {
+  switch (direction) {
+    case 'top':
+      return [0, -LABEL_GAP]
+    case 'bottom':
+      return [0, LABEL_GAP]
+    case 'left':
+      return [-LABEL_GAP, 0]
+    case 'right':
+      return [LABEL_GAP, 0]
+  }
+}
+
+function labelCandidateRect(
+  direction: LabelDirection,
+  anchor: { x: number; y: number },
+  width: number,
+  height: number
+) {
+  switch (direction) {
+    case 'top':
+      return {
+        left: anchor.x - width / 2,
+        top: anchor.y - LABEL_GAP - height,
+        right: anchor.x + width / 2,
+        bottom: anchor.y - LABEL_GAP,
+      }
+    case 'bottom':
+      return {
+        left: anchor.x - width / 2,
+        top: anchor.y + LABEL_GAP,
+        right: anchor.x + width / 2,
+        bottom: anchor.y + LABEL_GAP + height,
+      }
+    case 'left':
+      return {
+        left: anchor.x - LABEL_GAP - width,
+        top: anchor.y - height / 2,
+        right: anchor.x - LABEL_GAP,
+        bottom: anchor.y + height / 2,
+      }
+    case 'right':
+      return {
+        left: anchor.x + LABEL_GAP,
+        top: anchor.y - height / 2,
+        right: anchor.x + LABEL_GAP + width,
+        bottom: anchor.y + height / 2,
+      }
+  }
+}
+
+function LabelPlacer({
+  groups,
+  markerRegistry,
+  onChange,
+}: {
+  groups: EventGroup[]
+  markerRegistry: Map<string, L.Marker>
+  onChange: (placements: Map<string, LabelPlacement>) => void
+}) {
   const map = useMap()
   useEffect(() => {
-    const container = map.getContainer()
+    function place() {
+      const placed: { left: number; top: number; right: number; bottom: number }[] = []
+      const next = new Map<string, LabelPlacement>()
 
-    function declutter() {
-      const labels = Array.from(
-        container.querySelectorAll<HTMLElement>('.leaflet-tooltip.std-map-marker-label')
-      )
-      const placed: DOMRect[] = []
-      for (const label of labels) {
-        label.classList.remove('std-map-marker-label-hidden')
-        const rect = label.getBoundingClientRect()
-        const overlapsPlaced = placed.some(
-          (p) => rect.left < p.right && rect.right > p.left && rect.top < p.bottom && rect.bottom > p.top
-        )
-        if (overlapsPlaced) {
-          label.classList.add('std-map-marker-label-hidden')
-        } else {
-          placed.push(rect)
+      for (const group of groups) {
+        const marker = markerRegistry.get(group.key)
+        const el = marker?.getTooltip()?.getElement()
+        if (!marker || !el) continue
+
+        const anchor = map.latLngToContainerPoint(marker.getLatLng())
+        const width = el.offsetWidth
+        const height = el.offsetHeight
+
+        let placement: LabelPlacement = { direction: 'top', hidden: true }
+        for (const direction of LABEL_DIRECTIONS) {
+          const rect = labelCandidateRect(direction, anchor, width, height)
+          const overlaps = placed.some(
+            (p) => rect.left < p.right && rect.right > p.left && rect.top < p.bottom && rect.bottom > p.top
+          )
+          if (!overlaps) {
+            placed.push(rect)
+            placement = { direction, hidden: false }
+            break
+          }
         }
+        next.set(group.key, placement)
       }
+
+      onChange(next)
     }
 
-    const raf = requestAnimationFrame(declutter)
-    map.on('zoomend moveend', declutter)
+    const raf = requestAnimationFrame(place)
+    map.on('zoomend moveend', place)
     return () => {
       cancelAnimationFrame(raf)
-      map.off('zoomend moveend', declutter)
+      map.off('zoomend moveend', place)
     }
-  }, [map, events])
+  }, [map, groups, markerRegistry, onChange])
   return null
 }
 
@@ -180,10 +257,14 @@ function EventMarkerGroup({
   group,
   highlightedEventIds,
   dateColorByKey,
+  placement,
+  registerMarker,
 }: {
   group: EventGroup
   highlightedEventIds: Set<string> | null
   dateColorByKey: Map<string, string> | null
+  placement: LabelPlacement
+  registerMarker: (key: string, marker: L.Marker | null) => void
 }) {
   const markerRef = useRef<L.Marker>(null)
   const closeTimerRef = useRef<number | null>(null)
@@ -205,6 +286,11 @@ function EventMarkerGroup({
     // (the current event) changes underneath it.
     markerRef.current?.getPopup()?.update()
   }, [activeIndex])
+
+  useEffect(() => {
+    registerMarker(group.key, markerRef.current)
+    return () => registerMarker(group.key, null)
+  }, [group.key, registerMarker])
 
   const withinRadius = !highlightedEventIds || highlightedEventIds.has(event.id)
   const opacity = withinRadius ? 0.85 : OUTSIDE_RADIUS_OPACITY
@@ -263,12 +349,13 @@ function EventMarkerGroup({
       }}
     >
       <Tooltip
+        key={`${placement.direction}-${placement.hidden}`}
         permanent
         interactive
-        direction="top"
-        offset={[0, -(MARKER_SIZE / 2 + 4)]}
+        direction={placement.direction}
+        offset={labelOffset(placement.direction)}
         opacity={1}
-        className="std-map-marker-label"
+        className={`std-map-marker-label${placement.hidden ? ' std-map-marker-label-hidden' : ''}`}
         eventHandlers={{ click: openPopup, mouseover: openPopup, mouseout: handleMouseOut }}
       >
         <div className="std-map-marker-label-inner" style={{ backgroundColor: dateColor ?? '#ffffff' }}>
@@ -327,6 +414,16 @@ export default function LeafletMap({
     return new Map(keys.map((key, i) => [key, PASTEL_DATE_COLORS[i % PASTEL_DATE_COLORS.length]]))
   }, [events])
 
+  const markerRegistry = useRef(new Map<string, L.Marker>()).current
+  const registerMarker = useCallback(
+    (key: string, marker: L.Marker | null) => {
+      if (marker) markerRegistry.set(key, marker)
+      else markerRegistry.delete(key)
+    },
+    [markerRegistry]
+  )
+  const [labelPlacements, setLabelPlacements] = useState<Map<string, LabelPlacement>>(new Map())
+
   return (
     <MapContainer center={SF_CENTER} zoom={12} scrollWheelZoom={false} className="std-map-container">
       <TileLayer
@@ -371,10 +468,12 @@ export default function LeafletMap({
           group={group}
           highlightedEventIds={highlightedEventIds}
           dateColorByKey={dateColorByKey}
+          placement={labelPlacements.get(group.key) ?? DEFAULT_LABEL_PLACEMENT}
+          registerMarker={registerMarker}
         />
       ))}
 
-      <LabelDeclutter events={events} />
+      <LabelPlacer groups={groups} markerRegistry={markerRegistry} onChange={setLabelPlacements} />
       <TouchGate />
     </MapContainer>
   )

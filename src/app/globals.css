@@ -527,22 +527,6 @@
     @apply mt-1 text-xs text-stone-500 truncate;
   }
 
-  .std-upvote-btn {
-    @apply flex flex-col items-center justify-center gap-0.5 min-w-[3rem] min-h-[2.75rem] rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-stone-500 hover:bg-stone-100 active:bg-stone-200 transition-colors cursor-pointer flex-shrink-0;
-  }
-
-  .std-upvote-btn-active {
-    @apply border-orange-400 bg-orange-50 text-orange-600;
-  }
-
-  .std-upvote-arrow {
-    @apply text-xs leading-none;
-  }
-
-  .std-upvote-count {
-    @apply text-xs font-semibold leading-none;
-  }
-
   .std-map-container {
     @apply w-full rounded-xl border border-stone-200 overflow-hidden;
     height: 340px;
@@ -569,7 +553,7 @@
     border: none;
     box-shadow: none;
     padding: 0;
-    max-width: 140px;
+    max-width: 180px;
   }
 
   .leaflet-tooltip.std-map-marker-label::before {
@@ -595,8 +579,13 @@
     white-space: nowrap;
   }
 
+  /* visibility (not display) so a hidden label keeps its real layout size —
+     LabelPlacer in LeafletMap.tsx re-measures it on every zoom/pan to see if
+     it can be shown again, and a collapsed (display: none) box would always
+     measure as zero-size and throw that off. */
   .leaflet-tooltip.std-map-marker-label-hidden {
-    display: none;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   /* Explicit (matches Leaflet's own pane defaults) so marker labels always

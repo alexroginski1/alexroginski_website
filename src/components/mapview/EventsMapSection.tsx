@@ -12,7 +12,6 @@ import {
   TRANSPORT_SPEEDS_MPH,
   type TransportMode,
 } from '@/lib/geo'
-import { getVisitorId } from '@/lib/visitorId'
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
@@ -118,10 +117,6 @@ export default function EventsMapSection() {
   const [lastGeocode, setLastGeocode] = useState<LastGeocode | null>(null)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'error'>('idle')
 
-  const [visitorId, setVisitorId] = useState<string | null>(null)
-  const [upvoteCounts, setUpvoteCounts] = useState<Record<string, number>>({})
-  const [votedEventIds, setVotedEventIds] = useState<Set<string>>(new Set())
-
   const hydratedRef = useRef(false)
   const [hydrated, setHydrated] = useState(false)
   const { ref: mapWrapRef, width: mapWidth } = useMapBreakoutWidth()
@@ -136,18 +131,6 @@ export default function EventsMapSection() {
         if (Array.isArray(data?.unknownLocationEvents)) setUnknownLocationEvents(data.unknownLocationEvents)
       })
       .catch(() => setLoadError(true))
-  }, [])
-
-  useEffect(() => {
-    const id = getVisitorId()
-    setVisitorId(id)
-    fetch(`/api/upvotes?visitorId=${encodeURIComponent(id)}`)
-      .then((res) => res.json())
-      .then((data: { counts?: Record<string, number>; voted?: string[] }) => {
-        if (data?.counts) setUpvoteCounts(data.counts)
-        if (Array.isArray(data?.voted)) setVotedEventIds(new Set(data.voted))
-      })
-      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -290,45 +273,6 @@ export default function EventsMapSection() {
       }
     } catch {
       setGeocodeStatus('error')
-    }
-  }
-
-  async function toggleUpvote(eventId: string) {
-    if (!visitorId) return
-    const alreadyVoted = votedEventIds.has(eventId)
-
-    setVotedEventIds((prev) => {
-      const next = new Set(prev)
-      if (alreadyVoted) next.delete(eventId)
-      else next.add(eventId)
-      return next
-    })
-    setUpvoteCounts((prev) => ({ ...prev, [eventId]: (prev[eventId] ?? 0) + (alreadyVoted ? -1 : 1) }))
-
-    try {
-      const res = await fetch('/api/upvotes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, visitorId }),
-      })
-      const data: { ok?: boolean; voted?: boolean; count?: number } = await res.json()
-      if (!data.ok) throw new Error('upvote failed')
-      setUpvoteCounts((prev) => ({ ...prev, [eventId]: data.count ?? 0 }))
-      setVotedEventIds((prev) => {
-        const next = new Set(prev)
-        if (data.voted) next.add(eventId)
-        else next.delete(eventId)
-        return next
-      })
-    } catch {
-      // revert the optimistic update
-      setVotedEventIds((prev) => {
-        const next = new Set(prev)
-        if (alreadyVoted) next.add(eventId)
-        else next.delete(eventId)
-        return next
-      })
-      setUpvoteCounts((prev) => ({ ...prev, [eventId]: (prev[eventId] ?? 0) + (alreadyVoted ? 1 : -1) }))
     }
   }
 
@@ -621,9 +565,6 @@ export default function EventsMapSection() {
       ) : (
         <EventsList
           events={visibleEvents}
-          upvoteCounts={upvoteCounts}
-          votedEventIds={votedEventIds}
-          onToggleUpvote={toggleUpvote}
           highlightedEventIds={highlightedEventIds}
         />
       )}
@@ -631,12 +572,7 @@ export default function EventsMapSection() {
       {visibleUnknownLocationEvents.length > 0 && (
         <>
           <h3 className="std-map-unknown-location-heading">Events with unknown locations</h3>
-          <EventsList
-            events={visibleUnknownLocationEvents}
-            upvoteCounts={upvoteCounts}
-            votedEventIds={votedEventIds}
-            onToggleUpvote={toggleUpvote}
-          />
+          <EventsList events={visibleUnknownLocationEvents} />
         </>
       )}
     </section>
