@@ -23,12 +23,17 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
           {legend.emoji}
         </span>
         <strong>
-          {ended && <span className="std-map-popup-ended-badge">Event Ended</span>}
           <span className={ended ? 'std-map-popup-title-ended' : undefined}>{event.title}</span>
         </strong>
       </div>
       <div className="std-map-popup-meta">
         {popupEventDateTime(event.start, event.end)}
+        {ended && (
+          <>
+            <br />
+            <span className="std-map-popup-ended-badge">Event Ended</span>
+          </>
+        )}
         {event.location && (
           <>
             <br />

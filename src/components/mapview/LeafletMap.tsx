@@ -355,7 +355,6 @@ function EventMarkerGroup({
       >
         <div className="std-map-marker-label-inner" onMouseEnter={openLabel} onMouseLeave={closeLabel}>
           <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>
-            {ended && <span className="std-map-marker-label-ended-badge">Event Ended</span>}
             <span className="std-map-marker-label-title-scroll">
               <span className={ended ? 'std-map-marker-label-title-ended' : undefined}>{truncateTitle(event.title)}</span>
             </span>
@@ -368,6 +367,12 @@ function EventMarkerGroup({
               {dateParts.weekday}
             </span>{' '}
             {dateParts.time}
+            {ended && (
+              <>
+                {' '}
+                <span className="std-map-marker-label-ended-badge">Event Ended</span>
+              </>
+            )}
           </div>
           {expanded && (
             <div className="std-map-marker-label-details">

@@ -140,7 +140,6 @@ export default function EventsList({
         <button type="button" className="std-event-item-main" onClick={(e) => toggleFor(event, e.currentTarget)}>
           <div className="std-event-item-title-row">
             <span className="std-event-item-dot" style={{ backgroundColor: legend.color }} />
-            {ended && <span className="std-event-item-ended-badge">Event Ended</span>}
             <span
               className={`std-event-item-title${highlighted && !ended ? ' font-bold' : ''}${ended ? ' std-event-item-title-ended' : ''}`}
             >
@@ -149,6 +148,12 @@ export default function EventsList({
           </div>
           <div className="std-event-item-meta">
             {dateTimeFormatter.format(new Date(event.start))}
+            {ended && (
+              <>
+                <br />
+                <span className="std-event-item-ended-badge">Event Ended</span>
+              </>
+            )}
             {event.location && (
               <>
                 <br />
