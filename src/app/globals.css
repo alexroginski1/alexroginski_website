@@ -568,6 +568,19 @@
     @apply text-sm text-stone-500 italic py-2;
   }
 
+  .std-map-count {
+    @apply text-sm text-stone-500 mb-3;
+  }
+
+  .std-map-sentence-input {
+    @apply text-lg py-1;
+    width: 14rem;
+  }
+
+  .std-map-sentence-remove {
+    @apply text-stone-400 hover:text-stone-600 text-lg leading-none px-1 cursor-pointer;
+  }
+
   .std-map-unknown-location-heading {
     @apply mt-6 mb-1 text-sm font-semibold text-stone-600;
   }

@@ -9,6 +9,7 @@ import type { MapCalendarKey } from '@/lib/calendarIds'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR } from '@/lib/mapCalendarLegend'
 import { shortEventDateTime, sfDateKey } from '@/lib/mapEventFormat'
 import EventPopupContent from './EventPopupContent'
+import CalendarLegendControl from './CalendarLegendControl'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
@@ -116,72 +117,6 @@ function FullscreenResize({ isFullscreen }: { isFullscreen: boolean }) {
     return () => clearTimeout(timeout)
   }, [isFullscreen, map])
   return null
-}
-
-function CalendarLegendControl({
-  calendarKeys,
-  selectedTypes,
-  eventCounts,
-  onToggle,
-  onSelectAll,
-  onClear,
-}: {
-  calendarKeys: MapCalendarKey[]
-  selectedTypes: Set<MapCalendarKey>
-  eventCounts: Record<MapCalendarKey, number>
-  onToggle: (key: MapCalendarKey) => void
-  onSelectAll: () => void
-  onClear: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function onPointerDown(e: PointerEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open])
-
-  return (
-    <div ref={rootRef} className="std-map-calendar-control">
-      <button
-        type="button"
-        className="std-map-calendar-toggle"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        {selectedTypes.size} {selectedTypes.size === 1 ? 'calendar' : 'calendars'}
-      </button>
-      {open && (
-        <div className="std-map-calendar-panel">
-          <div className="std-map-legend-actions">
-            <button type="button" className="std-map-legend-action" onClick={onSelectAll}>
-              Select all
-            </button>
-            <button type="button" className="std-map-legend-action" onClick={onClear}>
-              Clear
-            </button>
-          </div>
-          {calendarKeys.map((key) => {
-            const { label, color, emoji } = MAP_CALENDAR_LEGEND[key]
-            return (
-              <label key={key} className="std-map-legend-item">
-                <input type="checkbox" checked={selectedTypes.has(key)} onChange={() => onToggle(key)} />
-                <span className="std-map-legend-dot" style={{ backgroundColor: color }}>
-                  {emoji}
-                </span>
-                <span className="std-map-legend-label">{label}</span>
-                <span className="std-map-legend-count">{eventCounts[key] ?? 0}</span>
-              </label>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
 }
 
 // Marker "permanent" tooltip labels default to sitting above their dot, but

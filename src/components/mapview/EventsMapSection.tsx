@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import EventsList from './EventsList'
+import CalendarLegendControl from './CalendarLegendControl'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
@@ -52,19 +53,23 @@ function useMapBreakoutWidth() {
 const ALL_SOURCE_KEYS = Object.keys(MAP_CALENDAR_LEGEND) as MapCalendarKey[]
 const TRANSPORT_MODES = Object.keys(TRANSPORT_SPEEDS_MPH) as TransportMode[]
 const STORAGE_KEY = 'std_map_filters'
-const STORAGE_VERSION = 3
+const STORAGE_VERSION = 4
+
+// Default "+location" anchor and its known coordinates, so the location
+// clause can activate instantly on open without a geocode round-trip.
+const DEFAULT_LOCATION_TEXT = 'San Francisco City Hall'
+const DEFAULT_LOCATION_COORDS = { lat: 37.7793, lng: -122.4193 }
 
 type LastGeocode = { text: string; lat: number; lng: number }
 
 type PersistedMapFilters = {
   version: typeof STORAGE_VERSION
-  keyword: string
-  searchEnabled: boolean
   locationText: string
   transportMode: TransportMode
   minutes: number
   selectedTypes: MapCalendarKey[]
   lastGeocode: LastGeocode | null
+  radiusEnabled: boolean
 }
 
 function transportLabel(mode: TransportMode): string {
@@ -101,23 +106,22 @@ function weekendRange(todayKey: string): { from: string; to: string } {
   return { from, to: addDays(from, 1) }
 }
 
-const MINUTES_STEP = 10
-const MINUTES_MIN = 10
-const MINUTES_MAX = 180
+// Tap-to-cycle minutes control: 20 -> 30 -> 40 -> 50 -> 60 -> 10 -> 20 ...
+const MINUTES_CYCLE = [20, 30, 40, 50, 60, 10]
 
-type DatePreset = 'today' | 'weekend' | 'next3' | 'next7' | 'all' | 'custom'
+type DatePreset = 'today' | 'tomorrow' | 'weekend' | 'next3' | 'next7' | 'all' | 'custom'
 
-const DATE_PRESET_ORDER: DatePreset[] = ['today', 'weekend', 'next3', 'next7', 'all', 'custom']
+const DATE_PRESET_ORDER: DatePreset[] = ['today', 'tomorrow', 'weekend', 'next3', 'next7', 'all', 'custom']
 
 export default function EventsMapSection() {
   const [events, setEvents] = useState<ApiEvent[]>([])
   const [unknownLocationEvents, setUnknownLocationEvents] = useState<UnknownLocationEvent[]>([])
   const [loadError, setLoadError] = useState(false)
 
-  const [keyword, setKeyword] = useState('')
-  const [searchEnabled, setSearchEnabled] = useState(false)
-  const [selectedTypes, setSelectedTypes] = useState<Set<MapCalendarKey>>(() => new Set(['sf_community']))
-  const [locationText, setLocationText] = useState('')
+  const [selectedTypes, setSelectedTypes] = useState<Set<MapCalendarKey>>(() => new Set(ALL_SOURCE_KEYS))
+  const [locationText, setLocationText] = useState(DEFAULT_LOCATION_TEXT)
+  const [editingLocation, setEditingLocation] = useState(false)
+  const [locationDraft, setLocationDraft] = useState('')
   const [transportMode, setTransportMode] = useState<TransportMode>('walk')
   const [minutes, setMinutes] = useState(20)
   const [dateFrom, setDateFrom] = useState(() => sfDateKey(new Date()))
@@ -151,11 +155,10 @@ export default function EventsMapSection() {
       if (raw) {
         const parsed: PersistedMapFilters = JSON.parse(raw)
         if (parsed && parsed.version === STORAGE_VERSION) {
-          setKeyword(parsed.keyword ?? '')
-          setSearchEnabled(parsed.searchEnabled ?? false)
-          setLocationText(parsed.locationText ?? '')
+          const text = parsed.locationText || DEFAULT_LOCATION_TEXT
+          setLocationText(text)
           setTransportMode(TRANSPORT_MODES.includes(parsed.transportMode) ? parsed.transportMode : 'walk')
-          setMinutes(parsed.minutes ?? 20)
+          setMinutes(MINUTES_CYCLE.includes(parsed.minutes) ? parsed.minutes : 20)
           const validTypes = Array.isArray(parsed.selectedTypes)
             ? parsed.selectedTypes.filter((key) => ALL_SOURCE_KEYS.includes(key))
             : []
@@ -164,10 +167,11 @@ export default function EventsMapSection() {
           }
           if (parsed.lastGeocode) {
             setLastGeocode(parsed.lastGeocode)
-            if (parsed.lastGeocode.text === parsed.locationText) {
+            if (parsed.lastGeocode.text === text) {
               setSearchOrigin({ lat: parsed.lastGeocode.lat, lng: parsed.lastGeocode.lng })
             }
           }
+          if (parsed.radiusEnabled) setRadiusEnabled(true)
         }
       }
     } catch {
@@ -182,13 +186,12 @@ export default function EventsMapSection() {
     const timeout = setTimeout(() => {
       const payload: PersistedMapFilters = {
         version: STORAGE_VERSION,
-        keyword,
-        searchEnabled,
         locationText,
         transportMode,
         minutes,
         selectedTypes: Array.from(selectedTypes),
         lastGeocode,
+        radiusEnabled,
       }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
@@ -197,7 +200,7 @@ export default function EventsMapSection() {
       }
     }, 300)
     return () => clearTimeout(timeout)
-  }, [hydrated, keyword, searchEnabled, locationText, transportMode, minutes, selectedTypes, lastGeocode])
+  }, [hydrated, locationText, transportMode, minutes, selectedTypes, lastGeocode, radiusEnabled])
 
   function toggleCalendarType(key: MapCalendarKey) {
     setSelectedTypes((prev) => {
@@ -214,6 +217,13 @@ export default function EventsMapSection() {
   function cycleTransportMode() {
     const next = TRANSPORT_MODES[(TRANSPORT_MODES.indexOf(transportMode) + 1) % TRANSPORT_MODES.length]
     setTransportMode(next)
+  }
+
+  function cycleMinutes() {
+    setMinutes((m) => {
+      const idx = MINUTES_CYCLE.indexOf(m)
+      return MINUTES_CYCLE[(idx + 1) % MINUTES_CYCLE.length]
+    })
   }
 
   function applyDatePreset(preset: DatePreset) {
@@ -234,6 +244,12 @@ export default function EventsMapSection() {
       setDateTo(to)
       return
     }
+    if (preset === 'tomorrow') {
+      const tomorrow = addDays(today, 1)
+      setDateFrom(tomorrow)
+      setDateTo(tomorrow)
+      return
+    }
     setDateFrom(today)
     setDateTo(preset === 'today' ? today : preset === 'next3' ? addDays(today, 3) : addDays(today, 7))
   }
@@ -248,8 +264,10 @@ export default function EventsMapSection() {
     if (customDateMode) return 'custom'
     if (allDates) return 'all'
     const today = sfDateKey(new Date())
+    if (dateFrom === today && dateTo === today) return 'today'
+    const tomorrow = addDays(today, 1)
+    if (dateFrom === tomorrow && dateTo === tomorrow) return 'tomorrow'
     if (dateFrom === today) {
-      if (dateTo === today) return 'today'
       if (dateTo === addDays(today, 3)) return 'next3'
       if (dateTo === addDays(today, 7)) return 'next7'
     }
@@ -261,29 +279,23 @@ export default function EventsMapSection() {
   const dateSentence = useMemo(() => {
     if (allDates) return 'any day'
     if (activeDatePreset === 'today') return 'today'
+    if (activeDatePreset === 'tomorrow') return 'tomorrow'
     if (activeDatePreset === 'next3') return 'in the next 3 days'
     if (activeDatePreset === 'weekend') return 'this weekend'
     if (activeDatePreset === 'next7') return 'in the next 7 days'
     return dateFrom === dateTo ? `on ${dateFrom}` : `from ${dateFrom} to ${dateTo}`
   }, [allDates, activeDatePreset, dateFrom, dateTo])
 
-  const allTypesSelected = selectedTypes.size === ALL_SOURCE_KEYS.length
-
-  const eventTypeSentence =
-    !allTypesSelected && selectedTypes.size === 1
-      ? `${MAP_CALENDAR_LEGEND[[...selectedTypes][0]].label.toLowerCase()} `
-      : ''
-
-  async function handleLocationSearch(e: React.FormEvent) {
-    e.preventDefault()
-    const text = locationText.trim()
-    if (!text) {
-      setSearchOrigin(null)
-      setLastGeocode(null)
-      return
-    }
+  // Resolves a location's coordinates, preferring an already-known geocode
+  // (the cached last search, or the hardcoded default) over an API call.
+  async function resolveLocation(text: string) {
     if (lastGeocode && lastGeocode.text === text) {
       setSearchOrigin({ lat: lastGeocode.lat, lng: lastGeocode.lng })
+      return
+    }
+    if (text === DEFAULT_LOCATION_TEXT) {
+      setSearchOrigin(DEFAULT_LOCATION_COORDS)
+      setLastGeocode({ text: DEFAULT_LOCATION_TEXT, ...DEFAULT_LOCATION_COORDS })
       return
     }
     setGeocodeStatus('loading')
@@ -303,13 +315,37 @@ export default function EventsMapSection() {
     }
   }
 
-  const activeRadiusMiles = radiusEnabled && searchOrigin ? computeRadiusMiles(transportMode, minutes) : null
+  function enableLocation() {
+    setRadiusEnabled(true)
+    if (!searchOrigin) resolveLocation(locationText.trim() || DEFAULT_LOCATION_TEXT)
+  }
 
-  const activeKeyword = searchEnabled ? keyword.trim().toLowerCase() : ''
+  function disableLocation() {
+    setRadiusEnabled(false)
+    setEditingLocation(false)
+  }
 
-  // Counts events matching the current date/keyword filters per calendar,
-  // independent of which calendars are checked, so the legend shows what's
-  // available for a source even while it's unchecked.
+  function startEditingLocation() {
+    setLocationDraft(locationText)
+    setEditingLocation(true)
+  }
+
+  function commitLocationEdit() {
+    setEditingLocation(false)
+    const text = locationDraft.trim() || DEFAULT_LOCATION_TEXT
+    setLocationText(text)
+    setGeocodeStatus('idle')
+    resolveLocation(text)
+  }
+
+  // Gated on radiusEnabled (rather than clearing searchOrigin outright) so
+  // the last-searched location stays cached for instant reuse on reopen.
+  const activeSearchOrigin = radiusEnabled ? searchOrigin : null
+  const activeRadiusMiles = activeSearchOrigin ? computeRadiusMiles(transportMode, minutes) : null
+
+  // Counts events matching the current date filter per calendar, independent
+  // of which calendars are checked, so the legend shows what's available for
+  // a source even while it's unchecked.
   const eventCountsByCalendar = useMemo(() => {
     const counts = Object.fromEntries(ALL_SOURCE_KEYS.map((key) => [key, 0])) as Record<MapCalendarKey, number>
     for (const event of events ?? []) {
@@ -317,14 +353,10 @@ export default function EventsMapSection() {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
       }
-      if (activeKeyword) {
-        const haystack = `${event.title} ${event.description ?? ''}`.toLowerCase()
-        if (!haystack.includes(activeKeyword)) continue
-      }
       counts[event.calendar] = (counts[event.calendar] ?? 0) + 1
     }
     return counts
-  }, [events, allDates, dateFrom, dateTo, activeKeyword])
+  }, [events, allDates, dateFrom, dateTo])
 
   const visibleEvents = useMemo(() => {
     return (events ?? []).filter((event) => {
@@ -333,18 +365,14 @@ export default function EventsMapSection() {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
       }
-      if (activeKeyword) {
-        const haystack = `${event.title} ${event.description ?? ''}`.toLowerCase()
-        if (!haystack.includes(activeKeyword)) return false
-      }
       // Events outside the travel radius stay visible (dimmed in LeafletMap)
       // rather than being dropped — the radius is a highlight, not a filter.
       return true
     })
-  }, [events, selectedTypes, activeKeyword, allDates, dateFrom, dateTo])
+  }, [events, selectedTypes, allDates, dateFrom, dateTo])
 
-  // Same calendar/date/keyword filters as visibleEvents, applied to events
-  // whose location couldn't be placed on the map at all.
+  // Same calendar/date filters as visibleEvents, applied to events whose
+  // location couldn't be placed on the map at all.
   const visibleUnknownLocationEvents = useMemo(() => {
     return unknownLocationEvents.filter((event) => {
       if (!selectedTypes.has(event.calendar)) return false
@@ -352,38 +380,87 @@ export default function EventsMapSection() {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
       }
-      if (activeKeyword) {
-        const haystack = `${event.title} ${event.description ?? ''}`.toLowerCase()
-        if (!haystack.includes(activeKeyword)) return false
-      }
       return true
     })
-  }, [unknownLocationEvents, selectedTypes, activeKeyword, allDates, dateFrom, dateTo])
+  }, [unknownLocationEvents, selectedTypes, allDates, dateFrom, dateTo])
 
   // Events within the active travel radius — highlighted on the map and
   // pinned to the top of the list below. Null (not an empty set) when the
   // radius filter isn't active, so map/list rendering can tell "no radius"
   // apart from "radius active but nothing's in range".
   const highlightedEventIds = useMemo(() => {
-    if (!searchOrigin || activeRadiusMiles === null) return null
+    if (!activeSearchOrigin || activeRadiusMiles === null) return null
     const ids = new Set<string>()
     for (const event of visibleEvents) {
-      if (haversineMiles(searchOrigin, { lat: event.lat, lng: event.lng }) <= activeRadiusMiles) {
+      if (haversineMiles(activeSearchOrigin, { lat: event.lat, lng: event.lng }) <= activeRadiusMiles) {
         ids.add(event.id)
       }
     }
     return ids
-  }, [visibleEvents, searchOrigin, activeRadiusMiles])
+  }, [visibleEvents, activeSearchOrigin, activeRadiusMiles])
 
   return (
     <section className="std-map-section">
       <h2>Stuff To Do Map</h2>
 
       <div className="std-map-sentence">
-        <span>Find me events </span>
+        <span>Find me </span>
+        <CalendarLegendControl
+          calendarKeys={ALL_SOURCE_KEYS}
+          selectedTypes={selectedTypes}
+          eventCounts={eventCountsByCalendar}
+          onToggle={toggleCalendarType}
+          onSelectAll={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
+          onClear={() => setSelectedTypes(new Set([ALL_SOURCE_KEYS[0]]))}
+        />
+        <span>events for </span>
         <button type="button" className="std-map-sentence-toggle" onClick={cycleDatePreset}>
           {dateSentence}
         </button>
+
+        {radiusEnabled ? (
+          <>
+            <span>within </span>
+            <button type="button" className="std-map-sentence-toggle" onClick={cycleMinutes}>
+              {minutes} min
+            </button>
+            <span>of </span>
+            {editingLocation ? (
+              <input
+                type="text"
+                className="std-map-input std-map-sentence-input"
+                value={locationDraft}
+                onChange={(e) => setLocationDraft(e.target.value)}
+                onBlur={commitLocationEdit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                  if (e.key === 'Escape') setEditingLocation(false)
+                }}
+                autoFocus
+              />
+            ) : (
+              <button type="button" className="std-map-sentence-toggle" onClick={startEditingLocation}>
+                {locationText}
+              </button>
+            )}
+            <span>by </span>
+            <button type="button" className="std-map-sentence-toggle" onClick={cycleTransportMode}>
+              {transportLabel(transportMode)}
+            </button>
+            <button
+              type="button"
+              className="std-map-sentence-remove"
+              onClick={disableLocation}
+              aria-label="Remove location filter"
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <button type="button" className="std-map-sentence-toggle" onClick={enableLocation}>
+            +location
+          </button>
+        )}
       </div>
 
       {activeDatePreset === 'custom' && (
@@ -405,96 +482,20 @@ export default function EventsMapSection() {
         </div>
       )}
 
-      <div className="std-map-filter-row">
-        <label className="std-map-checkbox-label">
-          <input
-            type="checkbox"
-            checked={searchEnabled}
-            onChange={(e) => setSearchEnabled(e.target.checked)}
-          />
-          search by keyword (optional)
-        </label>
-      </div>
-
-      {searchEnabled && (
-        <div className="std-map-filter-row">
-          <input
-            type="text"
-            className="std-map-input"
-            placeholder="Search events by keyword…"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            autoFocus
-          />
-        </div>
+      {geocodeStatus === 'error' && (
+        <p className="std-map-empty">Couldn&apos;t find that location — showing all events instead.</p>
       )}
 
-      <form className="std-map-filters" onSubmit={handleLocationSearch}>
-        <div className="std-map-filter-row">
-          <label className="std-map-checkbox-label">
-            <input
-              type="checkbox"
-              checked={radiusEnabled}
-              onChange={(e) => setRadiusEnabled(e.target.checked)}
-            />
-            and limit by travel radius (optional)
-          </label>
-        </div>
-
-        {radiusEnabled && (
-          <>
-            <div className="std-map-filter-row">
-              <input
-                type="text"
-                className="std-map-input"
-                placeholder="e.g. 1 Dr Carlton B Goodlett Pl"
-                value={locationText}
-                onChange={(e) => setLocationText(e.target.value)}
-              />
-              <button type="submit" className="std-map-search-btn" disabled={geocodeStatus === 'loading'}>
-                {geocodeStatus === 'loading' ? 'Searching…' : 'Search'}
-              </button>
-            </div>
-            {geocodeStatus === 'error' && (
-              <p className="std-map-empty">Couldn&apos;t find that location — showing all events instead.</p>
-            )}
-            <div className="std-map-filter-row">
-              <button type="button" className="std-map-select" onClick={cycleTransportMode}>
-                {transportLabel(transportMode)}
-              </button>
-              <span className="std-map-info-icon" title="Bus transit coming soon!">
-                i
-              </span>
-              <div className="std-map-stepper">
-                <button
-                  type="button"
-                  className="std-map-stepper-btn"
-                  onClick={() => setMinutes((m) => Math.max(MINUTES_MIN, m - MINUTES_STEP))}
-                  disabled={minutes <= MINUTES_MIN}
-                  aria-label="Decrease minutes"
-                >
-                  −
-                </button>
-                <span className="std-map-stepper-value">{minutes} min</span>
-                <button
-                  type="button"
-                  className="std-map-stepper-btn"
-                  onClick={() => setMinutes((m) => Math.min(MINUTES_MAX, m + MINUTES_STEP))}
-                  disabled={minutes >= MINUTES_MAX}
-                  aria-label="Increase minutes"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </form>
+      <p className="std-map-count">
+        {loadError
+          ? "Couldn't load events right now — try again shortly."
+          : `${visibleEvents.length} event${visibleEvents.length === 1 ? '' : 's'} found`}
+      </p>
 
       <div ref={mapWrapRef} style={mapWidth ? { width: mapWidth, maxWidth: 'none' } : undefined}>
         <LeafletMap
           events={visibleEvents}
-          searchOrigin={searchOrigin}
+          searchOrigin={activeSearchOrigin}
           radiusMiles={activeRadiusMiles}
           highlightedEventIds={highlightedEventIds}
           calendarKeys={ALL_SOURCE_KEYS}
@@ -506,17 +507,8 @@ export default function EventsMapSection() {
         />
       </div>
 
-      {visibleEvents.length === 0 ? (
-        <p className="std-map-empty">
-          {loadError
-            ? "Couldn't load events right now — try again shortly."
-            : `No ${eventTypeSentence}events match your current filters.`}
-        </p>
-      ) : (
-        <EventsList
-          events={visibleEvents}
-          highlightedEventIds={highlightedEventIds}
-        />
+      {visibleEvents.length > 0 && (
+        <EventsList events={visibleEvents} highlightedEventIds={highlightedEventIds} />
       )}
 
       {visibleUnknownLocationEvents.length > 0 && (
