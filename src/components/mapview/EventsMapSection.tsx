@@ -511,48 +511,18 @@ export default function EventsMapSection() {
         )}
       </form>
 
-      <div className="std-map-legend">
-        <div className="std-map-legend-actions">
-          <button
-            type="button"
-            className="std-map-legend-action"
-            onClick={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
-          >
-            Select all
-          </button>
-          <button
-            type="button"
-            className="std-map-legend-action"
-            onClick={() => setSelectedTypes(new Set([ALL_SOURCE_KEYS[0]]))}
-          >
-            Clear
-          </button>
-        </div>
-        {ALL_SOURCE_KEYS.map((key) => {
-          const { label, color, emoji } = MAP_CALENDAR_LEGEND[key]
-          return (
-            <label key={key} className="std-map-legend-item">
-              <input
-                type="checkbox"
-                checked={selectedTypes.has(key)}
-                onChange={() => toggleCalendarType(key)}
-              />
-              <span className="std-map-legend-dot" style={{ backgroundColor: color }}>
-                {emoji}
-              </span>
-              <span className="std-map-legend-label">{label}</span>
-              <span className="std-map-legend-count">{eventCountsByCalendar[key] ?? 0}</span>
-            </label>
-          )
-        })}
-      </div>
-
       <div ref={mapWrapRef} style={mapWidth ? { width: mapWidth, maxWidth: 'none' } : undefined}>
         <LeafletMap
           events={visibleEvents}
           searchOrigin={searchOrigin}
           radiusMiles={activeRadiusMiles}
           highlightedEventIds={highlightedEventIds}
+          calendarKeys={ALL_SOURCE_KEYS}
+          selectedTypes={selectedTypes}
+          eventCounts={eventCountsByCalendar}
+          onToggleCalendar={toggleCalendarType}
+          onSelectAllCalendars={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
+          onClearCalendars={() => setSelectedTypes(new Set([ALL_SOURCE_KEYS[0]]))}
         />
       </div>
 

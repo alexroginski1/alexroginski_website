@@ -105,6 +105,85 @@ function RecenterOnOrigin({ origin }: { origin: { lat: number; lng: number } | n
   return null
 }
 
+// Leaflet caches the container's pixel size, so toggling fullscreen (which
+// resizes the container via CSS, not Leaflet's own API) leaves tiles
+// misaligned until something tells it to re-measure. The timeout lets the
+// layout settle first.
+function FullscreenResize({ isFullscreen }: { isFullscreen: boolean }) {
+  const map = useMap()
+  useEffect(() => {
+    const timeout = setTimeout(() => map.invalidateSize(), 50)
+    return () => clearTimeout(timeout)
+  }, [isFullscreen, map])
+  return null
+}
+
+function CalendarLegendControl({
+  calendarKeys,
+  selectedTypes,
+  eventCounts,
+  onToggle,
+  onSelectAll,
+  onClear,
+}: {
+  calendarKeys: MapCalendarKey[]
+  selectedTypes: Set<MapCalendarKey>
+  eventCounts: Record<MapCalendarKey, number>
+  onToggle: (key: MapCalendarKey) => void
+  onSelectAll: () => void
+  onClear: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(e: PointerEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="std-map-calendar-control">
+      <button
+        type="button"
+        className="std-map-calendar-toggle"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        {selectedTypes.size} {selectedTypes.size === 1 ? 'calendar' : 'calendars'}
+      </button>
+      {open && (
+        <div className="std-map-calendar-panel">
+          <div className="std-map-legend-actions">
+            <button type="button" className="std-map-legend-action" onClick={onSelectAll}>
+              Select all
+            </button>
+            <button type="button" className="std-map-legend-action" onClick={onClear}>
+              Clear
+            </button>
+          </div>
+          {calendarKeys.map((key) => {
+            const { label, color, emoji } = MAP_CALENDAR_LEGEND[key]
+            return (
+              <label key={key} className="std-map-legend-item">
+                <input type="checkbox" checked={selectedTypes.has(key)} onChange={() => onToggle(key)} />
+                <span className="std-map-legend-dot" style={{ backgroundColor: color }}>
+                  {emoji}
+                </span>
+                <span className="std-map-legend-label">{label}</span>
+                <span className="std-map-legend-count">{eventCounts[key] ?? 0}</span>
+              </label>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Marker "permanent" tooltip labels default to sitting above their dot, but
 // dense clusters make that overlap. LabelPlacer re-checks each label after
 // Leaflet lays them out and, for any that collide with an already-placed
@@ -396,6 +475,12 @@ export default function LeafletMap({
   searchOrigin,
   radiusMiles,
   highlightedEventIds,
+  calendarKeys,
+  selectedTypes,
+  eventCounts,
+  onToggleCalendar,
+  onSelectAllCalendars,
+  onClearCalendars,
 }: {
   events: ApiEvent[]
   searchOrigin: { lat: number; lng: number } | null
@@ -403,7 +488,14 @@ export default function LeafletMap({
   // Events within the travel radius — non-null only while the radius filter
   // is active. Drives marker dimming/bolding to match the event list below.
   highlightedEventIds: Set<string> | null
+  calendarKeys: MapCalendarKey[]
+  selectedTypes: Set<MapCalendarKey>
+  eventCounts: Record<MapCalendarKey, number>
+  onToggleCalendar: (key: MapCalendarKey) => void
+  onSelectAllCalendars: () => void
+  onClearCalendars: () => void
 }) {
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const groups = useMemo(() => groupEventsByLocation(events), [events])
 
   // Only worth color-coding by day once more than one day is actually on
@@ -424,57 +516,99 @@ export default function LeafletMap({
   )
   const [labelPlacements, setLabelPlacements] = useState<Map<string, LabelPlacement>>(new Map())
 
+  useEffect(() => {
+    if (!isFullscreen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsFullscreen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isFullscreen])
+
   return (
-    <MapContainer center={SF_CENTER} zoom={12} scrollWheelZoom={false} className="std-map-container">
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        subdomains="abcd"
-        maxZoom={19}
-      />
+    <div className={`std-map-outer${isFullscreen ? ' std-map-outer-fullscreen' : ''}`}>
+      <MapContainer
+        center={SF_CENTER}
+        zoom={12}
+        scrollWheelZoom={false}
+        className={`std-map-container${isFullscreen ? ' std-map-container-fullscreen' : ''}`}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          subdomains="abcd"
+          maxZoom={19}
+        />
 
-      <RecenterOnOrigin origin={searchOrigin} />
+        <RecenterOnOrigin origin={searchOrigin} />
 
-      {searchOrigin && (
-        <>
-          {/* Non-interactive: a big semi-transparent overlay would otherwise
-              sit in front of (or intercept clicks meant for) the event
-              markers underneath it. */}
-          <CircleMarker
-            center={[searchOrigin.lat, searchOrigin.lng]}
-            radius={8}
-            pathOptions={{ color: '#1c1917', fillColor: '#1c1917', fillOpacity: 1 }}
-            interactive={false}
-          />
-          {radiusMiles !== null && radiusMiles > 0 && (
-            <Circle
+        {searchOrigin && (
+          <>
+            {/* Non-interactive: a big semi-transparent overlay would otherwise
+                sit in front of (or intercept clicks meant for) the event
+                markers underneath it. */}
+            <CircleMarker
               center={[searchOrigin.lat, searchOrigin.lng]}
-              radius={radiusMiles * MILES_TO_METERS}
-              pathOptions={{
-                color: RADIUS_HIGHLIGHT_COLOR,
-                fillColor: RADIUS_HIGHLIGHT_COLOR,
-                fillOpacity: 0.12,
-                weight: 2,
-              }}
+              radius={8}
+              pathOptions={{ color: '#1c1917', fillColor: '#1c1917', fillOpacity: 1 }}
               interactive={false}
             />
-          )}
-        </>
-      )}
+            {radiusMiles !== null && radiusMiles > 0 && (
+              <Circle
+                center={[searchOrigin.lat, searchOrigin.lng]}
+                radius={radiusMiles * MILES_TO_METERS}
+                pathOptions={{
+                  color: RADIUS_HIGHLIGHT_COLOR,
+                  fillColor: RADIUS_HIGHLIGHT_COLOR,
+                  fillOpacity: 0.12,
+                  weight: 2,
+                }}
+                interactive={false}
+              />
+            )}
+          </>
+        )}
 
-      {groups.map((group) => (
-        <EventMarkerGroup
-          key={group.key}
-          group={group}
-          highlightedEventIds={highlightedEventIds}
-          dateColorByKey={dateColorByKey}
-          placement={labelPlacements.get(group.key) ?? DEFAULT_LABEL_PLACEMENT}
-          registerMarker={registerMarker}
+        {groups.map((group) => (
+          <EventMarkerGroup
+            key={group.key}
+            group={group}
+            highlightedEventIds={highlightedEventIds}
+            dateColorByKey={dateColorByKey}
+            placement={labelPlacements.get(group.key) ?? DEFAULT_LABEL_PLACEMENT}
+            registerMarker={registerMarker}
+          />
+        ))}
+
+        <LabelPlacer groups={groups} markerRegistry={markerRegistry} onChange={setLabelPlacements} />
+        <TouchGate />
+        <FullscreenResize isFullscreen={isFullscreen} />
+      </MapContainer>
+
+      <div className="std-map-overlay-controls">
+        <CalendarLegendControl
+          calendarKeys={calendarKeys}
+          selectedTypes={selectedTypes}
+          eventCounts={eventCounts}
+          onToggle={onToggleCalendar}
+          onSelectAll={onSelectAllCalendars}
+          onClear={onClearCalendars}
         />
-      ))}
+      </div>
 
-      <LabelPlacer groups={groups} markerRegistry={markerRegistry} onChange={setLabelPlacements} />
-      <TouchGate />
-    </MapContainer>
+      <button
+        type="button"
+        className="std-map-fullscreen-btn"
+        onClick={() => setIsFullscreen((v) => !v)}
+        aria-label={isFullscreen ? 'Exit fullscreen' : 'View map fullscreen'}
+      >
+        {isFullscreen ? '⤡ Exit fullscreen' : '⤢ Fullscreen'}
+      </button>
+    </div>
   )
 }

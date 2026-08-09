@@ -471,10 +471,6 @@
     @apply text-sm text-stone-700 min-w-[4.5rem] text-center;
   }
 
-  .std-map-legend {
-    @apply flex flex-col gap-1.5 mb-4 rounded-xl border border-stone-200 bg-stone-50 p-3;
-  }
-
   .std-map-legend-actions {
     @apply flex items-center gap-3 border-b border-stone-200 px-1 pb-2 mb-0.5;
   }
@@ -527,9 +523,49 @@
     @apply mt-1 text-xs text-stone-500 truncate;
   }
 
+  .std-map-outer {
+    @apply relative;
+  }
+
+  .std-map-outer-fullscreen {
+    @apply fixed inset-0 z-[9999] bg-white p-3;
+  }
+
   .std-map-container {
     @apply w-full rounded-xl border border-stone-200 overflow-hidden;
     height: 340px;
+  }
+
+  .std-map-container-fullscreen {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .std-map-overlay-controls {
+    @apply absolute z-[1000];
+    top: 10px;
+    left: 54px;
+  }
+
+  .std-map-calendar-control {
+    @apply relative;
+  }
+
+  .std-map-calendar-toggle {
+    @apply rounded-md border border-stone-300 bg-white/95 px-2.5 py-1 text-xs font-medium text-stone-700 shadow hover:bg-stone-50 cursor-pointer;
+  }
+
+  .std-map-calendar-panel {
+    @apply absolute left-0 top-full z-[1001] mt-1 flex flex-col gap-1 rounded-lg bg-white/95 shadow-lg p-2;
+    width: max-content;
+    min-width: 200px;
+    max-width: 260px;
+  }
+
+  .std-map-fullscreen-btn {
+    @apply absolute z-[1000] rounded-md border border-stone-300 bg-white/95 px-2.5 py-1 text-xs font-medium text-stone-700 shadow hover:bg-stone-50 cursor-pointer;
+    top: 10px;
+    right: 10px;
   }
 
   .std-map-loading {
