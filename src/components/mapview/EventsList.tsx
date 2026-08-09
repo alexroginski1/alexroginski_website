@@ -38,13 +38,17 @@ function UpvoteButton({
   )
 }
 
+// A subset of ApiEvent's fields — also satisfied by UnknownLocationEvent,
+// so this list can render either without needing lat/lng.
+type EventListItem = Pick<ApiEvent, 'id' | 'calendar' | 'title' | 'start' | 'location'>
+
 export default function EventsList({
   events,
   upvoteCounts,
   votedEventIds,
   onToggleUpvote,
 }: {
-  events: ApiEvent[]
+  events: EventListItem[]
   upvoteCounts: Record<string, number>
   votedEventIds: Set<string>
   onToggleUpvote: (eventId: string) => void

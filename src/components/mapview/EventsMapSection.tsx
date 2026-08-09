@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import EventsList from './EventsList'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
 import type { MapCalendarKey } from '@/lib/calendarIds'
-import type { ApiEvent, EventsResponse } from '@/lib/mapTypes'
+import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
 import { radiusMiles as computeRadiusMiles, TRANSPORT_SPEEDS_MPH, type TransportMode } from '@/lib/geo'
 import { getVisitorId } from '@/lib/visitorId'
 
@@ -64,6 +64,7 @@ type DatePreset = 'today' | 'next3' | 'week' | 'all'
 
 export default function EventsMapSection() {
   const [events, setEvents] = useState<ApiEvent[]>([])
+  const [unknownLocationEvents, setUnknownLocationEvents] = useState<UnknownLocationEvent[]>([])
   const [loadError, setLoadError] = useState(false)
 
   const [keyword, setKeyword] = useState('')
@@ -97,6 +98,7 @@ export default function EventsMapSection() {
         // Defensive against a stale edge-cached response from a previous
         // deploy whose shape doesn't match this build's expectations.
         if (Array.isArray(data?.events)) setEvents(data.events)
+        if (Array.isArray(data?.unknownLocationEvents)) setUnknownLocationEvents(data.unknownLocationEvents)
       })
       .catch(() => setLoadError(true))
   }, [])
@@ -355,6 +357,23 @@ export default function EventsMapSection() {
     })
   }, [events, selectedTypes, activeKeyword, allDates, dateFrom, dateTo])
 
+  // Same calendar/date/keyword filters as visibleEvents, applied to events
+  // whose location couldn't be placed on the map at all.
+  const visibleUnknownLocationEvents = useMemo(() => {
+    return unknownLocationEvents.filter((event) => {
+      if (!selectedTypes.has(event.calendar)) return false
+      if (!allDates) {
+        const eventDateKey = sfDateKey(new Date(event.start))
+        if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
+      }
+      if (activeKeyword) {
+        const haystack = `${event.title} ${event.description ?? ''}`.toLowerCase()
+        if (!haystack.includes(activeKeyword)) return false
+      }
+      return true
+    })
+  }, [unknownLocationEvents, selectedTypes, activeKeyword, allDates, dateFrom, dateTo])
+
   return (
     <section className="std-map-section">
       <h2>Stuff To Do Map</h2>
@@ -588,6 +607,18 @@ export default function EventsMapSection() {
           votedEventIds={votedEventIds}
           onToggleUpvote={toggleUpvote}
         />
+      )}
+
+      {visibleUnknownLocationEvents.length > 0 && (
+        <>
+          <h3 className="std-map-unknown-location-heading">Events with unknown locations</h3>
+          <EventsList
+            events={visibleUnknownLocationEvents}
+            upvoteCounts={upvoteCounts}
+            votedEventIds={votedEventIds}
+            onToggleUpvote={toggleUpvote}
+          />
+        </>
       )}
     </section>
   )

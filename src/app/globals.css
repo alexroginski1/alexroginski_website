@@ -560,6 +560,23 @@
     @apply text-sm text-stone-500 italic py-2;
   }
 
+  .std-map-unknown-location-heading {
+    @apply mt-6 mb-1 text-sm font-semibold text-stone-600;
+  }
+
+  .leaflet-tooltip.std-map-marker-label {
+    @apply rounded-full border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-medium text-stone-700 shadow-sm;
+    white-space: nowrap;
+  }
+
+  .leaflet-tooltip.std-map-marker-label::before {
+    display: none;
+  }
+
+  .std-map-gcal-link {
+    @apply mt-2 inline-block rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white no-underline hover:bg-orange-600 transition-colors;
+  }
+
   @media (min-width: 768px) {
     .std-map-container {
       height: 480px;

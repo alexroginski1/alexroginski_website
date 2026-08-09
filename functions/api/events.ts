@@ -1,7 +1,7 @@
-import { CALENDAR_IDS, icsUrl, type MapCalendarKey } from '../../src/lib/calendarIds'
-import { parseIcsOccurrences, type RawOccurrence } from '../_shared/ics'
+import type { MapCalendarKey } from '../../src/lib/calendarIds'
 import { getCachedGeocodes, upsertGeocode, normalizeLocationKey } from '../_shared/geocodeCache'
 import { geocodeAddress } from '../_shared/nominatim'
+import { fetchStatsApiEvents } from '../_shared/statsApi'
 
 interface Env {
   DB: D1Database
@@ -20,15 +20,21 @@ export type ApiEvent = {
   lng: number
 }
 
-type EventsResponse = {
-  weekCount: number
-  events: ApiEvent[]
-  generatedAt: string
-  calendarsFetched: MapCalendarKey[]
-  errors: { calendar: MapCalendarKey; error: string }[]
+export type UnknownLocationEvent = {
+  id: string
+  calendar: MapCalendarKey
+  title: string
+  description?: string
+  start: string
+  end: string
 }
 
-const FETCH_TIMEOUT_MS = 5000
+type EventsResponse = {
+  events: ApiEvent[]
+  unknownLocationEvents: UnknownLocationEvent[]
+  generatedAt: string
+}
+
 const CACHE_TTL_SECONDS = 300
 const MAX_NEW_GEOCODES_PER_REQUEST = 25
 const GEOCODE_THROTTLE_MS = 1100
@@ -38,22 +44,7 @@ const GEOCODE_THROTTLE_MS = 1100
 // cache key, a stale pre-deploy response can still be served for up to
 // CACHE_TTL_SECONDS after a shape change ships — which crashes any client
 // expecting the new shape.
-const RESPONSE_SHAPE_VERSION = 'v2'
-
-async function fetchIcs(calendarId: string): Promise<string> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-  try {
-    const res = await fetch(icsUrl(calendarId), {
-      signal: controller.signal,
-      cf: { cacheTtl: CACHE_TTL_SECONDS, cacheEverything: true },
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return await res.text()
-  } finally {
-    clearTimeout(timeout)
-  }
-}
+const RESPONSE_SHAPE_VERSION = 'v3'
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -70,50 +61,30 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   if (cached) return cached
 
   const now = new Date()
-  const weekWindowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+  let rows
+  try {
+    rows = await fetchStatsApiEvents(now)
+  } catch {
+    // Source is temporarily unreachable — respond with empty lists instead
+    // of a 500, and skip caching so the next request retries fresh.
+    return new Response(
+      JSON.stringify({ events: [], unknownLocationEvents: [], generatedAt: now.toISOString() } satisfies EventsResponse),
+      { headers: { 'Content-Type': 'application/json' } }
+    )
+  }
 
-  const calendarEntries = Object.entries(CALENDAR_IDS) as [MapCalendarKey, string][]
+  const knownLocationRows = rows.filter((r) => !r.unknownLocation)
+  const unknownLocationRows = rows.filter((r) => r.unknownLocation)
 
-  const errors: { calendar: MapCalendarKey; error: string }[] = []
-  const calendarsFetched: MapCalendarKey[] = []
-  const perCalendarOccurrences: { calendar: MapCalendarKey; occ: RawOccurrence }[] = []
-
-  const results = await Promise.allSettled(
-    calendarEntries.map(async ([key, id]) => {
-      const icsText = await fetchIcs(id)
-      const occurrences = parseIcsOccurrences(icsText, now, weekWindowEnd)
-      return { key, occurrences }
-    })
-  )
-
-  results.forEach((result, i) => {
-    const [key] = calendarEntries[i]
-    if (result.status === 'fulfilled') {
-      calendarsFetched.push(key)
-      for (const occ of result.value.occurrences) {
-        perCalendarOccurrences.push({ calendar: key, occ })
-      }
-    } else {
-      const reason = result.reason
-      errors.push({ calendar: key, error: reason instanceof Error ? reason.message : String(reason) })
-    }
-  })
-
-  // All events still in progress or upcoming within the next 7 days — this
-  // is both the "events this week" count and the full pool of map pins.
-  const upcoming = perCalendarOccurrences.filter(({ occ }) => occ.end >= now && occ.start <= weekWindowEnd)
-  const weekCount = upcoming.length
-
-  // Soonest-starting occurrences first, so when the per-request geocode
-  // budget below is exhausted, it's next week's locations that get left
-  // behind rather than today's.
-  const byStartAscending = [...upcoming].sort((a, b) => a.occ.start.getTime() - b.occ.start.getTime())
+  // Soonest-starting rows first, so when the per-request geocode budget
+  // below is exhausted, it's later rows' locations that get left behind
+  // rather than the soonest-starting events'.
+  const byStartAscending = [...knownLocationRows].sort((a, b) => a.start.getTime() - b.start.getTime())
 
   const locationKeyToRaw = new Map<string, string>()
-  for (const { occ } of byStartAscending) {
-    if (!occ.location) continue
-    const key = normalizeLocationKey(occ.location)
-    if (!locationKeyToRaw.has(key)) locationKeyToRaw.set(key, occ.location)
+  for (const row of byStartAscending) {
+    const key = normalizeLocationKey(row.cleanedLocation)
+    if (!locationKeyToRaw.has(key)) locationKeyToRaw.set(key, row.cleanedLocation)
   }
 
   const allKeys = [...locationKeyToRaw.keys()]
@@ -146,34 +117,41 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     )
   }
 
-  // Locations we couldn't geocode within this request's budget (or that are
-  // missing entirely) are simply dropped from the map — they still counted
-  // toward weekCount above. As the D1 geocode cache fills up over repeated
-  // requests, fewer events fall into this bucket.
+  // Rows whose cleaned location we couldn't geocode within this request's
+  // budget are simply dropped from the map for now — as the D1 geocode
+  // cache fills up over repeated requests, fewer rows fall into this
+  // bucket. Rows with no cleaned location at all are never geocoded; they
+  // surface separately as unknownLocationEvents instead.
   const events: ApiEvent[] = []
-  for (const { calendar, occ } of upcoming) {
-    if (!occ.location) continue
-    const coords = geocodes.get(normalizeLocationKey(occ.location))
+  for (const row of knownLocationRows) {
+    const coords = geocodes.get(normalizeLocationKey(row.cleanedLocation))
     if (!coords) continue
     events.push({
-      id: `${calendar}:${occ.uid}`,
-      calendar,
-      title: occ.title,
-      description: occ.description,
-      location: occ.location,
-      start: occ.start.toISOString(),
-      end: occ.end.toISOString(),
+      id: row.id,
+      calendar: row.calendar,
+      title: row.title,
+      description: row.description,
+      location: row.cleanedLocation,
+      start: row.start.toISOString(),
+      end: row.end.toISOString(),
       lat: coords.lat,
       lng: coords.lng,
     })
   }
 
+  const unknownLocationEvents: UnknownLocationEvent[] = unknownLocationRows.map((row) => ({
+    id: row.id,
+    calendar: row.calendar,
+    title: row.title,
+    description: row.description,
+    start: row.start.toISOString(),
+    end: row.end.toISOString(),
+  }))
+
   const body: EventsResponse = {
-    weekCount,
     events,
+    unknownLocationEvents,
     generatedAt: now.toISOString(),
-    calendarsFetched,
-    errors,
   }
 
   const response = new Response(JSON.stringify(body), {

@@ -2,15 +2,23 @@
 
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useMemo } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Circle, Popup, Tooltip, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
 import { haversineMiles } from '@/lib/geo'
 import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
+import { googleCalendarUrl } from '@/lib/googleCalendar'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
+const MARKER_LABEL_MAX_WORDS = 8
+
+function truncateTitle(title: string, maxWords = MARKER_LABEL_MAX_WORDS): string {
+  const words = title.trim().split(/\s+/)
+  if (words.length <= maxWords) return title.trim()
+  return `${words.slice(0, maxWords).join(' ')}…`
+}
 
 function RecenterOnOrigin({ origin }: { origin: { lat: number; lng: number } | null }) {
   const map = useMap()
@@ -44,6 +52,9 @@ function EventMarker({
         weight: 1.5,
       }}
     >
+      <Tooltip permanent direction="top" offset={[0, -8]} opacity={1} className="std-map-marker-label">
+        {truncateTitle(event.title)}
+      </Tooltip>
       <Popup maxWidth={280} maxHeight={260}>
         <strong>{event.title}</strong>
         <br />
@@ -60,6 +71,14 @@ function EventMarker({
             dangerouslySetInnerHTML={{ __html: descriptionHtml }}
           />
         )}
+        <a
+          href={googleCalendarUrl(event)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="std-map-gcal-link"
+        >
+          + Add to Google Calendar
+        </a>
       </Popup>
     </CircleMarker>
   )

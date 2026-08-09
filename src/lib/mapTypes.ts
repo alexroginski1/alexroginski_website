@@ -12,10 +12,10 @@ export type ApiEvent = {
   lng: number
 }
 
+export type UnknownLocationEvent = Pick<ApiEvent, 'id' | 'calendar' | 'title' | 'description' | 'start' | 'end'>
+
 export type EventsResponse = {
-  weekCount: number
   events: ApiEvent[]
+  unknownLocationEvents: UnknownLocationEvent[]
   generatedAt: string
-  calendarsFetched: MapCalendarKey[]
-  errors: { calendar: MapCalendarKey; error: string }[]
 }

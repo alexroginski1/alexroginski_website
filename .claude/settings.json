@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s 'https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/api/events\")",
+      "Bash(/usr/bin/curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/events.json\")",
+      "Bash(/usr/bin/curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/?format=json\" -o /dev/null -w \"%{http_code}\\\\n\")",
+      "Bash(/usr/bin/curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/\")"
+    ]
+  }
+}
