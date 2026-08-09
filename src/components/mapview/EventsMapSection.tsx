@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import EventsList, { dateTimeFormatter, type EventListItem } from './EventsList'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
@@ -20,6 +20,37 @@ const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
   loading: () => <div className="std-map-container std-map-loading">Loading map…</div>,
 })
+
+// On desktop the map is allowed to grow wider than the article's text
+// column, up to this cap, using whatever room is actually free to its right
+// (which varies with the table-of-contents sidebar at the lg breakpoint).
+const MAP_MAX_WIDTH = 1000
+const MAP_MIN_WIDTH = 624 // the article column's natural content width
+const MAP_RIGHT_GUTTER = 24 // matches the page's own side padding
+
+function useMapBreakoutWidth() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState<number | undefined>(undefined)
+
+  useLayoutEffect(() => {
+    function update() {
+      const el = ref.current
+      if (!el) return
+      if (window.innerWidth < 768) {
+        setWidth(undefined)
+        return
+      }
+      const left = el.getBoundingClientRect().left
+      const available = window.innerWidth - left - MAP_RIGHT_GUTTER
+      setWidth(Math.min(MAP_MAX_WIDTH, Math.max(available, MAP_MIN_WIDTH)))
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  return { ref, width }
+}
 
 const ALL_SOURCE_KEYS = Object.keys(MAP_CALENDAR_LEGEND) as MapCalendarKey[]
 const TRANSPORT_MODES = Object.keys(TRANSPORT_SPEEDS_MPH) as TransportMode[]
@@ -138,6 +169,7 @@ export default function EventsMapSection() {
 
   const hydratedRef = useRef(false)
   const [hydrated, setHydrated] = useState(false)
+  const { ref: mapWrapRef, width: mapWidth } = useMapBreakoutWidth()
 
   useEffect(() => {
     fetch('/api/events')
@@ -616,12 +648,14 @@ export default function EventsMapSection() {
         })}
       </div>
 
-      <LeafletMap
-        events={visibleEvents}
-        searchOrigin={searchOrigin}
-        radiusMiles={activeRadiusMiles}
-        highlightedEventIds={highlightedEventIds}
-      />
+      <div ref={mapWrapRef} style={mapWidth ? { width: mapWidth, maxWidth: 'none' } : undefined}>
+        <LeafletMap
+          events={visibleEvents}
+          searchOrigin={searchOrigin}
+          radiusMiles={activeRadiusMiles}
+          highlightedEventIds={highlightedEventIds}
+        />
+      </div>
 
       {visibleEvents.length === 0 ? (
         <p className="std-map-empty">

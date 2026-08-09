@@ -613,7 +613,12 @@
   .std-map-hover-preview {
     @apply absolute rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs text-stone-700 shadow-lg;
     max-width: 220px;
-    transform: translate(-50%, -100%);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .std-map-touch-hint {
+    @apply absolute left-1/2 bottom-3 -translate-x-1/2 rounded-full bg-stone-900/80 text-white text-xs font-medium px-3 py-1.5;
     pointer-events: none;
     z-index: 1000;
   }
@@ -694,7 +699,7 @@
 
   @media (min-width: 768px) {
     .std-map-container {
-      height: 480px;
+      height: 620px;
     }
   }
 }

@@ -2,7 +2,7 @@
 
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Popup, Tooltip, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
@@ -164,12 +164,18 @@ function LabelDeclutter({ events }: { events: ApiEvent[] }) {
 // both bound to the marker itself.
 function HoverPreview({ event }: { event: ApiEvent }) {
   const map = useMap()
-  const [point, setPoint] = useState<{ x: number; y: number } | null>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null)
+  // Top-left corner of the box, clamped to stay inside the map viewport —
+  // computed from the box's real rendered size, since a fixed offset from
+  // the anchor point can push it past the map edge (where it gets clipped
+  // by the container's overflow: hidden).
+  const [box, setBox] = useState({ left: 0, top: 0 })
 
   useEffect(() => {
     function update() {
       const p = map.latLngToContainerPoint([event.lat, event.lng])
-      setPoint({ x: p.x, y: p.y })
+      setAnchor({ x: p.x, y: p.y })
     }
     update()
     map.on('move zoom', update)
@@ -178,19 +184,69 @@ function HoverPreview({ event }: { event: ApiEvent }) {
     }
   }, [map, event.lat, event.lng])
 
-  if (!point) return null
+  useLayoutEffect(() => {
+    const el = boxRef.current
+    if (!anchor || !el) return
+    const mapSize = map.getSize()
+    const margin = 6
+    const gap = MARKER_SIZE / 2 + 8
+    const width = el.offsetWidth
+    const height = el.offsetHeight
+
+    let left = anchor.x - width / 2
+    left = Math.min(Math.max(left, margin), Math.max(margin, mapSize.x - width - margin))
+
+    // Prefer sitting above the marker; flip below it if there isn't room.
+    let top = anchor.y - gap - height
+    if (top < margin) top = anchor.y + gap
+    top = Math.min(Math.max(top, margin), Math.max(margin, mapSize.y - height - margin))
+
+    setBox({ left, top })
+  }, [anchor, map])
+
+  if (!anchor) return null
 
   const preview = descriptionPreview(event.description)
 
   return (
-    <div
-      className="std-map-hover-preview"
-      style={{ left: point.x, top: point.y - (MARKER_SIZE / 2 + 8) }}
-    >
+    <div ref={boxRef} className="std-map-hover-preview" style={{ left: box.left, top: box.top }}>
       <div className="std-map-hover-preview-title">{event.title}</div>
       {preview && <div className="std-map-hover-preview-desc">{preview}</div>}
     </div>
   )
+}
+
+// On touch devices, a single-finger drag over the map would otherwise pan
+// the map instead of scrolling the page — a common source of frustration
+// when a map sits mid-article. Panning starts disabled and turns on after
+// the visitor's first touch, so the first swipe through the section always
+// scrolls the page like everything else on it.
+function TouchGate() {
+  const map = useMap()
+  const [active, setActive] = useState(false)
+
+  useEffect(() => {
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (!isTouchDevice) {
+      setActive(true)
+      return
+    }
+    map.dragging.disable()
+    const container = map.getContainer()
+    function activate() {
+      map.dragging.enable()
+      setActive(true)
+      container.removeEventListener('touchstart', activate)
+    }
+    container.addEventListener('touchstart', activate, { passive: true })
+    return () => {
+      container.removeEventListener('touchstart', activate)
+      map.dragging.enable()
+    }
+  }, [map])
+
+  if (active) return null
+  return <div className="std-map-touch-hint">Tap the map, then drag to explore</div>
 }
 
 function EventMarkerGroup({
@@ -265,7 +321,12 @@ function EventMarkerGroup({
           <div className="std-map-marker-label-time">{shortEventDateTime(event.start)}</div>
         </div>
       </Tooltip>
-      <Popup maxWidth={MARKER_POPUP_WIDTH} minWidth={MARKER_POPUP_WIDTH} maxHeight={260}>
+      <Popup
+        maxWidth={MARKER_POPUP_WIDTH}
+        minWidth={MARKER_POPUP_WIDTH}
+        maxHeight={260}
+        autoPanPadding={[16, 16]}
+      >
         {count > 1 && (
           <div className="std-map-popup-pager">
             <button type="button" onClick={() => stepIndex(-1)} aria-label="Previous event at this location">
@@ -382,6 +443,7 @@ export default function LeafletMap({
       {hoveredEvent && <HoverPreview event={hoveredEvent} />}
 
       <LabelDeclutter events={events} />
+      <TouchGate />
     </MapContainer>
   )
 }
