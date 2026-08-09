@@ -159,10 +159,8 @@ export default function EventsMapSection() {
           setLocationText(text)
           setTransportMode(TRANSPORT_MODES.includes(parsed.transportMode) ? parsed.transportMode : 'walk')
           setMinutes(MINUTES_CYCLE.includes(parsed.minutes) ? parsed.minutes : 20)
-          const validTypes = Array.isArray(parsed.selectedTypes)
-            ? parsed.selectedTypes.filter((key) => ALL_SOURCE_KEYS.includes(key))
-            : []
-          if (validTypes.length > 0) {
+          if (Array.isArray(parsed.selectedTypes)) {
+            const validTypes = parsed.selectedTypes.filter((key) => ALL_SOURCE_KEYS.includes(key))
             setSelectedTypes(new Set(validTypes))
           }
           if (parsed.lastGeocode) {
@@ -206,7 +204,7 @@ export default function EventsMapSection() {
     setSelectedTypes((prev) => {
       const next = new Set(prev)
       if (next.has(key)) {
-        if (next.size > 1) next.delete(key)
+        next.delete(key)
       } else {
         next.add(key)
       }
@@ -401,8 +399,6 @@ export default function EventsMapSection() {
 
   return (
     <section className="std-map-section">
-      <h2>Stuff To Do Map</h2>
-
       <div className="std-map-sentence">
         <span>Find me </span>
         <CalendarLegendControl
@@ -411,7 +407,8 @@ export default function EventsMapSection() {
           eventCounts={eventCountsByCalendar}
           onToggle={toggleCalendarType}
           onSelectAll={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
-          onClear={() => setSelectedTypes(new Set([ALL_SOURCE_KEYS[0]]))}
+          onClear={() => setSelectedTypes(new Set())}
+          toggleClassName="std-map-sentence-toggle"
         />
         <span>events for </span>
         <button type="button" className="std-map-sentence-toggle" onClick={cycleDatePreset}>
@@ -503,7 +500,7 @@ export default function EventsMapSection() {
           eventCounts={eventCountsByCalendar}
           onToggleCalendar={toggleCalendarType}
           onSelectAllCalendars={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
-          onClearCalendars={() => setSelectedTypes(new Set([ALL_SOURCE_KEYS[0]]))}
+          onClearCalendars={() => setSelectedTypes(new Set())}
         />
       </div>
 

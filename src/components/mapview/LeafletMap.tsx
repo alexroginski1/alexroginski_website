@@ -154,66 +154,21 @@ function FullscreenResize({ isFullscreen }: { isFullscreen: boolean }) {
   return null
 }
 
-// Marker "permanent" tooltip labels default to sitting above their dot, but
-// dense clusters make that overlap. LabelPlacer re-checks each label after
-// Leaflet lays them out and, for any that collide with an already-placed
-// label, tries the next preferred side in turn (below, then left, then
-// right of the dot) before giving up and hiding it — since Leaflet has no
-// built-in collision detection for tooltips.
-const LABEL_DIRECTIONS = ['top', 'bottom', 'left', 'right'] as const
-type LabelDirection = (typeof LABEL_DIRECTIONS)[number]
-type LabelPlacement = { direction: LabelDirection; hidden: boolean }
-const DEFAULT_LABEL_PLACEMENT: LabelPlacement = { direction: 'top', hidden: false }
-const LABEL_GAP = MARKER_SIZE / 2 + 4
+// Marker "permanent" tooltip labels always sit above their dot. Dense
+// clusters can make that overlap, so LabelPlacer re-checks each label after
+// Leaflet lays them out and hides any that collide with an already-placed
+// label — since Leaflet has no built-in collision detection for tooltips.
+type LabelPlacement = { hidden: boolean }
+const DEFAULT_LABEL_PLACEMENT: LabelPlacement = { hidden: false }
+const LABEL_GAP = MARKER_SIZE / 2 + 1
+const LABEL_OFFSET: [number, number] = [0, -LABEL_GAP]
 
-function labelOffset(direction: LabelDirection): [number, number] {
-  switch (direction) {
-    case 'top':
-      return [0, -LABEL_GAP]
-    case 'bottom':
-      return [0, LABEL_GAP]
-    case 'left':
-      return [-LABEL_GAP, 0]
-    case 'right':
-      return [LABEL_GAP, 0]
-  }
-}
-
-function labelCandidateRect(
-  direction: LabelDirection,
-  anchor: { x: number; y: number },
-  width: number,
-  height: number
-) {
-  switch (direction) {
-    case 'top':
-      return {
-        left: anchor.x - width / 2,
-        top: anchor.y - LABEL_GAP - height,
-        right: anchor.x + width / 2,
-        bottom: anchor.y - LABEL_GAP,
-      }
-    case 'bottom':
-      return {
-        left: anchor.x - width / 2,
-        top: anchor.y + LABEL_GAP,
-        right: anchor.x + width / 2,
-        bottom: anchor.y + LABEL_GAP + height,
-      }
-    case 'left':
-      return {
-        left: anchor.x - LABEL_GAP - width,
-        top: anchor.y - height / 2,
-        right: anchor.x - LABEL_GAP,
-        bottom: anchor.y + height / 2,
-      }
-    case 'right':
-      return {
-        left: anchor.x + LABEL_GAP,
-        top: anchor.y - height / 2,
-        right: anchor.x + LABEL_GAP + width,
-        bottom: anchor.y + height / 2,
-      }
+function labelCandidateRect(anchor: { x: number; y: number }, width: number, height: number) {
+  return {
+    left: anchor.x - width / 2,
+    top: anchor.y - LABEL_GAP - height,
+    right: anchor.x + width / 2,
+    bottom: anchor.y - LABEL_GAP,
   }
 }
 
@@ -241,19 +196,12 @@ function LabelPlacer({
         const width = el.offsetWidth
         const height = el.offsetHeight
 
-        let placement: LabelPlacement = { direction: 'top', hidden: true }
-        for (const direction of LABEL_DIRECTIONS) {
-          const rect = labelCandidateRect(direction, anchor, width, height)
-          const overlaps = placed.some(
-            (p) => rect.left < p.right && rect.right > p.left && rect.top < p.bottom && rect.bottom > p.top
-          )
-          if (!overlaps) {
-            placed.push(rect)
-            placement = { direction, hidden: false }
-            break
-          }
-        }
-        next.set(group.key, placement)
+        const rect = labelCandidateRect(anchor, width, height)
+        const overlaps = placed.some(
+          (p) => rect.left < p.right && rect.right > p.left && rect.top < p.bottom && rect.bottom > p.top
+        )
+        if (!overlaps) placed.push(rect)
+        next.set(group.key, { hidden: overlaps })
       }
 
       onChange(next)
@@ -398,14 +346,13 @@ function EventMarkerGroup({
       }}
     >
       <Tooltip
-        key={`${placement.direction}-${placement.hidden}`}
+        key={`${placement.hidden}`}
         permanent
-        interactive
-        direction={placement.direction}
-        offset={labelOffset(placement.direction)}
+        interactive={false}
+        direction="top"
+        offset={LABEL_OFFSET}
         opacity={1}
         className={`std-map-marker-label${placement.hidden ? ' std-map-marker-label-hidden' : ''}`}
-        eventHandlers={{ click: openPopup, mouseover: openPopup, mouseout: handleMouseOut }}
       >
         <div className="std-map-marker-label-inner" style={{ backgroundColor: dateColor ?? '#ffffff' }}>
           <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>

@@ -12,6 +12,7 @@ export default function CalendarLegendControl({
   onSelectAll,
   onClear,
   className,
+  toggleClassName,
 }: {
   calendarKeys: MapCalendarKey[]
   selectedTypes: Set<MapCalendarKey>
@@ -20,6 +21,7 @@ export default function CalendarLegendControl({
   onSelectAll: () => void
   onClear: () => void
   className?: string
+  toggleClassName?: string
 }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -38,7 +40,7 @@ export default function CalendarLegendControl({
     <div ref={rootRef} className={`std-map-calendar-control${className ? ` ${className}` : ''}`}>
       <button
         type="button"
-        className="std-map-calendar-toggle"
+        className={toggleClassName ?? 'std-map-calendar-toggle'}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >

@@ -209,6 +209,12 @@ export default function StuffToDo() {
       <TableOfContents />
       <div className="std-container">
 
+        <div className="std-intro">
+          <p>Hi, I'm Alex.</p>
+          <p>I want to make it easier for people to find community in San Francisco.</p>
+          <p>Check it out:</p>
+        </div>
+
         <EventsMapSection />
 
         <div className="std-hero">

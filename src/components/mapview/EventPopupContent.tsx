@@ -3,7 +3,6 @@
 import { useMemo } from 'react'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
 import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
-import { googleCalendarUrl } from '@/lib/googleCalendar'
 import { popupEventDateTime, type EventListItem } from '@/lib/mapEventFormat'
 
 // Shared between the map marker popup and the event-list tile popup, so
@@ -31,9 +30,6 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
       {descriptionHtml && (
         <p className="std-map-popup-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
       )}
-      <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer" className="std-map-gcal-link">
-        + Add to Google Calendar
-      </a>
     </>
   )
 }
