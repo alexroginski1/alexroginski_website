@@ -91,11 +91,23 @@ function addDays(key: string, days: number): string {
   return dt.toISOString().slice(0, 10)
 }
 
+// The Saturday/Sunday of the current or coming weekend. If today is Sunday,
+// the weekend is just today — Saturday has already passed.
+function weekendRange(todayKey: string): { from: string; to: string } {
+  const [y, m, d] = todayKey.split('-').map(Number)
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+  if (dow === 0) return { from: todayKey, to: todayKey }
+  const from = addDays(todayKey, dow === 6 ? 0 : 6 - dow)
+  return { from, to: addDays(from, 1) }
+}
+
 const MINUTES_STEP = 10
 const MINUTES_MIN = 10
 const MINUTES_MAX = 180
 
-type DatePreset = 'today' | 'next3' | 'week' | 'all'
+type DatePreset = 'today' | 'weekend' | 'next3' | 'next7' | 'all' | 'custom'
+
+const DATE_PRESET_ORDER: DatePreset[] = ['today', 'weekend', 'next3', 'next7', 'all', 'custom']
 
 export default function EventsMapSection() {
   const [events, setEvents] = useState<ApiEvent[]>([])
@@ -111,7 +123,7 @@ export default function EventsMapSection() {
   const [dateFrom, setDateFrom] = useState(() => sfDateKey(new Date()))
   const [dateTo, setDateTo] = useState(() => sfDateKey(new Date()))
   const [allDates, setAllDates] = useState(false)
-  const [dateExpanded, setDateExpanded] = useState(false)
+  const [customDateMode, setCustomDateMode] = useState(false)
   const [radiusEnabled, setRadiusEnabled] = useState(false)
   const [searchOrigin, setSearchOrigin] = useState<{ lat: number; lng: number } | null>(null)
   const [lastGeocode, setLastGeocode] = useState<LastGeocode | null>(null)
@@ -199,44 +211,59 @@ export default function EventsMapSection() {
     })
   }
 
-  function handleDateFromChange(value: string) {
-    setAllDates(false)
-    setDateFrom(value)
-    setDateTo((prev) => (prev < value ? value : prev))
-  }
-
-  function handleDateToChange(value: string) {
-    setAllDates(false)
-    setDateTo(value)
-    setDateFrom((prev) => (prev > value ? value : prev))
+  function cycleTransportMode() {
+    const next = TRANSPORT_MODES[(TRANSPORT_MODES.indexOf(transportMode) + 1) % TRANSPORT_MODES.length]
+    setTransportMode(next)
   }
 
   function applyDatePreset(preset: DatePreset) {
+    setCustomDateMode(preset === 'custom')
+    if (preset === 'custom') {
+      setAllDates(false)
+      return
+    }
     if (preset === 'all') {
       setAllDates(true)
       return
     }
-    const today = sfDateKey(new Date())
     setAllDates(false)
+    const today = sfDateKey(new Date())
+    if (preset === 'weekend') {
+      const { from, to } = weekendRange(today)
+      setDateFrom(from)
+      setDateTo(to)
+      return
+    }
     setDateFrom(today)
     setDateTo(preset === 'today' ? today : preset === 'next3' ? addDays(today, 3) : addDays(today, 7))
   }
 
-  const activeDatePreset: DatePreset | null = useMemo(() => {
+  function cycleDatePreset() {
+    const currentIndex = DATE_PRESET_ORDER.indexOf(activeDatePreset)
+    const next = DATE_PRESET_ORDER[(currentIndex + 1) % DATE_PRESET_ORDER.length]
+    applyDatePreset(next)
+  }
+
+  const activeDatePreset: DatePreset = useMemo(() => {
+    if (customDateMode) return 'custom'
     if (allDates) return 'all'
     const today = sfDateKey(new Date())
-    if (dateFrom !== today) return null
-    if (dateTo === today) return 'today'
-    if (dateTo === addDays(today, 3)) return 'next3'
-    if (dateTo === addDays(today, 7)) return 'week'
-    return null
-  }, [allDates, dateFrom, dateTo])
+    if (dateFrom === today) {
+      if (dateTo === today) return 'today'
+      if (dateTo === addDays(today, 3)) return 'next3'
+      if (dateTo === addDays(today, 7)) return 'next7'
+    }
+    const weekend = weekendRange(today)
+    if (dateFrom === weekend.from && dateTo === weekend.to) return 'weekend'
+    return 'custom'
+  }, [customDateMode, allDates, dateFrom, dateTo])
 
   const dateSentence = useMemo(() => {
     if (allDates) return 'any day'
     if (activeDatePreset === 'today') return 'today'
     if (activeDatePreset === 'next3') return 'in the next 3 days'
-    if (activeDatePreset === 'week') return 'in the next week'
+    if (activeDatePreset === 'weekend') return 'this weekend'
+    if (activeDatePreset === 'next7') return 'in the next 7 days'
     return dateFrom === dateTo ? `on ${dateFrom}` : `from ${dateFrom} to ${dateTo}`
   }, [allDates, activeDatePreset, dateFrom, dateTo])
 
@@ -354,69 +381,27 @@ export default function EventsMapSection() {
 
       <div className="std-map-sentence">
         <span>Find me events </span>
-        <button
-          type="button"
-          className="std-map-sentence-toggle"
-          onClick={() => setDateExpanded((v) => !v)}
-          aria-expanded={dateExpanded}
-        >
+        <button type="button" className="std-map-sentence-toggle" onClick={cycleDatePreset}>
           {dateSentence}
         </button>
       </div>
 
-      {dateExpanded && (
-        <div className="std-map-date-panel">
-          <div className="std-map-filter-row">
-            <button
-              type="button"
-              className={`std-map-preset-btn${activeDatePreset === 'today' ? ' std-map-preset-btn-active' : ''}`}
-              onClick={() => applyDatePreset('today')}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              className={`std-map-preset-btn${activeDatePreset === 'next3' ? ' std-map-preset-btn-active' : ''}`}
-              onClick={() => applyDatePreset('next3')}
-            >
-              Next 3 days
-            </button>
-            <button
-              type="button"
-              className={`std-map-preset-btn${activeDatePreset === 'week' ? ' std-map-preset-btn-active' : ''}`}
-              onClick={() => applyDatePreset('week')}
-            >
-              Next week
-            </button>
-            <button
-              type="button"
-              className={`std-map-preset-btn${activeDatePreset === 'all' ? ' std-map-preset-btn-active' : ''}`}
-              onClick={() => applyDatePreset('all')}
-            >
-              All
-            </button>
-          </div>
-          <div className="std-map-filter-row">
-            <input
-              type="date"
-              className="std-map-select"
-              value={dateFrom}
-              onChange={(e) => handleDateFromChange(e.target.value)}
-              disabled={allDates}
-              aria-label="Start date"
-            />
-            <span className="std-map-empty" style={{ padding: 0 }}>
-              to
-            </span>
-            <input
-              type="date"
-              className="std-map-select"
-              value={dateTo}
-              onChange={(e) => handleDateToChange(e.target.value)}
-              disabled={allDates}
-              aria-label="End date"
-            />
-          </div>
+      {activeDatePreset === 'custom' && (
+        <div className="std-map-filter-row">
+          <input
+            type="date"
+            className="std-map-input"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+          <span className="text-sm text-stone-500">to</span>
+          <input
+            type="date"
+            className="std-map-input"
+            value={dateTo}
+            min={dateFrom}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
         </div>
       )}
 
@@ -474,17 +459,12 @@ export default function EventsMapSection() {
               <p className="std-map-empty">Couldn&apos;t find that location — showing all events instead.</p>
             )}
             <div className="std-map-filter-row">
-              <select
-                className="std-map-select"
-                value={transportMode}
-                onChange={(e) => setTransportMode(e.target.value as TransportMode)}
-              >
-                {TRANSPORT_MODES.map((mode) => (
-                  <option key={mode} value={mode}>
-                    {transportLabel(mode)}
-                  </option>
-                ))}
-              </select>
+              <button type="button" className="std-map-select" onClick={cycleTransportMode}>
+                {transportLabel(transportMode)}
+              </button>
+              <span className="std-map-info-icon" title="Bus transit coming soon!">
+                i
+              </span>
               <div className="std-map-stepper">
                 <button
                   type="button"
