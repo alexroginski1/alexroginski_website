@@ -28,7 +28,7 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
         </strong>
       </div>
       <div className="std-map-popup-meta">
-        {popupEventDateTime(event.start)}
+        {popupEventDateTime(event.start, event.end)}
         {event.location && (
           <>
             <br />

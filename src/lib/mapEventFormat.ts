@@ -40,11 +40,21 @@ export function shortEventDateParts(iso: string): { weekday: string; time: strin
   return { weekday: shortWeekdayFormatter.format(date), time }
 }
 
-// "Monday, August 9, 10:00 AM" — used in the map marker popup, where a bare
-// time is ambiguous once events from more than one day are on screen.
-export function popupEventDateTime(iso: string): string {
-  const date = new Date(iso)
-  return `${longWeekdayFormatter.format(date)}, ${longMonthDayFormatter.format(date)}, ${shortTimeFormatter.format(date)}`
+// "Monday, August 9, 10:00 AM – 12:00 PM" — used in the map marker popup,
+// where a bare time is ambiguous once events from more than one day are on
+// screen. The end is just a time when it falls on the same SF day as the
+// start, and the full weekday/date otherwise.
+export function popupEventDateTime(startIso: string, endIso?: string): string {
+  const start = new Date(startIso)
+  const startStr = `${longWeekdayFormatter.format(start)}, ${longMonthDayFormatter.format(start)}, ${shortTimeFormatter.format(start)}`
+  if (!endIso) return startStr
+
+  const end = new Date(endIso)
+  const endStr =
+    sfDateKey(startIso) === sfDateKey(endIso)
+      ? shortTimeFormatter.format(end)
+      : `${longWeekdayFormatter.format(end)}, ${longMonthDayFormatter.format(end)}, ${shortTimeFormatter.format(end)}`
+  return `${startStr} – ${endStr}`
 }
 
 // True once an event's end time has passed — drives the greyed-out,

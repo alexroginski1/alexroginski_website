@@ -14,7 +14,7 @@ import CalendarLegendControl from './CalendarLegendControl'
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
-const MARKER_LABEL_MAX_CHARS = 15
+const MARKER_LABEL_MAX_CHARS = 40
 type ZoomBucket = 'sm' | 'md' | 'lg'
 const MARKER_SIZE = 28
 const LABEL_CLOSE_DELAY = 200
@@ -270,6 +270,10 @@ function EventMarkerGroup({
   const closeTimerRef = useRef<number | null>(null)
   const [index, setIndex] = useState(0)
   const [expanded, setExpanded] = useState(false)
+  // Drives the title-preview scroll animation when the marker dot itself is
+  // hovered — the dot and its tooltip label live in separate Leaflet panes,
+  // so CSS :hover on the label alone can't see a hover starting on the dot.
+  const [iconHovered, setIconHovered] = useState(false)
   const count = group.events.length
   // Clamp rather than reset to 0 on prop changes, so re-filtering the map
   // doesn't yank the user back to the first event mid-browse.
@@ -331,9 +335,11 @@ function EventMarkerGroup({
       opacity={opacity}
       eventHandlers={{
         mouseover: () => {
+          setIconHovered(true)
           if (placement.hidden) openLabel()
         },
         mouseout: () => {
+          setIconHovered(false)
           if (placement.hidden) closeLabel()
         },
       }}
@@ -345,12 +351,14 @@ function EventMarkerGroup({
         direction="bottom"
         offset={LABEL_OFFSET}
         opacity={1}
-        className={`std-map-marker-label${hiddenNow ? ' std-map-marker-label-hidden' : ''}${expanded ? ' std-map-marker-label-expanded' : ''}${ended ? ' std-map-marker-label-ended' : ''}`}
+        className={`std-map-marker-label${hiddenNow ? ' std-map-marker-label-hidden' : ''}${expanded ? ' std-map-marker-label-expanded' : ''}${ended ? ' std-map-marker-label-ended' : ''}${iconHovered ? ' std-map-marker-label-icon-hovered' : ''}`}
       >
         <div className="std-map-marker-label-inner" onMouseEnter={openLabel} onMouseLeave={closeLabel}>
           <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>
             {ended && <span className="std-map-marker-label-ended-badge">Event Ended</span>}
-            <span className={ended ? 'std-map-marker-label-title-ended' : undefined}>{truncateTitle(event.title)}</span>
+            <span className="std-map-marker-label-title-scroll">
+              <span className={ended ? 'std-map-marker-label-title-ended' : undefined}>{truncateTitle(event.title)}</span>
+            </span>
           </div>
           <div className="std-map-marker-label-time">
             <span
