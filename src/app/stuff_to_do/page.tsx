@@ -204,7 +204,7 @@ const combinedPreviewSrc = `https://calendar.google.com/calendar/embed?${Object.
 
 export default function StuffToDo() {
   return (
-    <>
+    <div className="std-stuff-to-do">
     <main className="std-root">
       <TableOfContents />
       <div className="std-container">
@@ -349,6 +349,6 @@ export default function StuffToDo() {
       </div>
     </main>
     <Footer />
-    </>
+    </div>
   )
 }

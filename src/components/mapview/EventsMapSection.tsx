@@ -2,12 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import EventsList from './EventsList'
+import EventsList, { dateTimeFormatter, type EventListItem } from './EventsList'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
-import { radiusMiles as computeRadiusMiles, TRANSPORT_SPEEDS_MPH, type TransportMode } from '@/lib/geo'
+import {
+  haversineMiles,
+  radiusMiles as computeRadiusMiles,
+  TRANSPORT_SPEEDS_MPH,
+  type TransportMode,
+} from '@/lib/geo'
 import { getVisitorId } from '@/lib/visitorId'
+import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
+import { googleCalendarUrl } from '@/lib/googleCalendar'
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
@@ -62,6 +69,48 @@ const MINUTES_MAX = 180
 
 type DatePreset = 'today' | 'next3' | 'week' | 'all'
 
+function EventDetailModal({ event, onClose }: { event: EventListItem; onClose: () => void }) {
+  const legend = MAP_CALENDAR_LEGEND[event.calendar]
+  const descriptionHtml = useMemo(
+    () => (event.description ? sanitizeDescriptionHtml(event.description) : null),
+    [event.description]
+  )
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  return (
+    <div className="std-map-modal-backdrop" onClick={onClose}>
+      <div className="std-map-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <button type="button" className="std-map-modal-close" onClick={onClose} aria-label="Close">
+          ✕
+        </button>
+        <div className="std-map-modal-title-row">
+          <span className="std-map-legend-dot" style={{ backgroundColor: legend.color }}>
+            {legend.emoji}
+          </span>
+          <span className="std-map-modal-title">{event.title}</span>
+        </div>
+        <div className="std-map-modal-meta">
+          {dateTimeFormatter.format(new Date(event.start))}
+          {event.location ? ` · ${event.location}` : ''}
+        </div>
+        {descriptionHtml && (
+          <p className="std-map-modal-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+        )}
+        <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer" className="std-map-gcal-link">
+          + Add to Google Calendar
+        </a>
+      </div>
+    </div>
+  )
+}
+
 export default function EventsMapSection() {
   const [events, setEvents] = useState<ApiEvent[]>([])
   const [unknownLocationEvents, setUnknownLocationEvents] = useState<UnknownLocationEvent[]>([])
@@ -70,7 +119,6 @@ export default function EventsMapSection() {
   const [keyword, setKeyword] = useState('')
   const [searchEnabled, setSearchEnabled] = useState(false)
   const [selectedTypes, setSelectedTypes] = useState<Set<MapCalendarKey>>(() => new Set(['sf_community']))
-  const [calendarDropdownOpen, setCalendarDropdownOpen] = useState(false)
   const [locationText, setLocationText] = useState('')
   const [transportMode, setTransportMode] = useState<TransportMode>('walk')
   const [minutes, setMinutes] = useState(20)
@@ -86,10 +134,10 @@ export default function EventsMapSection() {
   const [visitorId, setVisitorId] = useState<string | null>(null)
   const [upvoteCounts, setUpvoteCounts] = useState<Record<string, number>>({})
   const [votedEventIds, setVotedEventIds] = useState<Set<string>>(new Set())
+  const [detailEvent, setDetailEvent] = useState<EventListItem | null>(null)
 
   const hydratedRef = useRef(false)
   const [hydrated, setHydrated] = useState(false)
-  const calendarDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch('/api/events')
@@ -169,17 +217,6 @@ export default function EventsMapSection() {
     return () => clearTimeout(timeout)
   }, [hydrated, keyword, searchEnabled, locationText, transportMode, minutes, selectedTypes, lastGeocode])
 
-  useEffect(() => {
-    if (!calendarDropdownOpen) return
-    function handleClickOutside(e: MouseEvent) {
-      if (calendarDropdownRef.current && !calendarDropdownRef.current.contains(e.target as Node)) {
-        setCalendarDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [calendarDropdownOpen])
-
   function toggleCalendarType(key: MapCalendarKey) {
     setSelectedTypes((prev) => {
       const next = new Set(prev)
@@ -234,15 +271,6 @@ export default function EventsMapSection() {
   }, [allDates, activeDatePreset, dateFrom, dateTo])
 
   const allTypesSelected = selectedTypes.size === ALL_SOURCE_KEYS.length
-
-  const calendarDropdownLabel = useMemo(() => {
-    if (allTypesSelected) return 'all types of'
-    if (selectedTypes.size === 1) {
-      const [only] = selectedTypes
-      return MAP_CALENDAR_LEGEND[only].label
-    }
-    return `${selectedTypes.size} types of`
-  }, [allTypesSelected, selectedTypes])
 
   const eventTypeSentence =
     !allTypesSelected && selectedTypes.size === 1
@@ -374,55 +402,27 @@ export default function EventsMapSection() {
     })
   }, [unknownLocationEvents, selectedTypes, activeKeyword, allDates, dateFrom, dateTo])
 
+  // Events within the active travel radius — highlighted on the map and
+  // pinned to the top of the list below. Null (not an empty set) when the
+  // radius filter isn't active, so map/list rendering can tell "no radius"
+  // apart from "radius active but nothing's in range".
+  const highlightedEventIds = useMemo(() => {
+    if (!searchOrigin || activeRadiusMiles === null) return null
+    const ids = new Set<string>()
+    for (const event of visibleEvents) {
+      if (haversineMiles(searchOrigin, { lat: event.lat, lng: event.lng }) <= activeRadiusMiles) {
+        ids.add(event.id)
+      }
+    }
+    return ids
+  }, [visibleEvents, searchOrigin, activeRadiusMiles])
+
   return (
     <section className="std-map-section">
       <h2>Stuff To Do Map</h2>
 
       <div className="std-map-sentence">
-        <span>Find me </span>
-        <div className="std-map-calendar-dropdown" ref={calendarDropdownRef}>
-          <button
-            type="button"
-            className="std-map-sentence-select std-map-calendar-dropdown-trigger"
-            onClick={() => setCalendarDropdownOpen((v) => !v)}
-            aria-haspopup="listbox"
-            aria-expanded={calendarDropdownOpen}
-          >
-            {calendarDropdownLabel}
-          </button>
-          {calendarDropdownOpen && (
-            <div className="std-map-calendar-dropdown-panel" role="listbox" aria-multiselectable="true">
-              <div className="std-map-calendar-dropdown-actions">
-                <button
-                  type="button"
-                  className="std-map-calendar-dropdown-action"
-                  onClick={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
-                >
-                  Select all
-                </button>
-                <button
-                  type="button"
-                  className="std-map-calendar-dropdown-action"
-                  onClick={() => setSelectedTypes(new Set([ALL_SOURCE_KEYS[0]]))}
-                >
-                  Clear
-                </button>
-              </div>
-              {ALL_SOURCE_KEYS.map((key) => (
-                <label key={key} className="std-map-calendar-dropdown-option">
-                  <input
-                    type="checkbox"
-                    checked={selectedTypes.has(key)}
-                    onChange={() => toggleCalendarType(key)}
-                  />
-                  <span className="std-map-legend-dot" style={{ backgroundColor: MAP_CALENDAR_LEGEND[key].color }} />
-                  {MAP_CALENDAR_LEGEND[key].label}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-        <span> events </span>
+        <span>Find me events </span>
         <button
           type="button"
           className="std-map-sentence-toggle"
@@ -581,18 +581,47 @@ export default function EventsMapSection() {
       </form>
 
       <div className="std-map-legend">
+        <div className="std-map-legend-actions">
+          <button
+            type="button"
+            className="std-map-legend-action"
+            onClick={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            className="std-map-legend-action"
+            onClick={() => setSelectedTypes(new Set([ALL_SOURCE_KEYS[0]]))}
+          >
+            Clear
+          </button>
+        </div>
         {ALL_SOURCE_KEYS.map((key) => {
-          const { label, color } = MAP_CALENDAR_LEGEND[key]
+          const { label, color, emoji } = MAP_CALENDAR_LEGEND[key]
           return (
-            <span key={key} className="std-map-legend-chip">
-              <span className="std-map-legend-dot" style={{ backgroundColor: color }} />
-              {label} ({eventCountsByCalendar[key] ?? 0})
-            </span>
+            <label key={key} className="std-map-legend-item">
+              <input
+                type="checkbox"
+                checked={selectedTypes.has(key)}
+                onChange={() => toggleCalendarType(key)}
+              />
+              <span className="std-map-legend-dot" style={{ backgroundColor: color }}>
+                {emoji}
+              </span>
+              <span className="std-map-legend-label">{label}</span>
+              <span className="std-map-legend-count">{eventCountsByCalendar[key] ?? 0}</span>
+            </label>
           )
         })}
       </div>
 
-      <LeafletMap events={visibleEvents} searchOrigin={searchOrigin} radiusMiles={activeRadiusMiles} />
+      <LeafletMap
+        events={visibleEvents}
+        searchOrigin={searchOrigin}
+        radiusMiles={activeRadiusMiles}
+        highlightedEventIds={highlightedEventIds}
+      />
 
       {visibleEvents.length === 0 ? (
         <p className="std-map-empty">
@@ -606,6 +635,8 @@ export default function EventsMapSection() {
           upvoteCounts={upvoteCounts}
           votedEventIds={votedEventIds}
           onToggleUpvote={toggleUpvote}
+          onSelectEvent={setDetailEvent}
+          highlightedEventIds={highlightedEventIds}
         />
       )}
 
@@ -617,8 +648,13 @@ export default function EventsMapSection() {
             upvoteCounts={upvoteCounts}
             votedEventIds={votedEventIds}
             onToggleUpvote={toggleUpvote}
+            onSelectEvent={setDetailEvent}
           />
         </>
+      )}
+
+      {detailEvent && (
+        <EventDetailModal event={detailEvent} onClose={() => setDetailEvent(null)} />
       )}
     </section>
   )
