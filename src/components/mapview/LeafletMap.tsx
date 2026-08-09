@@ -14,7 +14,7 @@ import CalendarLegendControl from './CalendarLegendControl'
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
-const MARKER_LABEL_MAX_CHARS = 30
+const MARKER_LABEL_MAX_CHARS = 15
 type ZoomBucket = 'sm' | 'md' | 'lg'
 const MARKER_SIZE = 28
 const MARKER_POPUP_WIDTH = 220
@@ -381,8 +381,16 @@ function EventMarkerGroup({
       icon={icon}
       opacity={opacity}
       eventHandlers={{
-        mouseover: openPopup,
-        mouseout: handleMouseOut,
+        // When the title preview label is showing, it's the hover target
+        // (see the tooltip's own mouseover/mouseout below) — hovering the
+        // marker icon itself only opens the popup as a fallback once the
+        // label is hidden (e.g. crowded/zoomed-out views).
+        mouseover: () => {
+          if (placement.hidden) openPopup()
+        },
+        mouseout: () => {
+          if (placement.hidden) handleMouseOut()
+        },
         // Leaflet's own marker click handler toggles the popup, which would
         // close it right back up if the cursor already opened it via hover —
         // reopen in that case so click always shows it, same as hover.
@@ -397,12 +405,21 @@ function EventMarkerGroup({
           el?.addEventListener('mouseleave', scheduleClose)
           fitPopupWithinView(map, e.popup)
         },
+        // Makes the title preview label itself the hover target for opening
+        // the popup (rather than the marker icon) while it's visible; the
+        // label is pointer-events:none while hidden, so these simply won't
+        // fire in that state.
+        tooltipopen: (e) => {
+          const el = e.tooltip.getElement()
+          el?.addEventListener('mouseenter', openPopup)
+          el?.addEventListener('mouseleave', handleMouseOut)
+        },
       }}
     >
       <Tooltip
         key={`${placement.hidden}`}
         permanent
-        interactive={false}
+        interactive
         direction="top"
         offset={LABEL_OFFSET}
         opacity={1}
@@ -411,7 +428,6 @@ function EventMarkerGroup({
         <div className="std-map-marker-label-inner">
           <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>
             {truncateTitle(event.title)}
-            {count > 1 && <span className="std-map-marker-label-count"> +{count - 1} more</span>}
           </div>
           <div className="std-map-marker-label-time">
             <span
