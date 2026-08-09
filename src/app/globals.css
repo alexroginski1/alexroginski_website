@@ -629,6 +629,15 @@
     display: none;
   }
 
+  /* All marker tooltips share one Leaflet pane and stack by DOM order, so a
+     later marker's collapsed label can otherwise paint over an earlier
+     marker's expanded popup. Force the hovered/expanded label to the top
+     of that pane so its content always stays readable. */
+  .leaflet-tooltip.std-map-marker-label-expanded,
+  .leaflet-tooltip.std-map-marker-label-icon-hovered {
+    z-index: 700 !important;
+  }
+
   .std-map-marker-label-inner {
     @apply rounded-lg border border-stone-200 shadow-sm px-2 py-1.5 bg-white/80;
   }
@@ -692,7 +701,7 @@
      a long description never widens the label or pushes off-screen. */
   .std-map-marker-label-expanded .std-map-marker-label-inner {
     @apply bg-white;
-    width: 220px;
+    width: 320px;
     white-space: normal;
     text-align: left;
   }
@@ -710,7 +719,7 @@
 
   .std-map-marker-label-details {
     @apply mt-1.5 pt-1.5 border-t border-stone-200;
-    max-height: 40vh;
+    max-height: 60vh;
     overflow-y: auto;
     overflow-x: hidden;
   }
