@@ -27,6 +27,18 @@ export default function CalendarLegendControl({
   const rootRef = useRef<HTMLDivElement>(null)
   const allSelected = selectedTypes.size === calendarKeys.length
 
+  let toggleLabel: string
+  if (allSelected) {
+    toggleLabel = 'all calendars'
+  } else if (selectedTypes.size === 1) {
+    const [onlyKey] = selectedTypes
+    toggleLabel = MAP_CALENDAR_LEGEND[onlyKey].label
+  } else if (selectedTypes.size > 1) {
+    toggleLabel = `${selectedTypes.size} types of`
+  } else {
+    toggleLabel = '0 calendars'
+  }
+
   useEffect(() => {
     if (!open) return
     function onPointerDown(e: PointerEvent) {
@@ -44,7 +56,7 @@ export default function CalendarLegendControl({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        {allSelected ? 'all calendars' : `${selectedTypes.size} ${selectedTypes.size === 1 ? 'calendar' : 'calendars'}`}
+        {toggleLabel}
       </button>
       {open && (
         <div className="std-map-calendar-panel">

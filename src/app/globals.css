@@ -485,7 +485,7 @@
   }
 
   .std-map-legend-dot {
-    @apply w-[18px] h-[18px] rounded-full flex-shrink-0 flex items-center justify-center text-[10px] leading-none;
+    @apply w-[18px] h-[18px] rounded-full flex-shrink-0 flex items-center justify-center text-xs leading-none;
   }
 
   .std-event-list {
@@ -496,6 +496,10 @@
 
   .std-event-item {
     @apply flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3;
+  }
+
+  .std-event-section-header {
+    @apply px-1 pt-2 text-xs font-semibold uppercase tracking-wide text-stone-500 first:pt-0;
   }
 
   .std-event-item-main {
@@ -572,7 +576,7 @@
   }
 
   .std-map-count {
-    @apply text-sm text-stone-500 mb-3;
+    @apply text-lg font-medium text-stone-600 mb-3;
   }
 
   .std-map-sentence-input {
@@ -592,12 +596,12 @@
      so its color can be set per-marker (see date color-coding) without
      fighting Leaflet's own tooltip chrome. */
   .leaflet-tooltip.std-map-marker-label {
-    @apply text-[11px] font-medium text-stone-700 text-center;
+    @apply text-xs font-medium text-stone-700 text-center;
     background: transparent;
     border: none;
     box-shadow: none;
     padding: 0;
-    max-width: 130px;
+    max-width: 260px;
   }
 
   .leaflet-tooltip.std-map-marker-label::before {
@@ -630,7 +634,7 @@
      and emoji can afford to grow a bit rather than staying pinned to the
      size that only fits when the map is zoomed out and crowded. */
   .std-map-zoom-md .leaflet-tooltip.std-map-marker-label {
-    max-width: 165px;
+    max-width: 330px;
   }
 
   .std-map-zoom-md .std-map-marker-label-title {
@@ -642,7 +646,7 @@
   }
 
   .std-map-zoom-lg .leaflet-tooltip.std-map-marker-label {
-    max-width: 195px;
+    max-width: 390px;
   }
 
   .std-map-zoom-lg .std-map-marker-label-title {
@@ -697,10 +701,10 @@
     @apply absolute flex items-center justify-center rounded-full bg-stone-900 text-white font-semibold leading-none;
     top: -4px;
     right: -4px;
-    min-width: 15px;
-    height: 15px;
+    min-width: 18px;
+    height: 18px;
     padding: 0 3px;
-    font-size: 9px;
+    font-size: 12px;
     border: 1.5px solid white;
   }
 

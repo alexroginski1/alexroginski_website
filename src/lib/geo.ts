@@ -17,7 +17,7 @@ export function haversineMiles(a: LatLng, b: LatLng): number {
 // straight-line search radius — not real routing/travel times.
 export const TRANSPORT_SPEEDS_MPH = {
   walk: 3,
-  bike: 10,
+  bike: 5,
   car: 18,
 } as const
 

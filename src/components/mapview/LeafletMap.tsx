@@ -220,6 +220,42 @@ function LabelPlacer({
   return null
 }
 
+// Keeps a just-opened popup fully inside the map's current viewport by
+// nudging the popup's own on-screen position — never the map — so hovering
+// a marker near an edge never pans the view out from under the cursor.
+const POPUP_VIEW_PADDING = 12
+
+function fitPopupWithinView(map: L.Map, popup: L.Popup) {
+  const el = popup.getElement()
+  if (!el) return
+  const mapRect = map.getContainer().getBoundingClientRect()
+  const popupRect = el.getBoundingClientRect()
+
+  let shiftX = 0
+  if (popupRect.right > mapRect.right - POPUP_VIEW_PADDING) {
+    shiftX = mapRect.right - POPUP_VIEW_PADDING - popupRect.right
+  }
+  if (popupRect.left + shiftX < mapRect.left + POPUP_VIEW_PADDING) {
+    shiftX = mapRect.left + POPUP_VIEW_PADDING - popupRect.left
+  }
+
+  let shiftY = 0
+  if (popupRect.top < mapRect.top + POPUP_VIEW_PADDING) {
+    shiftY = mapRect.top + POPUP_VIEW_PADDING - popupRect.top
+  }
+  if (popupRect.bottom + shiftY > mapRect.bottom - POPUP_VIEW_PADDING) {
+    shiftY = mapRect.bottom - POPUP_VIEW_PADDING - popupRect.bottom
+  }
+
+  if (!shiftX && !shiftY) return
+  // left/bottom (not the transform Leaflet uses for the marker anchor) are
+  // what _updatePosition just set, so nudging them moves the popup only.
+  const currentLeft = parseFloat(el.style.left || '0')
+  const currentBottom = parseFloat(el.style.bottom || '0')
+  el.style.left = `${currentLeft + shiftX}px`
+  el.style.bottom = `${currentBottom - shiftY}px`
+}
+
 // On touch devices, a single-finger drag over the map would otherwise pan
 // the map instead of scrolling the page — a common source of frustration
 // when a map sits mid-article. Panning starts disabled and turns on after
@@ -266,6 +302,7 @@ function EventMarkerGroup({
   placement: LabelPlacement
   registerMarker: (key: string, marker: L.Marker | null) => void
 }) {
+  const map = useMap()
   const markerRef = useRef<L.Marker>(null)
   const closeTimerRef = useRef<number | null>(null)
   const hoveredRef = useRef(false)
@@ -284,8 +321,10 @@ function EventMarkerGroup({
   useEffect(() => {
     // The open popup's cached size/position is stale once its content
     // (the current event) changes underneath it.
-    markerRef.current?.getPopup()?.update()
-  }, [activeIndex])
+    const popup = markerRef.current?.getPopup()
+    popup?.update()
+    if (popup && markerRef.current?.isPopupOpen()) fitPopupWithinView(map, popup)
+  }, [activeIndex, map])
 
   useEffect(() => {
     registerMarker(group.key, markerRef.current)
@@ -345,6 +384,7 @@ function EventMarkerGroup({
           const el = e.popup.getElement()
           el?.addEventListener('mouseenter', cancelClose)
           el?.addEventListener('mouseleave', scheduleClose)
+          fitPopupWithinView(map, e.popup)
         },
       }}
     >
@@ -369,7 +409,7 @@ function EventMarkerGroup({
         maxWidth={MARKER_POPUP_WIDTH}
         minWidth={MARKER_POPUP_WIDTH}
         maxHeight={260}
-        autoPanPadding={[16, 16]}
+        autoPan={false}
       >
         {count > 1 && (
           <div className="std-map-popup-pager">

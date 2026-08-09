@@ -111,7 +111,7 @@ const MINUTES_CYCLE = [20, 30, 40, 50, 60, 10]
 
 type DatePreset = 'today' | 'tomorrow' | 'weekend' | 'next3' | 'next7' | 'all' | 'custom'
 
-const DATE_PRESET_ORDER: DatePreset[] = ['today', 'tomorrow', 'weekend', 'next3', 'next7', 'all', 'custom']
+const DATE_PRESET_ORDER: DatePreset[] = ['today', 'tomorrow', 'next3', 'next7', 'weekend', 'all', 'custom']
 
 export default function EventsMapSection() {
   const [events, setEvents] = useState<ApiEvent[]>([])
