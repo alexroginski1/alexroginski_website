@@ -3,13 +3,14 @@
 import { useMemo } from 'react'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
 import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
-import { popupEventDateTime, type EventListItem } from '@/lib/mapEventFormat'
+import { isEventEnded, popupEventDateTime, type EventListItem } from '@/lib/mapEventFormat'
 
 // Shared between the map marker popup and the event-list tile popup, so
 // hovering or clicking a dot and hovering or clicking its matching list tile
 // show identical content.
 export default function EventPopupContent({ event }: { event: EventListItem }) {
   const legend = MAP_CALENDAR_LEGEND[event.calendar]
+  const ended = isEventEnded(event.end)
   const descriptionHtml = useMemo(
     () => (event.description ? sanitizeDescriptionHtml(event.description) : null),
     [event.description]
@@ -21,7 +22,10 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
         <span className="std-map-legend-dot" style={{ backgroundColor: legend.color }}>
           {legend.emoji}
         </span>
-        <strong>{event.title}</strong>
+        <strong>
+          {ended && <span className="std-map-popup-ended-badge">Event Ended</span>}
+          <span className={ended ? 'std-map-popup-title-ended' : undefined}>{event.title}</span>
+        </strong>
       </div>
       <div className="std-map-popup-meta">
         {popupEventDateTime(event.start)}

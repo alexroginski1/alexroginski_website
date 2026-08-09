@@ -7,7 +7,7 @@ import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Tooltip, useMap 
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
-import { shortEventDateParts, sfDateKey } from '@/lib/mapEventFormat'
+import { isEventEnded, shortEventDateParts, sfDateKey } from '@/lib/mapEventFormat'
 import EventPopupContent from './EventPopupContent'
 import CalendarLegendControl from './CalendarLegendControl'
 
@@ -288,7 +288,10 @@ function EventMarkerGroup({
 
   const withinRadius = !highlightedEventIds || highlightedEventIds.has(event.id)
   const opacity = withinRadius ? 0.85 : OUTSIDE_RADIUS_OPACITY
-  const highlighted = !!highlightedEventIds && withinRadius
+  // Ended styling takes priority over the "within region" bolding — a past
+  // event reads as inactive regardless of where it was.
+  const ended = isEventEnded(event.end)
+  const highlighted = !!highlightedEventIds && withinRadius && !ended
   const dateColor = dateColorByKey?.get(sfDateKey(event.start)) ?? null
   const dateParts = useMemo(() => shortEventDateParts(event.start), [event.start])
 
@@ -342,11 +345,12 @@ function EventMarkerGroup({
         direction="bottom"
         offset={LABEL_OFFSET}
         opacity={1}
-        className={`std-map-marker-label${hiddenNow ? ' std-map-marker-label-hidden' : ''}${expanded ? ' std-map-marker-label-expanded' : ''}`}
+        className={`std-map-marker-label${hiddenNow ? ' std-map-marker-label-hidden' : ''}${expanded ? ' std-map-marker-label-expanded' : ''}${ended ? ' std-map-marker-label-ended' : ''}`}
       >
         <div className="std-map-marker-label-inner" onMouseEnter={openLabel} onMouseLeave={closeLabel}>
           <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>
-            {truncateTitle(event.title)}
+            {ended && <span className="std-map-marker-label-ended-badge">Event Ended</span>}
+            <span className={ended ? 'std-map-marker-label-title-ended' : undefined}>{truncateTitle(event.title)}</span>
           </div>
           <div className="std-map-marker-label-time">
             <span

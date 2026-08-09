@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
-import { dateTimeFormatter, type EventListItem } from '@/lib/mapEventFormat'
+import { EVENT_ENDED_BACKGROUND_COLOR, MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
+import { dateTimeFormatter, isEventEnded, type EventListItem } from '@/lib/mapEventFormat'
 import EventPopupContent from './EventPopupContent'
 
 const POPUP_WIDTH = 260
@@ -20,6 +20,7 @@ function EventTilePopup({
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+  const ended = isEventEnded(event.end)
 
   useLayoutEffect(() => {
     const el = boxRef.current
@@ -39,7 +40,7 @@ function EventTilePopup({
   return (
     <div
       ref={boxRef}
-      className="std-event-popup"
+      className={`std-event-popup${ended ? ' std-event-popup-ended' : ''}`}
       style={{
         left: pos ? pos.left : anchorRect.right + POPUP_GAP,
         top: pos ? pos.top : anchorRect.top,
@@ -130,16 +131,21 @@ export default function EventsList({
   function renderTile(event: EventListItem) {
     const legend = MAP_CALENDAR_LEGEND[event.calendar]
     const highlighted = highlightedEventIds?.has(event.id) ?? false
+    // Ended styling takes priority over the "within region" highlight —
+    // a past event reads as inactive regardless of where it was.
+    const ended = isEventEnded(event.end)
+    const tileBackground = ended ? EVENT_ENDED_BACKGROUND_COLOR : highlighted ? RADIUS_HIGHLIGHT_FILL_COLOR : undefined
     return (
-      <li
-        key={event.id}
-        className="std-event-item"
-        style={highlighted ? { backgroundColor: RADIUS_HIGHLIGHT_FILL_COLOR } : undefined}
-      >
+      <li key={event.id} className="std-event-item" style={tileBackground ? { backgroundColor: tileBackground } : undefined}>
         <button type="button" className="std-event-item-main" onClick={(e) => toggleFor(event, e.currentTarget)}>
           <div className="std-event-item-title-row">
             <span className="std-event-item-dot" style={{ backgroundColor: legend.color }} />
-            <span className={`std-event-item-title${highlighted ? ' font-bold' : ''}`}>{event.title}</span>
+            {ended && <span className="std-event-item-ended-badge">Event Ended</span>}
+            <span
+              className={`std-event-item-title${highlighted && !ended ? ' font-bold' : ''}${ended ? ' std-event-item-title-ended' : ''}`}
+            >
+              {event.title}
+            </span>
           </div>
           <div className="std-event-item-meta">
             {dateTimeFormatter.format(new Date(event.start))}

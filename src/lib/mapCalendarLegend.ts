@@ -9,6 +9,10 @@ import type { MapCalendarKey } from './calendarIds'
 export const RADIUS_HIGHLIGHT_COLOR = '#bae6fd'
 export const RADIUS_HIGHLIGHT_FILL_COLOR = '#e0f2fe'
 
+// Shown instead of the calendar color/radius highlight once an event's end
+// time has passed, so past events read as inactive everywhere they appear.
+export const EVENT_ENDED_BACKGROUND_COLOR = '#e7e5e4'
+
 export const MAP_CALENDAR_LEGEND: Record<MapCalendarKey, { label: string; color: string; emoji: string }> = {
   sf_arts_culture: { label: 'Arts / Culture', color: '#F4511E', emoji: '🎭' },
   sf_community: { label: 'Community', color: '#7986CB', emoji: '👥' },

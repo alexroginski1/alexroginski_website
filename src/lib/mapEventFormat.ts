@@ -47,6 +47,13 @@ export function popupEventDateTime(iso: string): string {
   return `${longWeekdayFormatter.format(date)}, ${longMonthDayFormatter.format(date)}, ${shortTimeFormatter.format(date)}`
 }
 
+// True once an event's end time has passed — drives the greyed-out,
+// crossed-out "Event Ended" treatment shared by map markers, list tiles,
+// and previews. Takes priority over any "in region" styling.
+export function isEventEnded(end: string): boolean {
+  return new Date(end).getTime() < Date.now()
+}
+
 // "YYYY-MM-DD" in SF time — used to group map markers by calendar day.
 export function sfDateKey(iso: string): string {
   return new Intl.DateTimeFormat('en-CA', {
