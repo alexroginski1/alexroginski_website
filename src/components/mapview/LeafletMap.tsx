@@ -115,7 +115,10 @@ function RecenterOnOrigin({
   useEffect(() => {
     if (!origin) return
     if (radiusMiles !== null && radiusMiles > 0) {
-      const bounds = L.circle([origin.lat, origin.lng], { radius: radiusMiles * MILES_TO_METERS }).getBounds()
+      // toBounds() computes the box from lat/lng math alone, unlike
+      // Circle.getBounds() which needs the circle to already be attached to
+      // a map (it projects through the map's pixel origin) and throws otherwise.
+      const bounds = L.latLng(origin.lat, origin.lng).toBounds(radiusMiles * MILES_TO_METERS * 2)
       map.fitBounds(bounds, { padding: RADIUS_FIT_PADDING })
     } else {
       map.setView([origin.lat, origin.lng], 13)
