@@ -560,13 +560,24 @@
     @apply mt-6 mb-1 text-sm font-semibold text-stone-600;
   }
 
+  /* Background/border live on .std-map-marker-label-inner (not this element)
+     so its color can be set per-marker (see date color-coding) without
+     fighting Leaflet's own tooltip chrome. */
   .leaflet-tooltip.std-map-marker-label {
-    @apply rounded-lg border border-stone-200 bg-white px-2 py-1 text-[11px] font-medium text-stone-700 shadow-sm text-center cursor-pointer;
+    @apply text-[11px] font-medium text-stone-700 text-center cursor-pointer;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
     max-width: 140px;
   }
 
   .leaflet-tooltip.std-map-marker-label::before {
     display: none;
+  }
+
+  .std-map-marker-label-inner {
+    @apply rounded-lg border border-stone-200 shadow-sm px-2 py-1;
   }
 
   .std-map-marker-label-title {
@@ -586,6 +597,34 @@
 
   .leaflet-tooltip.std-map-marker-label-hidden {
     display: none;
+  }
+
+  /* Explicit (matches Leaflet's own pane defaults) so marker labels always
+     render above marker dots, even if something else on the page nudges
+     pane stacking. */
+  .leaflet-tooltip-pane {
+    z-index: 650;
+  }
+
+  .leaflet-marker-pane {
+    z-index: 600;
+  }
+
+  .std-map-hover-preview {
+    @apply absolute rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs text-stone-700 shadow-lg;
+    max-width: 220px;
+    transform: translate(-50%, -100%);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .std-map-hover-preview-title {
+    @apply font-semibold text-stone-800 mb-1;
+  }
+
+  .std-map-hover-preview-desc {
+    @apply text-stone-600;
+    white-space: pre-wrap;
   }
 
   .std-map-marker-icon {

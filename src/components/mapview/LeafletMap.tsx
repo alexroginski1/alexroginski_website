@@ -9,13 +9,43 @@ import type { MapCalendarKey } from '@/lib/calendarIds'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR } from '@/lib/mapCalendarLegend'
 import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
 import { googleCalendarUrl } from '@/lib/googleCalendar'
-import { shortEventDateTime } from './EventsList'
+import { shortEventDateTime, popupEventDateTime, sfDateKey } from './EventsList'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
 const MARKER_LABEL_MAX_WORDS = 6
 const MARKER_SIZE = 28
+const MARKER_POPUP_WIDTH = 220
+const HOVER_PREVIEW_MAX_LINES = 5
+
+// Assigned to distinct calendar days (in order) whenever more than one day
+// of events is visible at once, so same-day markers read as a group at a
+// glance. Cycles if more days than colors are ever shown together.
+const PASTEL_DATE_COLORS = [
+  '#FDE2E4',
+  '#CDE7F0',
+  '#E2F0CB',
+  '#FFF1C1',
+  '#E5D4EF',
+  '#FFDAC1',
+  '#C1FFF4',
+  '#F0D9FF',
+]
+
+// Plain-text preview of an event description for the hover popup — strips
+// any embedded HTML (some calendar sources put raw markup in DESCRIPTION)
+// and keeps only the first few non-blank lines.
+function descriptionPreview(description: string | undefined, maxLines = HOVER_PREVIEW_MAX_LINES): string | null {
+  if (!description) return null
+  const text = new DOMParser().parseFromString(description, 'text/html').body.textContent ?? ''
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  if (lines.length === 0) return null
+  return lines.slice(0, maxLines).join('\n')
+}
 
 function markerIconHtml(color: string, emoji: string, count: number): string {
   const badge = count > 1 ? `<span class="std-map-marker-badge">${count}</span>` : ''
@@ -128,12 +158,51 @@ function LabelDeclutter({ events }: { events: ApiEvent[] }) {
   return null
 }
 
+// Full title + description preview shown on marker hover. Rendered as a
+// plain positioned div (not a Leaflet Tooltip/Popup) so it can't collide
+// with the always-on label tooltip or the click-triggered popup, which are
+// both bound to the marker itself.
+function HoverPreview({ event }: { event: ApiEvent }) {
+  const map = useMap()
+  const [point, setPoint] = useState<{ x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    function update() {
+      const p = map.latLngToContainerPoint([event.lat, event.lng])
+      setPoint({ x: p.x, y: p.y })
+    }
+    update()
+    map.on('move zoom', update)
+    return () => {
+      map.off('move zoom', update)
+    }
+  }, [map, event.lat, event.lng])
+
+  if (!point) return null
+
+  const preview = descriptionPreview(event.description)
+
+  return (
+    <div
+      className="std-map-hover-preview"
+      style={{ left: point.x, top: point.y - (MARKER_SIZE / 2 + 8) }}
+    >
+      <div className="std-map-hover-preview-title">{event.title}</div>
+      {preview && <div className="std-map-hover-preview-desc">{preview}</div>}
+    </div>
+  )
+}
+
 function EventMarkerGroup({
   group,
   highlightedEventIds,
+  dateColorByKey,
+  onHover,
 }: {
   group: EventGroup
   highlightedEventIds: Set<string> | null
+  dateColorByKey: Map<string, string> | null
+  onHover: (event: ApiEvent | null) => void
 }) {
   const markerRef = useRef<L.Marker>(null)
   const [index, setIndex] = useState(0)
@@ -162,13 +231,23 @@ function EventMarkerGroup({
   const withinRadius = !highlightedEventIds || highlightedEventIds.has(event.id)
   const opacity = withinRadius ? 0.85 : OUTSIDE_RADIUS_OPACITY
   const highlighted = !!highlightedEventIds && withinRadius
+  const dateColor = dateColorByKey?.get(sfDateKey(event.start)) ?? null
 
   function stepIndex(delta: number) {
     setIndex((i) => ((i < count ? i : count - 1) + delta + count) % count)
   }
 
   return (
-    <Marker ref={markerRef} position={[group.lat, group.lng]} icon={icon} opacity={opacity}>
+    <Marker
+      ref={markerRef}
+      position={[group.lat, group.lng]}
+      icon={icon}
+      opacity={opacity}
+      eventHandlers={{
+        mouseover: () => onHover(event),
+        mouseout: () => onHover(null),
+      }}
+    >
       <Tooltip
         permanent
         interactive
@@ -178,13 +257,15 @@ function EventMarkerGroup({
         className="std-map-marker-label"
         eventHandlers={{ click: () => markerRef.current?.openPopup() }}
       >
-        <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>
-          {truncateTitle(event.title)}
-          {count > 1 && <span className="std-map-marker-label-count"> +{count - 1} more</span>}
+        <div className="std-map-marker-label-inner" style={{ backgroundColor: dateColor ?? '#ffffff' }}>
+          <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>
+            {truncateTitle(event.title)}
+            {count > 1 && <span className="std-map-marker-label-count"> +{count - 1} more</span>}
+          </div>
+          <div className="std-map-marker-label-time">{shortEventDateTime(event.start)}</div>
         </div>
-        <div className="std-map-marker-label-time">{shortEventDateTime(event.start)}</div>
       </Tooltip>
-      <Popup maxWidth={280} maxHeight={260}>
+      <Popup maxWidth={MARKER_POPUP_WIDTH} minWidth={MARKER_POPUP_WIDTH} maxHeight={260}>
         {count > 1 && (
           <div className="std-map-popup-pager">
             <button type="button" onClick={() => stepIndex(-1)} aria-label="Previous event at this location">
@@ -200,7 +281,7 @@ function EventMarkerGroup({
         )}
         <strong>{event.title}</strong>
         <br />
-        {new Date(event.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+        {popupEventDateTime(event.start)}
         {event.location && (
           <>
             <br />
@@ -240,6 +321,15 @@ export default function LeafletMap({
   highlightedEventIds: Set<string> | null
 }) {
   const groups = useMemo(() => groupEventsByLocation(events), [events])
+  const [hoveredEvent, setHoveredEvent] = useState<ApiEvent | null>(null)
+
+  // Only worth color-coding by day once more than one day is actually on
+  // screen — a single-day view has nothing to distinguish.
+  const dateColorByKey = useMemo(() => {
+    const keys = Array.from(new Set(events.map((event) => sfDateKey(event.start)))).sort()
+    if (keys.length <= 1) return null
+    return new Map(keys.map((key, i) => [key, PASTEL_DATE_COLORS[i % PASTEL_DATE_COLORS.length]]))
+  }, [events])
 
   return (
     <MapContainer center={SF_CENTER} zoom={12} scrollWheelZoom={false} className="std-map-container">
@@ -280,8 +370,16 @@ export default function LeafletMap({
       )}
 
       {groups.map((group) => (
-        <EventMarkerGroup key={group.key} group={group} highlightedEventIds={highlightedEventIds} />
+        <EventMarkerGroup
+          key={group.key}
+          group={group}
+          highlightedEventIds={highlightedEventIds}
+          dateColorByKey={dateColorByKey}
+          onHover={setHoveredEvent}
+        />
       ))}
+
+      {hoveredEvent && <HoverPreview event={hoveredEvent} />}
 
       <LabelDeclutter events={events} />
     </MapContainer>
