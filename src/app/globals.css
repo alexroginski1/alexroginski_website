@@ -601,7 +601,6 @@
     border: none;
     box-shadow: none;
     padding: 0;
-    max-width: 260px;
   }
 
   .leaflet-tooltip.std-map-marker-label::before {
@@ -609,16 +608,11 @@
   }
 
   .std-map-marker-label-inner {
-    @apply rounded-lg border border-stone-200 shadow-sm px-2 py-1.5;
+    @apply rounded-lg border border-stone-200 shadow-sm px-2 py-1.5 bg-white;
   }
 
   .std-map-marker-label-title {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    white-space: normal;
-    overflow-wrap: break-word;
+    white-space: nowrap;
   }
 
   .std-map-marker-label-count {
@@ -630,23 +624,21 @@
     white-space: nowrap;
   }
 
+  /* The colored-by-day pill sits around just the weekday text (e.g. "Mon"),
+     not the whole label — see date color-coding in EventMarkerGroup. */
+  .std-map-marker-label-weekday {
+    @apply rounded px-1 py-0.5;
+  }
+
   /* Zoomed-in views have more screen space per marker, so the title preview
      and emoji can afford to grow a bit rather than staying pinned to the
      size that only fits when the map is zoomed out and crowded. */
-  .std-map-zoom-md .leaflet-tooltip.std-map-marker-label {
-    max-width: 330px;
-  }
-
   .std-map-zoom-md .std-map-marker-label-title {
     font-size: 12px;
   }
 
   .std-map-zoom-md .std-map-marker-emoji {
     transform: scale(1.12);
-  }
-
-  .std-map-zoom-lg .leaflet-tooltip.std-map-marker-label {
-    max-width: 390px;
   }
 
   .std-map-zoom-lg .std-map-marker-label-title {
@@ -732,14 +724,19 @@
 
   .std-map-popup-desc {
     @apply mt-2 text-xs text-stone-700 whitespace-pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .leaflet-popup-content-wrapper {
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 
   /* Positioned to the right of the tile that opened it (see EventsList) so
      it never covers neighboring tiles and block hovering between them. */
   .std-event-popup {
     @apply fixed z-50 rounded-xl border border-stone-200 bg-white p-4 shadow-xl text-sm text-stone-700;
-    max-height: 320px;
-    overflow-y: auto;
   }
 
   @media (min-width: 768px) {

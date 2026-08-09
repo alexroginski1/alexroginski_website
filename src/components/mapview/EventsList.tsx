@@ -89,9 +89,8 @@ export default function EventsList({
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setActive(null)
     }
-    // Scroll events fired from inside the popup itself (it has its own
-    // overflow-y: auto for long descriptions) shouldn't close it — only
-    // scrolling elsewhere on the page should.
+    // Scroll events fired from inside the popup itself shouldn't close it —
+    // only scrolling elsewhere on the page should.
     function handleScroll(e: Event) {
       if (e.target instanceof HTMLElement && e.target.closest('.std-event-popup')) return
       setActive(null)

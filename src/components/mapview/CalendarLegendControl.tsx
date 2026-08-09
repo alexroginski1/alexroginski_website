@@ -29,7 +29,7 @@ export default function CalendarLegendControl({
 
   let toggleLabel: string
   if (allSelected) {
-    toggleLabel = 'all calendars'
+    toggleLabel = 'all types of'
   } else if (selectedTypes.size === 1) {
     const [onlyKey] = selectedTypes
     toggleLabel = MAP_CALENDAR_LEGEND[onlyKey].label

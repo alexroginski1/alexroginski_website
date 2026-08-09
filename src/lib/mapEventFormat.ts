@@ -31,12 +31,13 @@ const longMonthDayFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
 })
 
-// "Mon 5:30 PM" / "Sat 10 AM" — used for the map marker labels, which are
-// too small for the fuller `dateTimeFormatter` output.
-export function shortEventDateTime(iso: string): string {
+// "Mon" + "5:30 PM" / "Sat" + "10 AM" — used for the map marker labels,
+// which are too small for the fuller `dateTimeFormatter` output. Split so
+// the weekday can be styled separately (e.g. color-coded per day).
+export function shortEventDateParts(iso: string): { weekday: string; time: string } {
   const date = new Date(iso)
   const time = shortTimeFormatter.format(date).replace(':00 ', ' ')
-  return `${shortWeekdayFormatter.format(date)} ${time}`
+  return { weekday: shortWeekdayFormatter.format(date), time }
 }
 
 // "Monday, August 9, 10:00 AM" — used in the map marker popup, where a bare

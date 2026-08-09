@@ -7,14 +7,15 @@ import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Popup, Tooltip, 
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
-import { shortEventDateTime, sfDateKey } from '@/lib/mapEventFormat'
+import { shortEventDateParts, sfDateKey } from '@/lib/mapEventFormat'
 import EventPopupContent from './EventPopupContent'
 import CalendarLegendControl from './CalendarLegendControl'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
-const MARKER_LABEL_MAX_WORDS = 9
+const MARKER_LABEL_MAX_CHARS = 30
+type ZoomBucket = 'sm' | 'md' | 'lg'
 const MARKER_SIZE = 28
 const MARKER_POPUP_WIDTH = 220
 const POPUP_CLOSE_DELAY = 200
@@ -67,10 +68,10 @@ function buildMarkerIcon(calendar: MapCalendarKey, count: number): L.DivIcon {
   })
 }
 
-function truncateTitle(title: string, maxWords = MARKER_LABEL_MAX_WORDS): string {
-  const words = title.trim().split(/\s+/)
-  if (words.length <= maxWords) return title.trim()
-  return `${words.slice(0, maxWords).join(' ')}…`
+function truncateTitle(title: string, maxChars = MARKER_LABEL_MAX_CHARS): string {
+  const trimmed = title.trim()
+  if (trimmed.length <= maxChars) return trimmed
+  return `${trimmed.slice(0, maxChars)}...`
 }
 
 // Groups events geocoded to (essentially) the same point so they share one
@@ -335,6 +336,7 @@ function EventMarkerGroup({
   const opacity = withinRadius ? 0.85 : OUTSIDE_RADIUS_OPACITY
   const highlighted = !!highlightedEventIds && withinRadius
   const dateColor = dateColorByKey?.get(sfDateKey(event.start)) ?? null
+  const dateParts = useMemo(() => shortEventDateParts(event.start), [event.start])
 
   function stepIndex(delta: number) {
     setIndex((i) => ((i < count ? i : count - 1) + delta + count) % count)
@@ -397,20 +399,23 @@ function EventMarkerGroup({
         opacity={1}
         className={`std-map-marker-label${placement.hidden ? ' std-map-marker-label-hidden' : ''}`}
       >
-        <div className="std-map-marker-label-inner" style={{ backgroundColor: dateColor ?? '#ffffff' }}>
+        <div className="std-map-marker-label-inner">
           <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>
             {truncateTitle(event.title)}
             {count > 1 && <span className="std-map-marker-label-count"> +{count - 1} more</span>}
           </div>
-          <div className="std-map-marker-label-time">{shortEventDateTime(event.start)}</div>
+          <div className="std-map-marker-label-time">
+            <span
+              className="std-map-marker-label-weekday"
+              style={dateColor ? { backgroundColor: dateColor } : undefined}
+            >
+              {dateParts.weekday}
+            </span>{' '}
+            {dateParts.time}
+          </div>
         </div>
       </Tooltip>
-      <Popup
-        maxWidth={MARKER_POPUP_WIDTH}
-        minWidth={MARKER_POPUP_WIDTH}
-        maxHeight={260}
-        autoPan={false}
-      >
+      <Popup maxWidth={MARKER_POPUP_WIDTH} minWidth={MARKER_POPUP_WIDTH} autoPan={false}>
         {count > 1 && (
           <div className="std-map-popup-pager">
             <button type="button" onClick={() => stepIndex(-1)} aria-label="Previous event at this location">
@@ -457,7 +462,7 @@ export default function LeafletMap({
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [zoom, setZoom] = useState(12)
-  const zoomBucket = zoom >= 16 ? 'lg' : zoom >= 14 ? 'md' : 'sm'
+  const zoomBucket: ZoomBucket = zoom >= 16 ? 'lg' : zoom >= 14 ? 'md' : 'sm'
   const groups = useMemo(() => groupEventsByLocation(events), [events])
 
   // Only worth color-coding by day once more than one day is actually on
