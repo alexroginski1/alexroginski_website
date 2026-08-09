@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR } from '@/lib/mapCalendarLegend'
+import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import { dateTimeFormatter, type EventListItem } from '@/lib/mapEventFormat'
 import EventPopupContent from './EventPopupContent'
 
@@ -143,7 +143,7 @@ export default function EventsList({
             <li
               key={event.id}
               className="std-event-item"
-              style={highlighted ? { backgroundColor: RADIUS_HIGHLIGHT_COLOR } : undefined}
+              style={highlighted ? { backgroundColor: RADIUS_HIGHLIGHT_FILL_COLOR } : undefined}
             >
               <button
                 type="button"

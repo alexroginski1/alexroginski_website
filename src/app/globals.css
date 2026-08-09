@@ -620,6 +620,33 @@
     white-space: nowrap;
   }
 
+  /* Zoomed-in views have more screen space per marker, so the title preview
+     and emoji can afford to grow a bit rather than staying pinned to the
+     size that only fits when the map is zoomed out and crowded. */
+  .std-map-zoom-md .leaflet-tooltip.std-map-marker-label {
+    max-width: 220px;
+  }
+
+  .std-map-zoom-md .std-map-marker-label-title {
+    font-size: 12px;
+  }
+
+  .std-map-zoom-md .std-map-marker-emoji {
+    transform: scale(1.12);
+  }
+
+  .std-map-zoom-lg .leaflet-tooltip.std-map-marker-label {
+    max-width: 260px;
+  }
+
+  .std-map-zoom-lg .std-map-marker-label-title {
+    font-size: 13px;
+  }
+
+  .std-map-zoom-lg .std-map-marker-emoji {
+    transform: scale(1.25);
+  }
+
   /* visibility (not display) so a hidden label keeps its real layout size —
      LabelPlacer in LeafletMap.tsx re-measures it on every zoom/pan to see if
      it can be shown again, and a collapsed (display: none) box would always

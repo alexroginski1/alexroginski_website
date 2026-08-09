@@ -2,7 +2,12 @@ import type { MapCalendarKey } from './calendarIds'
 
 // Shared between the map's radius circle and the matching highlighted
 // event tiles/markers so they visually read as the same "within range" set.
+// The circle uses two shades: a saturated stroke for its edge, and a pale
+// fill for its interior. Highlighted tiles/markers match the pale fill —
+// that's the color that actually reads as "inside the radius" — not the
+// stroke, which is comparatively dark and only ever traces the boundary.
 export const RADIUS_HIGHLIGHT_COLOR = '#bae6fd'
+export const RADIUS_HIGHLIGHT_FILL_COLOR = '#e0f2fe'
 
 export const MAP_CALENDAR_LEGEND: Record<MapCalendarKey, { label: string; color: string; emoji: string }> = {
   sf_arts_culture: { label: 'Arts / Culture', color: '#F4511E', emoji: '🎭' },

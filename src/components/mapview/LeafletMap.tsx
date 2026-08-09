@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Popup, Tooltip, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
-import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR } from '@/lib/mapCalendarLegend'
+import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import { shortEventDateTime, sfDateKey } from '@/lib/mapEventFormat'
 import EventPopupContent from './EventPopupContent'
 import CalendarLegendControl from './CalendarLegendControl'
@@ -98,11 +98,46 @@ function groupEventsByLocation(events: ApiEvent[]): EventGroup[] {
   return Array.from(groups.values())
 }
 
-function RecenterOnOrigin({ origin }: { origin: { lat: number; lng: number } | null }) {
+// Fits the view to the radius circle (with a comfortable margin) rather than
+// jumping to a fixed zoom, so "limit by travel radius" always shows exactly
+// the area that's in range — whether that's a 10-minute walk or an hour's
+// drive. Falls back to a plain recenter when there's no radius to fit yet.
+const RADIUS_FIT_PADDING: [number, number] = [40, 40]
+
+function RecenterOnOrigin({
+  origin,
+  radiusMiles,
+}: {
+  origin: { lat: number; lng: number } | null
+  radiusMiles: number | null
+}) {
   const map = useMap()
   useEffect(() => {
-    if (origin) map.setView([origin.lat, origin.lng], 13)
-  }, [origin, map])
+    if (!origin) return
+    if (radiusMiles !== null && radiusMiles > 0) {
+      const bounds = L.circle([origin.lat, origin.lng], { radius: radiusMiles * MILES_TO_METERS }).getBounds()
+      map.fitBounds(bounds, { padding: RADIUS_FIT_PADDING })
+    } else {
+      map.setView([origin.lat, origin.lng], 13)
+    }
+  }, [origin, radiusMiles, map])
+  return null
+}
+
+// Tracks the map's current zoom level (bucketed) so markers/labels can use a
+// bit more of the available screen space once the user has zoomed in.
+function ZoomBucketWatcher({ onChange }: { onChange: (zoom: number) => void }) {
+  const map = useMap()
+  useEffect(() => {
+    function update() {
+      onChange(map.getZoom())
+    }
+    update()
+    map.on('zoomend', update)
+    return () => {
+      map.off('zoomend', update)
+    }
+  }, [map, onChange])
   return null
 }
 
@@ -431,6 +466,8 @@ export default function LeafletMap({
   onClearCalendars: () => void
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [zoom, setZoom] = useState(12)
+  const zoomBucket = zoom >= 16 ? 'lg' : zoom >= 14 ? 'md' : 'sm'
   const groups = useMemo(() => groupEventsByLocation(events), [events])
 
   // Only worth color-coding by day once more than one day is actually on
@@ -466,7 +503,7 @@ export default function LeafletMap({
   }, [isFullscreen])
 
   return (
-    <div className={`std-map-outer${isFullscreen ? ' std-map-outer-fullscreen' : ''}`}>
+    <div className={`std-map-outer std-map-zoom-${zoomBucket}${isFullscreen ? ' std-map-outer-fullscreen' : ''}`}>
       <MapContainer
         center={SF_CENTER}
         zoom={12}
@@ -480,7 +517,7 @@ export default function LeafletMap({
           maxZoom={19}
         />
 
-        <RecenterOnOrigin origin={searchOrigin} />
+        <RecenterOnOrigin origin={searchOrigin} radiusMiles={radiusMiles} />
 
         {searchOrigin && (
           <>
@@ -499,8 +536,8 @@ export default function LeafletMap({
                 radius={radiusMiles * MILES_TO_METERS}
                 pathOptions={{
                   color: RADIUS_HIGHLIGHT_COLOR,
-                  fillColor: RADIUS_HIGHLIGHT_COLOR,
-                  fillOpacity: 0.12,
+                  fillColor: RADIUS_HIGHLIGHT_FILL_COLOR,
+                  fillOpacity: 0.5,
                   weight: 2,
                 }}
                 interactive={false}
@@ -523,6 +560,7 @@ export default function LeafletMap({
         <LabelPlacer groups={groups} markerRegistry={markerRegistry} onChange={setLabelPlacements} />
         <TouchGate />
         <FullscreenResize isFullscreen={isFullscreen} />
+        <ZoomBucketWatcher onChange={setZoom} />
       </MapContainer>
 
       <div className="std-map-overlay-controls">
