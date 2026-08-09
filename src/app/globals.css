@@ -622,11 +622,32 @@
   }
 
   .std-map-marker-label-inner {
-    @apply rounded-lg border border-stone-200 shadow-sm px-2 py-1.5 bg-white;
+    @apply rounded-lg border border-stone-200 shadow-sm px-2 py-1.5 bg-white/80;
   }
 
   .std-map-marker-label-title {
     white-space: nowrap;
+  }
+
+  /* Hovering fills the label with the same content the marker popup used to
+     show (see EventMarkerGroup) — capped and scrollable vertically only, so
+     a long description never widens the label or pushes off-screen. */
+  .std-map-marker-label-expanded .std-map-marker-label-inner {
+    @apply bg-white;
+    width: 220px;
+    white-space: normal;
+    text-align: left;
+  }
+
+  .std-map-marker-label-expanded .std-map-marker-label-title {
+    white-space: normal;
+  }
+
+  .std-map-marker-label-details {
+    @apply mt-1.5 pt-1.5 border-t border-stone-200;
+    max-height: 20vh;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .std-map-marker-label-count {
@@ -738,11 +759,6 @@
 
   .std-map-popup-desc {
     @apply mt-2 text-xs text-stone-700 whitespace-pre-wrap;
-    overflow-wrap: break-word;
-    word-break: break-word;
-  }
-
-  .leaflet-popup-content-wrapper {
     overflow-wrap: break-word;
     word-break: break-word;
   }

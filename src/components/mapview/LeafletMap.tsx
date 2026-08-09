@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Popup, Tooltip, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Tooltip, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
@@ -17,8 +17,7 @@ const OUTSIDE_RADIUS_OPACITY = 0.25
 const MARKER_LABEL_MAX_CHARS = 15
 type ZoomBucket = 'sm' | 'md' | 'lg'
 const MARKER_SIZE = 28
-const MARKER_POPUP_WIDTH = 220
-const POPUP_CLOSE_DELAY = 200
+const LABEL_CLOSE_DELAY = 200
 
 // Assigned to distinct calendar days (in order) whenever more than one day
 // of events is visible at once, so same-day markers read as a group at a
@@ -158,21 +157,21 @@ function FullscreenResize({ isFullscreen }: { isFullscreen: boolean }) {
   return null
 }
 
-// Marker "permanent" tooltip labels always sit above their dot. Dense
+// Marker "permanent" tooltip labels always sit below their dot. Dense
 // clusters can make that overlap, so LabelPlacer re-checks each label after
 // Leaflet lays them out and hides any that collide with an already-placed
 // label — since Leaflet has no built-in collision detection for tooltips.
 type LabelPlacement = { hidden: boolean }
 const DEFAULT_LABEL_PLACEMENT: LabelPlacement = { hidden: false }
 const LABEL_GAP = MARKER_SIZE / 2 + 1
-const LABEL_OFFSET: [number, number] = [0, -LABEL_GAP]
+const LABEL_OFFSET: [number, number] = [0, LABEL_GAP]
 
 function labelCandidateRect(anchor: { x: number; y: number }, width: number, height: number) {
   return {
     left: anchor.x - width / 2,
-    top: anchor.y - LABEL_GAP - height,
+    top: anchor.y + LABEL_GAP,
     right: anchor.x + width / 2,
-    bottom: anchor.y - LABEL_GAP,
+    bottom: anchor.y + LABEL_GAP + height,
   }
 }
 
@@ -221,51 +220,6 @@ function LabelPlacer({
   return null
 }
 
-// Keeps a just-opened popup fully inside the map's current viewport by
-// nudging the popup's own on-screen position — never the map — so hovering
-// a marker near an edge never pans the view out from under the cursor.
-const POPUP_VIEW_PADDING = 12
-
-function fitPopupWithinView(map: L.Map, popup: L.Popup) {
-  const el = popup.getElement()
-  if (!el) return
-  const mapRect = map.getContainer().getBoundingClientRect()
-  const popupRect = el.getBoundingClientRect()
-
-  // Clamp to whichever is smaller: the map's own box, or the browser
-  // viewport. A tall map can scroll partway off the top of the page, in
-  // which case mapRect.top is negative — clamping to that alone would still
-  // let the popup land above the visible screen.
-  const viewTop = Math.max(mapRect.top, 0)
-  const viewBottom = Math.min(mapRect.bottom, window.innerHeight)
-  const viewLeft = Math.max(mapRect.left, 0)
-  const viewRight = Math.min(mapRect.right, window.innerWidth)
-
-  let shiftX = 0
-  if (popupRect.right > viewRight - POPUP_VIEW_PADDING) {
-    shiftX = viewRight - POPUP_VIEW_PADDING - popupRect.right
-  }
-  if (popupRect.left + shiftX < viewLeft + POPUP_VIEW_PADDING) {
-    shiftX = viewLeft + POPUP_VIEW_PADDING - popupRect.left
-  }
-
-  let shiftY = 0
-  if (popupRect.top < viewTop + POPUP_VIEW_PADDING) {
-    shiftY = viewTop + POPUP_VIEW_PADDING - popupRect.top
-  }
-  if (popupRect.bottom + shiftY > viewBottom - POPUP_VIEW_PADDING) {
-    shiftY = viewBottom - POPUP_VIEW_PADDING - popupRect.bottom
-  }
-
-  if (!shiftX && !shiftY) return
-  // left/bottom (not the transform Leaflet uses for the marker anchor) are
-  // what _updatePosition just set, so nudging them moves the popup only.
-  const currentLeft = parseFloat(el.style.left || '0')
-  const currentBottom = parseFloat(el.style.bottom || '0')
-  el.style.left = `${currentLeft + shiftX}px`
-  el.style.bottom = `${currentBottom - shiftY}px`
-}
-
 // On touch devices, a single-finger drag over the map would otherwise pan
 // the map instead of scrolling the page — a common source of frustration
 // when a map sits mid-article. Panning starts disabled and turns on after
@@ -312,11 +266,10 @@ function EventMarkerGroup({
   placement: LabelPlacement
   registerMarker: (key: string, marker: L.Marker | null) => void
 }) {
-  const map = useMap()
   const markerRef = useRef<L.Marker>(null)
   const closeTimerRef = useRef<number | null>(null)
-  const hoveredRef = useRef(false)
   const [index, setIndex] = useState(0)
+  const [expanded, setExpanded] = useState(false)
   const count = group.events.length
   // Clamp rather than reset to 0 on prop changes, so re-filtering the map
   // doesn't yank the user back to the first event mid-browse.
@@ -327,14 +280,6 @@ function EventMarkerGroup({
     () => (count > 1 ? buildMarkerIcon(event.calendar, count) : MARKER_ICONS[event.calendar]),
     [event.calendar, count]
   )
-
-  useEffect(() => {
-    // The open popup's cached size/position is stale once its content
-    // (the current event) changes underneath it.
-    const popup = markerRef.current?.getPopup()
-    popup?.update()
-    if (popup && markerRef.current?.isPopupOpen()) fitPopupWithinView(map, popup)
-  }, [activeIndex, map])
 
   useEffect(() => {
     registerMarker(group.key, markerRef.current)
@@ -358,21 +303,22 @@ function EventMarkerGroup({
     }
   }
 
-  function scheduleClose() {
+  function openLabel() {
     cancelClose()
-    closeTimerRef.current = window.setTimeout(() => markerRef.current?.closePopup(), POPUP_CLOSE_DELAY)
+    setExpanded(true)
   }
 
-  function openPopup() {
+  function closeLabel() {
     cancelClose()
-    hoveredRef.current = true
-    markerRef.current?.openPopup()
+    closeTimerRef.current = window.setTimeout(() => setExpanded(false), LABEL_CLOSE_DELAY)
   }
 
-  function handleMouseOut() {
-    hoveredRef.current = false
-    scheduleClose()
-  }
+  // The label is normally the hover target itself (its onMouseEnter/Leave
+  // below); this fallback only matters once LabelPlacer has hidden it for
+  // being too crowded, at which point it has pointer-events:none and the
+  // marker dot has to pick up hovering instead. Forcing it visible while
+  // expanded (see hiddenNow) lets that fallback still show something.
+  const hiddenNow = placement.hidden && !expanded
 
   return (
     <Marker
@@ -381,38 +327,11 @@ function EventMarkerGroup({
       icon={icon}
       opacity={opacity}
       eventHandlers={{
-        // When the title preview label is showing, it's the hover target
-        // (see the tooltip's own mouseover/mouseout below) — hovering the
-        // marker icon itself only opens the popup as a fallback once the
-        // label is hidden (e.g. crowded/zoomed-out views).
         mouseover: () => {
-          if (placement.hidden) openPopup()
+          if (placement.hidden) openLabel()
         },
         mouseout: () => {
-          if (placement.hidden) handleMouseOut()
-        },
-        // Leaflet's own marker click handler toggles the popup, which would
-        // close it right back up if the cursor already opened it via hover —
-        // reopen in that case so click always shows it, same as hover.
-        popupclose: () => {
-          if (hoveredRef.current) markerRef.current?.openPopup()
-        },
-        // Keeps the popup open while the cursor travels from the marker up
-        // into the popup content itself (e.g. to click the calendar link).
-        popupopen: (e) => {
-          const el = e.popup.getElement()
-          el?.addEventListener('mouseenter', cancelClose)
-          el?.addEventListener('mouseleave', scheduleClose)
-          fitPopupWithinView(map, e.popup)
-        },
-        // Makes the title preview label itself the hover target for opening
-        // the popup (rather than the marker icon) while it's visible; the
-        // label is pointer-events:none while hidden, so these simply won't
-        // fire in that state.
-        tooltipopen: (e) => {
-          const el = e.tooltip.getElement()
-          el?.addEventListener('mouseenter', openPopup)
-          el?.addEventListener('mouseleave', handleMouseOut)
+          if (placement.hidden) closeLabel()
         },
       }}
     >
@@ -420,12 +339,12 @@ function EventMarkerGroup({
         key={`${placement.hidden}`}
         permanent
         interactive
-        direction="top"
+        direction="bottom"
         offset={LABEL_OFFSET}
         opacity={1}
-        className={`std-map-marker-label${placement.hidden ? ' std-map-marker-label-hidden' : ''}`}
+        className={`std-map-marker-label${hiddenNow ? ' std-map-marker-label-hidden' : ''}${expanded ? ' std-map-marker-label-expanded' : ''}`}
       >
-        <div className="std-map-marker-label-inner">
+        <div className="std-map-marker-label-inner" onMouseEnter={openLabel} onMouseLeave={closeLabel}>
           <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>
             {truncateTitle(event.title)}
           </div>
@@ -438,24 +357,26 @@ function EventMarkerGroup({
             </span>{' '}
             {dateParts.time}
           </div>
+          {expanded && (
+            <div className="std-map-marker-label-details">
+              {count > 1 && (
+                <div className="std-map-popup-pager">
+                  <button type="button" onClick={() => stepIndex(-1)} aria-label="Previous event at this location">
+                    ‹
+                  </button>
+                  <span>
+                    {activeIndex + 1} of {count} here
+                  </span>
+                  <button type="button" onClick={() => stepIndex(1)} aria-label="Next event at this location">
+                    ›
+                  </button>
+                </div>
+              )}
+              <EventPopupContent event={event} />
+            </div>
+          )}
         </div>
       </Tooltip>
-      <Popup maxWidth={MARKER_POPUP_WIDTH} minWidth={MARKER_POPUP_WIDTH} autoPan={false}>
-        {count > 1 && (
-          <div className="std-map-popup-pager">
-            <button type="button" onClick={() => stepIndex(-1)} aria-label="Previous event at this location">
-              ‹
-            </button>
-            <span>
-              {activeIndex + 1} of {count} here
-            </span>
-            <button type="button" onClick={() => stepIndex(1)} aria-label="Next event at this location">
-              ›
-            </button>
-          </div>
-        )}
-        <EventPopupContent event={event} />
-      </Popup>
     </Marker>
   )
 }
