@@ -21,5 +21,5 @@ export const MAP_CALENDAR_LEGEND: Record<MapCalendarKey, { label: string; color:
   sf_tech: { label: 'Tech', color: '#039BE5', emoji: '💻' },
   sf_bars: { label: 'Bars', color: '#8E24AA', emoji: '🍸' },
   sf_dancing: { label: 'Dancing', color: '#E67C73', emoji: '💃' },
-  sf_sports_exercise: { label: 'Sports / Exercise', color: '#F6BF26', emoji: '🏃' },
+  sf_sports_exercise: { label: 'Exercise', color: '#F6BF26', emoji: '🏃' },
 }
