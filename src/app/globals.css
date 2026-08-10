@@ -651,36 +651,19 @@
     white-space: nowrap;
   }
 
-  /* Fixed-width preview box (~20 characters) for the title text. Longer
-     titles (truncated to 40 chars in JS, see truncateTitle) sit still until
-     hovered — either directly, or via the marker dot (see
-     .std-map-marker-label-icon-hovered) — at which point they scroll to
-     reveal the rest instead of just clipping. */
+  /* Fixed-width preview box (~20 characters per line) for the title text.
+     Longer titles (truncated to 40 chars in JS, see truncateTitle) wrap onto
+     a second line instead of a first; anything still overflowing after that
+     (e.g. a single very long word) gets clipped with an ellipsis. */
   .std-map-marker-label-title-scroll {
-    display: inline-block;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     max-width: 20ch;
     overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    white-space: normal;
     vertical-align: bottom;
-  }
-
-  .std-map-marker-label-title:hover .std-map-marker-label-title-scroll,
-  .std-map-marker-label-icon-hovered .std-map-marker-label-title-scroll {
-    text-overflow: unset;
-    animation: std-map-title-scroll 4s linear 0.4s infinite;
-  }
-
-  @keyframes std-map-title-scroll {
-    0%,
-    15% {
-      transform: translateX(0);
-    }
-    85%,
-    100% {
-      /* Never scrolls past 0 for titles that already fit in 20ch. */
-      transform: translateX(min(0px, calc(20ch - 100%)));
-    }
   }
 
   .std-map-marker-label-title-ended {
@@ -716,10 +699,12 @@
   }
 
   .std-map-marker-label-expanded .std-map-marker-label-title-scroll {
+    display: block;
     max-width: none;
     white-space: normal;
-    animation: none;
-    transform: none;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
   }
 
   .std-map-marker-label-details {
