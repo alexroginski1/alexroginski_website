@@ -2,7 +2,7 @@
 
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Tooltip, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
@@ -259,12 +259,14 @@ function EventMarkerGroup({
   dateColorByKey,
   placement,
   registerMarker,
+  topZIndexRef,
 }: {
   group: EventGroup
   highlightedEventIds: Set<string> | null
   dateColorByKey: Map<string, string> | null
   placement: LabelPlacement
   registerMarker: (key: string, marker: L.Marker | null) => void
+  topZIndexRef: RefObject<number>
 }) {
   const markerRef = useRef<L.Marker>(null)
   const closeTimerRef = useRef<number | null>(null)
@@ -310,8 +312,20 @@ function EventMarkerGroup({
     }
   }
 
+  // All marker labels share one Leaflet pane, so with no per-marker z-index
+  // two nearby labels stack by DOM order rather than by who's actually being
+  // hovered — a lingering label (still open during its close delay) can end
+  // up painted over the one the pointer is on. Bumping a shared counter on
+  // every hover start guarantees whichever label was interacted with most
+  // recently always wins, regardless of DOM order or how many are open.
+  function bringToFront() {
+    const el = markerRef.current?.getTooltip()?.getElement()
+    if (el) el.style.zIndex = String(++topZIndexRef.current)
+  }
+
   function openLabel() {
     cancelClose()
+    bringToFront()
     setExpanded(true)
   }
 
@@ -336,6 +350,7 @@ function EventMarkerGroup({
       eventHandlers={{
         mouseover: () => {
           setIconHovered(true)
+          bringToFront()
           if (placement.hidden) openLabel()
         },
         mouseout: () => {
@@ -445,6 +460,7 @@ export default function LeafletMap({
     [markerRegistry]
   )
   const [labelPlacements, setLabelPlacements] = useState<Map<string, LabelPlacement>>(new Map())
+  const topZIndexRef = useRef(700)
 
   useEffect(() => {
     if (!isFullscreen) return
@@ -512,6 +528,7 @@ export default function LeafletMap({
             dateColorByKey={dateColorByKey}
             placement={labelPlacements.get(group.key) ?? DEFAULT_LABEL_PLACEMENT}
             registerMarker={registerMarker}
+            topZIndexRef={topZIndexRef}
           />
         ))}
 

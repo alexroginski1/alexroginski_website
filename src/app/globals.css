@@ -631,11 +631,16 @@
 
   /* All marker tooltips share one Leaflet pane and stack by DOM order, so a
      later marker's collapsed label can otherwise paint over an earlier
-     marker's expanded popup. Force the hovered/expanded label to the top
-     of that pane so its content always stays readable. */
+     marker's expanded popup. This is a baseline for the moment a label first
+     opens; EventMarkerGroup's bringToFront() then sets a per-marker inline
+     z-index (higher specificity, so it wins over this rule) that keeps
+     bumping ahead of previously-opened labels, so whichever one the pointer
+     is on now is always the one on top — not just tied with a stale one
+     still lingering during its close delay. Not !important, so that inline
+     override can take effect. */
   .leaflet-tooltip.std-map-marker-label-expanded,
   .leaflet-tooltip.std-map-marker-label-icon-hovered {
-    z-index: 700 !important;
+    z-index: 700;
   }
 
   .std-map-marker-label-inner {
