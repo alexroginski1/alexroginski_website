@@ -127,28 +127,57 @@ function parseEventDate(label: string, now: Date): Date | null {
   return dt
 }
 
-function parseRow(cells: string[], now: Date): StatsApiRow | null {
-  if (cells.length !== 9) return null
-  const [titleCell, descCell, startCell, endCell, rawLocCell, cleanedCell, , sourceCalCell] = cells
+// The debug table's columns, keyed by header text rather than a fixed
+// position — the source app has added/reordered columns before (e.g. the
+// "Calendar Link" column) and a positional cells.length check silently
+// dropped every row when that happened. Only these columns are consumed;
+// unknown columns (extra or reordered) are ignored rather than breaking
+// parsing.
+const REQUIRED_COLUMNS = [
+  'Event Title',
+  'Event Description',
+  'Start',
+  'End',
+  'Raw Location',
+  'Cleaned Location',
+  'Source Google Calendar',
+] as const
 
-  const title = decodeText(titleCell)
+function parseHeaderIndex(html: string): Record<string, number> | null {
+  const theadMatch = html.match(/<thead>([\s\S]*?)<\/thead>/)
+  if (!theadMatch) return null
+  const headers = [...theadMatch[1].matchAll(/<th>([\s\S]*?)<\/th>/g)].map((m) => decodeText(m[1]))
+  const index: Record<string, number> = {}
+  headers.forEach((name, i) => {
+    index[name] = i
+  })
+  return index
+}
+
+function parseRow(cells: string[], columnIndex: Record<string, number>, now: Date): StatsApiRow | null {
+  const cell = (name: string): string => {
+    const i = columnIndex[name]
+    return i === undefined ? '' : (cells[i] ?? '')
+  }
+
+  const title = decodeText(cell('Event Title'))
   if (!title) return null
 
-  const calendar = SOURCE_CALENDAR_TO_KEY[decodeText(sourceCalCell)]
+  const calendar = SOURCE_CALENDAR_TO_KEY[decodeText(cell('Source Google Calendar'))]
   if (!calendar) return null
 
-  const start = parseEventDate(decodeText(startCell), now)
-  const end = parseEventDate(decodeText(endCell), now)
+  const start = parseEventDate(decodeText(cell('Start')), now)
+  const end = parseEventDate(decodeText(cell('End')), now)
   if (!start || !end) return null
 
-  const rawLocation = decodeText(rawLocCell) || undefined
-  const cleanedLocation = decodeText(cleanedCell)
+  const rawLocation = decodeText(cell('Raw Location')) || undefined
+  const cleanedLocation = decodeText(cell('Cleaned Location'))
   const unknownLocation = !cleanedLocation || cleanedLocation.toLowerCase() === 'location not found'
 
   // Description cells hold raw HTML (some sources embed literal <a> tags),
   // preserved as-is so the client's sanitizeDescriptionHtml() can allowlist
   // it the same way it already does for calendar-sourced descriptions.
-  const description = descCell.trim() || undefined
+  const description = cell('Event Description').trim() || undefined
 
   const id = `${calendar}:${hashString(`${title}|${start.toISOString()}|${rawLocation ?? ''}`)}`
 
@@ -170,6 +199,17 @@ export async function fetchStatsApiEvents(now: Date): Promise<StatsApiRow[]> {
     clearTimeout(timeout)
   }
 
+  const columnIndex = parseHeaderIndex(html)
+  if (!columnIndex) return []
+
+  // If the source table drops a column this code depends on, fail loudly
+  // (caller treats a thrown error as "source unreachable" and skips caching
+  // the empty result) rather than silently returning zero events again.
+  const missingColumns = REQUIRED_COLUMNS.filter((name) => !(name in columnIndex))
+  if (missingColumns.length) {
+    throw new Error(`stats API table is missing expected column(s): ${missingColumns.join(', ')}`)
+  }
+
   const tbodyMatch = html.match(/<tbody>([\s\S]*?)<\/tbody>/)
   if (!tbodyMatch) return []
   const rowMatches = tbodyMatch[1].match(/<tr>[\s\S]*?<\/tr>/g) ?? []
@@ -177,7 +217,7 @@ export async function fetchStatsApiEvents(now: Date): Promise<StatsApiRow[]> {
   const rows: StatsApiRow[] = []
   for (const rowHtml of rowMatches) {
     const cells = [...rowHtml.matchAll(/<td>([\s\S]*?)<\/td>/g)].map((m) => m[1])
-    const row = parseRow(cells, now)
+    const row = parseRow(cells, columnIndex, now)
     if (row) rows.push(row)
   }
   return rows
