@@ -651,16 +651,21 @@
     white-space: nowrap;
   }
 
-  /* Fixed-width preview box (~20 characters per line) for the title text.
-     Longer titles (truncated to 40 chars in JS, see truncateTitle) wrap onto
-     a second line instead of a first; anything still overflowing after that
-     (e.g. a single very long word) gets clipped with an ellipsis. */
+  /* Preview box for the title text, capped at 2 lines. Longer titles
+     (truncated to 40 chars in JS, see truncateTitle) wrap across both lines;
+     anything still overflowing after that (e.g. a single very long word)
+     gets clipped with an ellipsis. max-width is a generous ch-based cap
+     (not a fixed pixel box) so short titles shrink to fit and long titles
+     get the full two lines' worth of room before wrapping. This clamp stays
+     in effect even when the label is hover-expanded (see
+     .std-map-marker-label-expanded below) so the title preview never
+     changes appearance on hover. */
   .std-map-marker-label-title-scroll {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-clamp: 2;
-    max-width: 20ch;
+    max-width: 30ch;
     overflow: hidden;
     white-space: normal;
     vertical-align: bottom;
@@ -686,25 +691,15 @@
 
   /* Hovering fills the label with the same content the marker popup used to
      show (see EventMarkerGroup) — capped and scrollable vertically only, so
-     a long description never widens the label or pushes off-screen. */
+     a long description never widens the label or pushes off-screen. The
+     title preview itself (.std-map-marker-label-title-scroll) is
+     intentionally left un-overridden here so it keeps its collapsed 2-line
+     clamp and never changes appearance on hover. */
   .std-map-marker-label-expanded .std-map-marker-label-inner {
     @apply bg-white;
     width: 320px;
     white-space: normal;
     text-align: left;
-  }
-
-  .std-map-marker-label-expanded .std-map-marker-label-title {
-    white-space: normal;
-  }
-
-  .std-map-marker-label-expanded .std-map-marker-label-title-scroll {
-    display: block;
-    max-width: none;
-    white-space: normal;
-    overflow: visible;
-    -webkit-line-clamp: unset;
-    line-clamp: unset;
   }
 
   .std-map-marker-label-details {
