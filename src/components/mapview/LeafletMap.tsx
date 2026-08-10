@@ -18,7 +18,7 @@ const MARKER_LABEL_MAX_CHARS = 40
 type ZoomBucket = 'sm' | 'md' | 'lg'
 const MARKER_SIZE = 28
 const LABEL_CLOSE_DELAY = 200
-
+// 
 // Assigned to distinct calendar days (in order) whenever more than one day
 // of events is visible at once, so same-day markers read as a group at a
 // glance. Cycles if more days than colors are ever shown together.
