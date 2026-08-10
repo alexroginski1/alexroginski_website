@@ -220,6 +220,11 @@ function LabelPlacer({
   return null
 }
 
+function isTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0
+}
+
 // On touch devices, a single-finger drag over the map would otherwise pan
 // the map instead of scrolling the page — a common source of frustration
 // when a map sits mid-article. Panning starts disabled and turns on after
@@ -230,8 +235,7 @@ function TouchGate() {
   const [active, setActive] = useState(false)
 
   useEffect(() => {
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
-    if (!isTouchDevice) {
+    if (!isTouchDevice()) {
       setActive(true)
       return
     }
@@ -324,6 +328,13 @@ function EventMarkerGroup({
   }
 
   function openLabel() {
+    // Touch devices have no real hover state — mobile browsers fire a
+    // synthetic mouseover/mouseout pair on tap for :hover compatibility,
+    // which would otherwise pop the detail card open (and often leave it
+    // stuck, since the matching mouseout doesn't reliably land on the same
+    // element). Expanding stays a desktop-hover-only affordance; mobile
+    // visitors get event details from the list below the map instead.
+    if (isTouchDevice()) return
     cancelClose()
     bringToFront()
     setExpanded(true)
