@@ -26,7 +26,7 @@ const SOURCE_CALENDAR_TO_KEY: Record<string, MapCalendarKey> = {
   'SF Tech': 'sf_tech',
   'SF Bars': 'sf_bars',
   'SF Dancing': 'sf_dancing',
-  'SF Sports/Exercise': 'sf_sports_exercise',
+  'SF Exercise': 'sf_sports_exercise',
 }
 
 function decodeEntities(text: string): string {

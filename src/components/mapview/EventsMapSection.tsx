@@ -53,7 +53,7 @@ function useMapBreakoutWidth() {
 const ALL_SOURCE_KEYS = Object.keys(MAP_CALENDAR_LEGEND) as MapCalendarKey[]
 const TRANSPORT_MODES = Object.keys(TRANSPORT_SPEEDS_MPH) as TransportMode[]
 const STORAGE_KEY = 'std_map_filters'
-const STORAGE_VERSION = 4
+const STORAGE_VERSION = 5
 
 // Default "+location" anchor and its known coordinates, so the location
 // clause can activate instantly on open without a geocode round-trip.
@@ -70,6 +70,8 @@ type PersistedMapFilters = {
   selectedTypes: MapCalendarKey[]
   lastGeocode: LastGeocode | null
   radiusEnabled: boolean
+  keywordsEnabled: boolean
+  keywordsText: string
 }
 
 function transportLabel(mode: TransportMode): string {
@@ -129,6 +131,10 @@ export default function EventsMapSection() {
   const [allDates, setAllDates] = useState(false)
   const [customDateMode, setCustomDateMode] = useState(false)
   const [radiusEnabled, setRadiusEnabled] = useState(false)
+  const [keywordsEnabled, setKeywordsEnabled] = useState(false)
+  const [keywordsText, setKeywordsText] = useState('')
+  const [editingKeywords, setEditingKeywords] = useState(false)
+  const [keywordsDraft, setKeywordsDraft] = useState('')
   const [searchOrigin, setSearchOrigin] = useState<{ lat: number; lng: number } | null>(null)
   const [lastGeocode, setLastGeocode] = useState<LastGeocode | null>(null)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -170,6 +176,10 @@ export default function EventsMapSection() {
             }
           }
           if (parsed.radiusEnabled) setRadiusEnabled(true)
+          if (parsed.keywordsEnabled && parsed.keywordsText) {
+            setKeywordsEnabled(true)
+            setKeywordsText(parsed.keywordsText)
+          }
         }
       }
     } catch {
@@ -190,6 +200,8 @@ export default function EventsMapSection() {
         selectedTypes: Array.from(selectedTypes),
         lastGeocode,
         radiusEnabled,
+        keywordsEnabled,
+        keywordsText,
       }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
@@ -198,7 +210,17 @@ export default function EventsMapSection() {
       }
     }, 300)
     return () => clearTimeout(timeout)
-  }, [hydrated, locationText, transportMode, minutes, selectedTypes, lastGeocode, radiusEnabled])
+  }, [
+    hydrated,
+    locationText,
+    transportMode,
+    minutes,
+    selectedTypes,
+    lastGeocode,
+    radiusEnabled,
+    keywordsEnabled,
+    keywordsText,
+  ])
 
   function toggleCalendarType(key: MapCalendarKey) {
     setSelectedTypes((prev) => {
@@ -336,14 +358,43 @@ export default function EventsMapSection() {
     resolveLocation(text)
   }
 
+  function enableKeywords() {
+    setKeywordsEnabled(true)
+    setKeywordsDraft(keywordsText)
+    setEditingKeywords(true)
+  }
+
+  function disableKeywords() {
+    setKeywordsEnabled(false)
+    setEditingKeywords(false)
+  }
+
+  function startEditingKeywords() {
+    setKeywordsDraft(keywordsText)
+    setEditingKeywords(true)
+  }
+
+  function commitKeywordsEdit() {
+    setEditingKeywords(false)
+    const text = keywordsDraft.trim()
+    setKeywordsText(text)
+    // An empty phrase matches everything, which isn't a useful filter.
+    if (!text) setKeywordsEnabled(false)
+  }
+
   // Gated on radiusEnabled (rather than clearing searchOrigin outright) so
   // the last-searched location stays cached for instant reuse on reopen.
   const activeSearchOrigin = radiusEnabled ? searchOrigin : null
   const activeRadiusMiles = activeSearchOrigin ? computeRadiusMiles(transportMode, minutes) : null
 
-  // Counts events matching the current date filter per calendar, independent
-  // of which calendars are checked, so the legend shows what's available for
-  // a source even while it's unchecked.
+  // Case-insensitive substring match against title/description — the "where
+  // event contains" clause. Null (rather than empty string) when the filter
+  // is off, so callers can skip the check entirely.
+  const activeKeywords = keywordsEnabled && keywordsText ? keywordsText.toLowerCase() : null
+
+  // Counts events matching the current date/keyword filters per calendar,
+  // independent of which calendars are checked, so the legend shows what's
+  // available for a source even while it's unchecked.
   const eventCountsByCalendar = useMemo(() => {
     const counts = Object.fromEntries(ALL_SOURCE_KEYS.map((key) => [key, 0])) as Record<MapCalendarKey, number>
     for (const event of events ?? []) {
@@ -351,10 +402,17 @@ export default function EventsMapSection() {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
       }
+      if (
+        activeKeywords &&
+        !event.title.toLowerCase().includes(activeKeywords) &&
+        !(event.description ?? '').toLowerCase().includes(activeKeywords)
+      ) {
+        continue
+      }
       counts[event.calendar] = (counts[event.calendar] ?? 0) + 1
     }
     return counts
-  }, [events, allDates, dateFrom, dateTo])
+  }, [events, allDates, dateFrom, dateTo, activeKeywords])
 
   const visibleEvents = useMemo(() => {
     return (events ?? []).filter((event) => {
@@ -363,14 +421,21 @@ export default function EventsMapSection() {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
       }
+      if (
+        activeKeywords &&
+        !event.title.toLowerCase().includes(activeKeywords) &&
+        !(event.description ?? '').toLowerCase().includes(activeKeywords)
+      ) {
+        return false
+      }
       // Events outside the travel radius stay visible (dimmed in LeafletMap)
       // rather than being dropped — the radius is a highlight, not a filter.
       return true
     })
-  }, [events, selectedTypes, allDates, dateFrom, dateTo])
+  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords])
 
-  // Same calendar/date filters as visibleEvents, applied to events whose
-  // location couldn't be placed on the map at all.
+  // Same calendar/date/keyword filters as visibleEvents, applied to events
+  // whose location couldn't be placed on the map at all.
   const visibleUnknownLocationEvents = useMemo(() => {
     return unknownLocationEvents.filter((event) => {
       if (!selectedTypes.has(event.calendar)) return false
@@ -378,9 +443,16 @@ export default function EventsMapSection() {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
       }
+      if (
+        activeKeywords &&
+        !event.title.toLowerCase().includes(activeKeywords) &&
+        !(event.description ?? '').toLowerCase().includes(activeKeywords)
+      ) {
+        return false
+      }
       return true
     })
-  }, [unknownLocationEvents, selectedTypes, allDates, dateFrom, dateTo])
+  }, [unknownLocationEvents, selectedTypes, allDates, dateFrom, dateTo, activeKeywords])
 
   // Events within the active travel radius — highlighted on the map and
   // pinned to the top of the list below. Null (not an empty set) when the
@@ -456,6 +528,42 @@ export default function EventsMapSection() {
         ) : (
           <button type="button" className="std-map-sentence-toggle" onClick={enableLocation}>
             +location
+          </button>
+        )}
+
+        {keywordsEnabled ? (
+          <>
+            <span>where event contains </span>
+            {editingKeywords ? (
+              <input
+                type="text"
+                className="std-map-input std-map-sentence-input"
+                value={keywordsDraft}
+                onChange={(e) => setKeywordsDraft(e.target.value)}
+                onBlur={commitKeywordsEdit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                  if (e.key === 'Escape') setEditingKeywords(false)
+                }}
+                autoFocus
+              />
+            ) : (
+              <button type="button" className="std-map-sentence-toggle" onClick={startEditingKeywords}>
+                &lsquo;{keywordsText}&rsquo;
+              </button>
+            )}
+            <button
+              type="button"
+              className="std-map-sentence-remove"
+              onClick={disableKeywords}
+              aria-label="Remove keyword filter"
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <button type="button" className="std-map-sentence-toggle" onClick={enableKeywords}>
+            +keywords
           </button>
         )}
       </div>
