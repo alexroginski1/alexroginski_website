@@ -540,28 +540,61 @@
     @apply mt-1 text-xs text-stone-500 truncate;
   }
 
-  .std-map-outer {
-    @apply relative;
+  /* Fixed, full-viewport takeover for the events map/list experience —
+     open by default (see EventsMapSection) so the map "takes up the whole
+     screen" the way it would on a dedicated map app, rather than sitting
+     inline at a capped width in the article column. */
+  .std-map-overlay {
+    @apply fixed inset-0 z-[9999] bg-white flex flex-col;
   }
 
-  .std-map-outer-fullscreen {
-    @apply fixed inset-0 z-[9999] bg-white p-3;
+  .std-map-overlay-close {
+    @apply absolute z-[1002] flex items-center justify-center w-8 h-8 rounded-full border border-stone-300 bg-white/95 text-stone-600 text-2xl leading-none shadow hover:bg-stone-50 cursor-pointer;
+    top: 10px;
+    right: 10px;
+  }
+
+  /* Docked at the top rather than truly absolutely overlaid, so the filter
+     sentence's variable-height wrapping (location/keyword edits, custom
+     date row) can never get clipped by or clip the map beneath it — the
+     translucent background and shadow still read as "floating over" the
+     map visually. */
+  .std-map-overlay-topbar {
+    @apply relative z-[1001] flex-shrink-0 bg-white/95 border-b border-stone-200 shadow-sm px-4 pt-4 pb-2;
+    padding-right: 3.5rem;
+  }
+
+  .std-map-overlay-body {
+    @apply relative flex-1 min-h-0;
+  }
+
+  .std-map-overlay-list {
+    @apply h-full overflow-y-auto px-4 py-4;
+  }
+
+  .std-map-view-toggle {
+    @apply fixed left-1/2 z-[1002];
+    bottom: 20px;
+    transform: translateX(-50%);
+  }
+
+  .std-map-view-toggle button {
+    @apply rounded-full bg-stone-900 text-white text-sm font-medium px-5 py-2.5 shadow-lg hover:bg-stone-800 active:bg-stone-950 transition-colors cursor-pointer;
+  }
+
+  /* Shown in place of the overlay once the visitor closes it — a small
+     inline summary with a way back in, rather than leaving a dead gap in
+     the page where the map used to sit. */
+  .std-map-collapsed {
+    @apply flex flex-wrap items-center gap-3;
+  }
+
+  .std-map-outer {
+    @apply relative w-full h-full;
   }
 
   .std-map-container {
-    @apply w-full rounded-xl border border-stone-200 overflow-hidden;
-    height: 340px;
-  }
-
-  .std-map-container-fullscreen {
-    width: 100% !important;
-    height: 100% !important;
-  }
-
-  .std-map-overlay-controls {
-    @apply absolute z-[1000];
-    top: 10px;
-    left: 54px;
+    @apply w-full h-full rounded-none overflow-hidden;
   }
 
   .std-map-calendar-control {
@@ -579,10 +612,20 @@
     max-width: 260px;
   }
 
-  .std-map-fullscreen-btn {
-    @apply absolute z-[1000] rounded-md border border-stone-300 bg-white/95 px-2.5 py-1 text-xs font-medium text-stone-700 shadow hover:bg-stone-50 cursor-pointer;
-    top: 10px;
-    right: 10px;
+  /* The click-triggered detail panel for a marker — analogous to Google
+     Maps' info panel for a clicked point of interest. Anchored to the map
+     area (not the viewport), full-height on desktop; a bottom sheet on
+     narrow screens (see the max-width: 767px override below). */
+  .std-map-sidebar {
+    @apply absolute top-0 left-0 bottom-0 z-[1001] bg-white shadow-2xl overflow-y-auto px-4 pt-10 pb-4;
+    width: 360px;
+    max-width: 100%;
+  }
+
+  .std-map-sidebar-close {
+    @apply absolute flex items-center justify-center w-7 h-7 rounded-full border border-stone-300 bg-white text-stone-600 text-xl leading-none hover:bg-stone-50 cursor-pointer;
+    top: 8px;
+    right: 8px;
   }
 
   .std-map-loading {
@@ -614,114 +657,32 @@
     @apply mt-6 mb-1 text-sm font-semibold text-stone-600;
   }
 
-  /* Background/border live on .std-map-marker-label-inner (not this element)
-     so its color can be set per-marker (see date color-coding) without
-     fighting Leaflet's own tooltip chrome. */
+  /* The always-visible title preview below each marker. No hover state —
+     it's a static label, click-through to the marker icon opens the
+     sidebar. Sized to its content only (no max-width/height) per the
+     "no fixed width or height" preview requirement; MARKER_LABEL_MAX_CHARS
+     in LeafletMap.tsx caps the text itself instead. */
   .leaflet-tooltip.std-map-marker-label {
-    @apply text-xs font-medium text-stone-700 text-center;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 0;
+    @apply rounded-lg border border-stone-200 shadow-sm text-xs font-medium text-stone-700 text-center bg-white/90;
+    padding: 3px 6px;
   }
 
   .leaflet-tooltip.std-map-marker-label::before {
     display: none;
   }
 
-  /* All marker tooltips share one Leaflet pane and stack by DOM order, so a
-     later marker's collapsed label can otherwise paint over an earlier
-     marker's expanded popup. This is a baseline for the moment a label first
-     opens; EventMarkerGroup's bringToFront() then sets a per-marker inline
-     z-index (higher specificity, so it wins over this rule) that keeps
-     bumping ahead of previously-opened labels, so whichever one the pointer
-     is on now is always the one on top — not just tied with a stale one
-     still lingering during its close delay. Not !important, so that inline
-     override can take effect. */
-  .leaflet-tooltip.std-map-marker-label-expanded,
-  .leaflet-tooltip.std-map-marker-label-icon-hovered {
-    z-index: 700;
-  }
-
-  .std-map-marker-label-inner {
-    @apply rounded-lg border border-stone-200 shadow-sm px-2 py-1.5 bg-white/80;
-  }
-
   .std-map-marker-label-title {
     white-space: nowrap;
-  }
-
-  /* Preview box for the title text, capped at 2 lines. Longer titles
-     (truncated to 40 chars in JS, see truncateTitle) wrap across both lines;
-     anything still overflowing after that (e.g. a single very long word)
-     gets clipped with an ellipsis. max-width is a generous ch-based cap
-     (not a fixed pixel box) so short titles shrink to fit and long titles
-     get the full two lines' worth of room before wrapping. This clamp stays
-     in effect even when the label is hover-expanded (see
-     .std-map-marker-label-expanded below) so the title preview never
-     changes appearance on hover. */
-  .std-map-marker-label-title-scroll {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    max-width: 30ch;
-    overflow: hidden;
-    white-space: normal;
-    vertical-align: bottom;
   }
 
   .std-map-marker-label-title-ended {
     @apply line-through text-stone-500;
   }
 
-  .std-map-marker-label-ended-badge {
-    @apply mr-0.5 text-stone-600;
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  /* Overrides the base .std-map-marker-label-inner background — applies
-     whether the label is collapsed or expanded, and outranks any "in
-     region" styling since a past event has nothing left to highlight. */
-  .std-map-marker-label-ended .std-map-marker-label-inner {
+  /* Outranks any "in region" bolding since a past event has nothing left
+     to highlight. */
+  .leaflet-tooltip.std-map-marker-label-ended {
     background-color: #e7e5e4;
-  }
-
-  /* Hovering fills the label with the same content the marker popup used to
-     show (see EventMarkerGroup) — capped and scrollable vertically only, so
-     a long description never widens the label or pushes off-screen. The
-     title preview itself (.std-map-marker-label-title-scroll) is
-     intentionally left un-overridden here so it keeps its collapsed 2-line
-     clamp and never changes appearance on hover. */
-  .std-map-marker-label-expanded .std-map-marker-label-inner {
-    @apply bg-white;
-    width: 320px;
-    white-space: normal;
-    text-align: left;
-  }
-
-  .std-map-marker-label-details {
-    @apply mt-1.5 pt-1.5 border-t border-stone-200;
-    max-height: 60vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .std-map-marker-label-count {
-    @apply text-stone-500 font-normal;
-  }
-
-  .std-map-marker-label-time {
-    @apply text-stone-500 font-normal;
-    white-space: nowrap;
-  }
-
-  /* The colored-by-day pill sits around just the weekday text (e.g. "Mon"),
-     not the whole label — see date color-coding in EventMarkerGroup. */
-  .std-map-marker-label-weekday {
-    @apply rounded px-1 py-0.5;
   }
 
   /* Zoomed-in views have more screen space per marker, so the title preview
@@ -761,12 +722,6 @@
 
   .leaflet-marker-pane {
     z-index: 600;
-  }
-
-  .std-map-touch-hint {
-    @apply absolute left-1/2 bottom-3 -translate-x-1/2 rounded-full bg-stone-900/80 text-white text-xs font-medium px-3 py-1.5;
-    pointer-events: none;
-    z-index: 1000;
   }
 
   .std-map-marker-icon {
@@ -842,9 +797,16 @@
     @apply bg-stone-200;
   }
 
-  @media (min-width: 768px) {
-    .std-map-container {
-      height: 620px;
+  /* Below the desktop breakpoint the click-triggered sidebar becomes a
+     bottom sheet instead of a full-height side panel, so it doesn't cover
+     the whole map on a phone-sized screen. */
+  @media (max-width: 767px) {
+    .std-map-sidebar {
+      top: auto;
+      width: 100%;
+      max-height: 55vh;
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 1rem;
     }
   }
 }

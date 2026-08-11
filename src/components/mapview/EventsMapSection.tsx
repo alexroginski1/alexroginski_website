@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import EventsList from './EventsList'
 import CalendarLegendControl from './CalendarLegendControl'
@@ -16,39 +16,10 @@ import {
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
-  loading: () => <div className="std-map-container std-map-loading">Loading map…</div>,
+  loading: () => <div className="std-map-overlay-body std-map-loading">Loading map…</div>,
 })
 
-// On desktop the map is allowed to grow wider than the article's text
-// column, up to this cap, using whatever room is actually free to its right
-// (which varies with the table-of-contents sidebar at the lg breakpoint).
-const MAP_MAX_WIDTH = 1000
-const MAP_MIN_WIDTH = 624 // the article column's natural content width
-const MAP_RIGHT_GUTTER = 24 // matches the page's own side padding
-
-function useMapBreakoutWidth() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState<number | undefined>(undefined)
-
-  useLayoutEffect(() => {
-    function update() {
-      const el = ref.current
-      if (!el) return
-      if (window.innerWidth < 768) {
-        setWidth(undefined)
-        return
-      }
-      const left = el.getBoundingClientRect().left
-      const available = window.innerWidth - left - MAP_RIGHT_GUTTER
-      setWidth(Math.min(MAP_MAX_WIDTH, Math.max(available, MAP_MIN_WIDTH)))
-    }
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [])
-
-  return { ref, width }
-}
+type ViewMode = 'map' | 'list'
 
 const ALL_SOURCE_KEYS = Object.keys(MAP_CALENDAR_LEGEND) as MapCalendarKey[]
 const TRANSPORT_MODES = Object.keys(TRANSPORT_SPEEDS_MPH) as TransportMode[]
@@ -141,7 +112,23 @@ export default function EventsMapSection() {
 
   const hydratedRef = useRef(false)
   const [hydrated, setHydrated] = useState(false)
-  const { ref: mapWrapRef, width: mapWidth } = useMapBreakoutWidth()
+
+  const [overlayOpen, setOverlayOpen] = useState(true)
+  const [viewMode, setViewMode] = useState<ViewMode>('map')
+
+  useEffect(() => {
+    if (!overlayOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOverlayOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [overlayOpen])
 
   useEffect(() => {
     fetch('/api/events')
@@ -469,8 +456,36 @@ export default function EventsMapSection() {
     return ids
   }, [visibleEvents, activeSearchOrigin, activeRadiusMiles])
 
+  if (!overlayOpen) {
+    return (
+      <section className="std-map-section">
+        <div className="std-map-collapsed">
+          <p className="std-map-count">
+            {loadError
+              ? "Couldn't load events right now — try again shortly."
+              : `${visibleEvents.length} event${visibleEvents.length === 1 ? '' : 's'} found`}
+          </p>
+          <button type="button" className="std-map-search-btn" onClick={() => setOverlayOpen(true)}>
+            Open map
+          </button>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="std-map-section">
+    <div className="std-map-overlay">
+      <button
+        type="button"
+        className="std-map-overlay-close"
+        onClick={() => setOverlayOpen(false)}
+        aria-label="Close map view"
+      >
+        ×
+      </button>
+
+      <div className="std-map-overlay-topbar">
       <div className="std-map-sentence">
         <span>Find me </span>
         <CalendarLegendControl
@@ -605,32 +620,39 @@ export default function EventsMapSection() {
           </>
         )}
       </p>
-
-      <div ref={mapWrapRef} style={mapWidth ? { width: mapWidth, maxWidth: 'none' } : undefined}>
-        <LeafletMap
-          events={visibleEvents}
-          searchOrigin={activeSearchOrigin}
-          radiusMiles={activeRadiusMiles}
-          highlightedEventIds={highlightedEventIds}
-          calendarKeys={ALL_SOURCE_KEYS}
-          selectedTypes={selectedTypes}
-          eventCounts={eventCountsByCalendar}
-          onToggleCalendar={toggleCalendarType}
-          onSelectAllCalendars={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
-          onClearCalendars={() => setSelectedTypes(new Set())}
-        />
       </div>
 
-      {visibleEvents.length > 0 && (
-        <EventsList events={visibleEvents} highlightedEventIds={highlightedEventIds} />
-      )}
+      <div className="std-map-overlay-body">
+        {viewMode === 'map' ? (
+          <LeafletMap
+            events={visibleEvents}
+            searchOrigin={activeSearchOrigin}
+            radiusMiles={activeRadiusMiles}
+            highlightedEventIds={highlightedEventIds}
+          />
+        ) : (
+          <div className="std-map-overlay-list">
+            {visibleEvents.length > 0 ? (
+              <EventsList events={visibleEvents} highlightedEventIds={highlightedEventIds} />
+            ) : (
+              <p className="std-map-empty">No events match your filters.</p>
+            )}
+            {visibleUnknownLocationEvents.length > 0 && (
+              <>
+                <h3 className="std-map-unknown-location-heading">Events with unknown locations</h3>
+                <EventsList events={visibleUnknownLocationEvents} />
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
-      {visibleUnknownLocationEvents.length > 0 && (
-        <>
-          <h3 className="std-map-unknown-location-heading">Events with unknown locations</h3>
-          <EventsList events={visibleUnknownLocationEvents} />
-        </>
-      )}
+      <div className="std-map-view-toggle">
+        <button type="button" onClick={() => setViewMode((v) => (v === 'map' ? 'list' : 'map'))}>
+          {viewMode === 'map' ? '☰ List' : '🗺️ Map'}
+        </button>
+      </div>
+    </div>
     </section>
   )
 }

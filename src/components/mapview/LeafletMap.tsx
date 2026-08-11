@@ -2,36 +2,20 @@
 
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Tooltip, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
-import { isEventEnded, shortEventDateParts, sfDateKey } from '@/lib/mapEventFormat'
-import EventPopupContent from './EventPopupContent'
-import CalendarLegendControl from './CalendarLegendControl'
+import { isEventEnded } from '@/lib/mapEventFormat'
+import MapEventSidebar from './MapEventSidebar'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
-const MARKER_LABEL_MAX_CHARS = 40
+const MARKER_LABEL_MAX_CHARS = 20
 type ZoomBucket = 'sm' | 'md' | 'lg'
 const MARKER_SIZE = 28
-const LABEL_CLOSE_DELAY = 200
-// 
-// Assigned to distinct calendar days (in order) whenever more than one day
-// of events is visible at once, so same-day markers read as a group at a
-// glance. Cycles if more days than colors are ever shown together.
-const PASTEL_DATE_COLORS = [
-  '#FDE2E4',
-  '#CDE7F0',
-  '#E2F0CB',
-  '#FFF1C1',
-  '#E5D4EF',
-  '#FFDAC1',
-  '#C1FFF4',
-  '#F0D9FF',
-]
 
 function markerIconHtml(color: string, emoji: string, count: number): string {
   const badge = count > 1 ? `<span class="std-map-marker-badge">${count}</span>` : ''
@@ -67,7 +51,7 @@ function buildMarkerIcon(calendar: MapCalendarKey, count: number): L.DivIcon {
   })
 }
 
-function truncateTitle(title: string, maxChars = MARKER_LABEL_MAX_CHARS): string {
+function truncateTitle(title: string, maxChars: number): string {
   const trimmed = title.trim()
   if (trimmed.length <= maxChars) return trimmed
   return `${trimmed.slice(0, maxChars)}...`
@@ -144,16 +128,22 @@ function ZoomBucketWatcher({ onChange }: { onChange: (zoom: number) => void }) {
   return null
 }
 
-// Leaflet caches the container's pixel size, so toggling fullscreen (which
-// resizes the container via CSS, not Leaflet's own API) leaves tiles
-// misaligned until something tells it to re-measure. The timeout lets the
-// layout settle first.
-function FullscreenResize({ isFullscreen }: { isFullscreen: boolean }) {
+// Leaflet caches the container's pixel size at init, but the map now always
+// renders inside a flex layout whose final height isn't necessarily settled
+// on the first paint — so tiles can come in misaligned until re-measured.
+function MapResizeWatcher() {
   const map = useMap()
   useEffect(() => {
     const timeout = setTimeout(() => map.invalidateSize(), 50)
-    return () => clearTimeout(timeout)
-  }, [isFullscreen, map])
+    function onResize() {
+      map.invalidateSize()
+    }
+    window.addEventListener('resize', onResize)
+    return () => {
+      clearTimeout(timeout)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [map])
   return null
 }
 
@@ -220,71 +210,22 @@ function LabelPlacer({
   return null
 }
 
-function isTouchDevice(): boolean {
-  if (typeof window === 'undefined') return false
-  return 'ontouchstart' in window || navigator.maxTouchPoints > 0
-}
-
-// On touch devices, a single-finger drag over the map would otherwise pan
-// the map instead of scrolling the page — a common source of frustration
-// when a map sits mid-article. Panning starts disabled and turns on after
-// the visitor's first touch, so the first swipe through the section always
-// scrolls the page like everything else on it.
-function TouchGate() {
-  const map = useMap()
-  const [active, setActive] = useState(false)
-
-  useEffect(() => {
-    if (!isTouchDevice()) {
-      setActive(true)
-      return
-    }
-    map.dragging.disable()
-    const container = map.getContainer()
-    function activate() {
-      map.dragging.enable()
-      setActive(true)
-      container.removeEventListener('touchstart', activate)
-    }
-    container.addEventListener('touchstart', activate, { passive: true })
-    return () => {
-      container.removeEventListener('touchstart', activate)
-      map.dragging.enable()
-    }
-  }, [map])
-
-  if (active) return null
-  return <div className="std-map-touch-hint">Tap the map, then drag to explore</div>
-}
-
 function EventMarkerGroup({
   group,
   highlightedEventIds,
-  dateColorByKey,
   placement,
   registerMarker,
-  topZIndexRef,
+  onSelect,
 }: {
   group: EventGroup
   highlightedEventIds: Set<string> | null
-  dateColorByKey: Map<string, string> | null
   placement: LabelPlacement
   registerMarker: (key: string, marker: L.Marker | null) => void
-  topZIndexRef: RefObject<number>
+  onSelect: (groupKey: string) => void
 }) {
   const markerRef = useRef<L.Marker>(null)
-  const closeTimerRef = useRef<number | null>(null)
-  const [index, setIndex] = useState(0)
-  const [expanded, setExpanded] = useState(false)
-  // Drives the title-preview scroll animation when the marker dot itself is
-  // hovered — the dot and its tooltip label live in separate Leaflet panes,
-  // so CSS :hover on the label alone can't see a hover starting on the dot.
-  const [iconHovered, setIconHovered] = useState(false)
   const count = group.events.length
-  // Clamp rather than reset to 0 on prop changes, so re-filtering the map
-  // doesn't yank the user back to the first event mid-browse.
-  const activeIndex = index < count ? index : count - 1
-  const event = group.events[activeIndex]
+  const event = group.events[0]
 
   const icon = useMemo(
     () => (count > 1 ? buildMarkerIcon(event.calendar, count) : MARKER_ICONS[event.calendar]),
@@ -296,61 +237,12 @@ function EventMarkerGroup({
     return () => registerMarker(group.key, null)
   }, [group.key, registerMarker])
 
-  const withinRadius = !highlightedEventIds || highlightedEventIds.has(event.id)
+  const withinRadius = !highlightedEventIds || group.events.some((e) => highlightedEventIds.has(e.id))
   const opacity = withinRadius ? 0.85 : OUTSIDE_RADIUS_OPACITY
   // Ended styling takes priority over the "within region" bolding — a past
   // event reads as inactive regardless of where it was.
   const ended = isEventEnded(event.end)
   const highlighted = !!highlightedEventIds && withinRadius && !ended
-  const dateColor = dateColorByKey?.get(sfDateKey(event.start)) ?? null
-  const dateParts = useMemo(() => shortEventDateParts(event.start), [event.start])
-
-  function stepIndex(delta: number) {
-    setIndex((i) => ((i < count ? i : count - 1) + delta + count) % count)
-  }
-
-  function cancelClose() {
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current)
-      closeTimerRef.current = null
-    }
-  }
-
-  // All marker labels share one Leaflet pane, so with no per-marker z-index
-  // two nearby labels stack by DOM order rather than by who's actually being
-  // hovered — a lingering label (still open during its close delay) can end
-  // up painted over the one the pointer is on. Bumping a shared counter on
-  // every hover start guarantees whichever label was interacted with most
-  // recently always wins, regardless of DOM order or how many are open.
-  function bringToFront() {
-    const el = markerRef.current?.getTooltip()?.getElement()
-    if (el) el.style.zIndex = String(++topZIndexRef.current)
-  }
-
-  function openLabel() {
-    // Touch devices have no real hover state — mobile browsers fire a
-    // synthetic mouseover/mouseout pair on tap for :hover compatibility,
-    // which would otherwise pop the detail card open (and often leave it
-    // stuck, since the matching mouseout doesn't reliably land on the same
-    // element). Expanding stays a desktop-hover-only affordance; mobile
-    // visitors get event details from the list below the map instead.
-    if (isTouchDevice()) return
-    cancelClose()
-    bringToFront()
-    setExpanded(true)
-  }
-
-  function closeLabel() {
-    cancelClose()
-    closeTimerRef.current = window.setTimeout(() => setExpanded(false), LABEL_CLOSE_DELAY)
-  }
-
-  // The label is normally the hover target itself (its onMouseEnter/Leave
-  // below); this fallback only matters once LabelPlacer has hidden it for
-  // being too crowded, at which point it has pointer-events:none and the
-  // marker dot has to pick up hovering instead. Forcing it visible while
-  // expanded (see hiddenNow) lets that fallback still show something.
-  const hiddenNow = placement.hidden && !expanded
 
   return (
     <Marker
@@ -359,66 +251,22 @@ function EventMarkerGroup({
       icon={icon}
       opacity={opacity}
       eventHandlers={{
-        mouseover: () => {
-          setIconHovered(true)
-          bringToFront()
-          if (placement.hidden) openLabel()
-        },
-        mouseout: () => {
-          setIconHovered(false)
-          if (placement.hidden) closeLabel()
-        },
+        click: () => onSelect(group.key),
       }}
     >
       <Tooltip
-        key={`${placement.hidden}`}
         permanent
-        interactive
+        interactive={false}
         direction="bottom"
         offset={LABEL_OFFSET}
         opacity={1}
-        className={`std-map-marker-label${hiddenNow ? ' std-map-marker-label-hidden' : ''}${expanded ? ' std-map-marker-label-expanded' : ''}${ended ? ' std-map-marker-label-ended' : ''}${iconHovered ? ' std-map-marker-label-icon-hovered' : ''}`}
+        className={`std-map-marker-label${placement.hidden ? ' std-map-marker-label-hidden' : ''}${ended ? ' std-map-marker-label-ended' : ''}`}
       >
-        <div className="std-map-marker-label-inner" onMouseEnter={openLabel} onMouseLeave={closeLabel}>
-          <div className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}`}>
-            <span className="std-map-marker-label-title-scroll">
-              <span className={ended ? 'std-map-marker-label-title-ended' : undefined}>{truncateTitle(event.title)}</span>
-            </span>
-          </div>
-          <div className="std-map-marker-label-time">
-            <span
-              className="std-map-marker-label-weekday"
-              style={dateColor ? { backgroundColor: dateColor } : undefined}
-            >
-              {dateParts.weekday}
-            </span>{' '}
-            {dateParts.time}
-            {ended && (
-              <>
-                {' '}
-                <span className="std-map-marker-label-ended-badge">Event Ended</span>
-              </>
-            )}
-          </div>
-          {expanded && (
-            <div className="std-map-marker-label-details">
-              {count > 1 && (
-                <div className="std-map-popup-pager">
-                  <button type="button" onClick={() => stepIndex(-1)} aria-label="Previous event at this location">
-                    ‹
-                  </button>
-                  <span>
-                    {activeIndex + 1} of {count} here
-                  </span>
-                  <button type="button" onClick={() => stepIndex(1)} aria-label="Next event at this location">
-                    ›
-                  </button>
-                </div>
-              )}
-              <EventPopupContent event={event} />
-            </div>
-          )}
-        </div>
+        <span
+          className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}${ended ? ' std-map-marker-label-title-ended' : ''}`}
+        >
+          {truncateTitle(event.title, MARKER_LABEL_MAX_CHARS)}
+        </span>
       </Tooltip>
     </Marker>
   )
@@ -429,12 +277,6 @@ export default function LeafletMap({
   searchOrigin,
   radiusMiles,
   highlightedEventIds,
-  calendarKeys,
-  selectedTypes,
-  eventCounts,
-  onToggleCalendar,
-  onSelectAllCalendars,
-  onClearCalendars,
 }: {
   events: ApiEvent[]
   searchOrigin: { lat: number; lng: number } | null
@@ -442,25 +284,10 @@ export default function LeafletMap({
   // Events within the travel radius — non-null only while the radius filter
   // is active. Drives marker dimming/bolding to match the event list below.
   highlightedEventIds: Set<string> | null
-  calendarKeys: MapCalendarKey[]
-  selectedTypes: Set<MapCalendarKey>
-  eventCounts: Record<MapCalendarKey, number>
-  onToggleCalendar: (key: MapCalendarKey) => void
-  onSelectAllCalendars: () => void
-  onClearCalendars: () => void
 }) {
-  const [isFullscreen, setIsFullscreen] = useState(false)
   const [zoom, setZoom] = useState(12)
   const zoomBucket: ZoomBucket = zoom >= 16 ? 'lg' : zoom >= 14 ? 'md' : 'sm'
   const groups = useMemo(() => groupEventsByLocation(events), [events])
-
-  // Only worth color-coding by day once more than one day is actually on
-  // screen — a single-day view has nothing to distinguish.
-  const dateColorByKey = useMemo(() => {
-    const keys = Array.from(new Set(events.map((event) => sfDateKey(event.start)))).sort()
-    if (keys.length <= 1) return null
-    return new Map(keys.map((key, i) => [key, PASTEL_DATE_COLORS[i % PASTEL_DATE_COLORS.length]]))
-  }, [events])
 
   const markerRegistry = useRef(new Map<string, L.Marker>()).current
   const registerMarker = useCallback(
@@ -471,29 +298,27 @@ export default function LeafletMap({
     [markerRegistry]
   )
   const [labelPlacements, setLabelPlacements] = useState<Map<string, LabelPlacement>>(new Map())
-  const topZIndexRef = useRef(700)
 
+  // The click-triggered sidebar's target — a marker group plus which of its
+  // (possibly several) co-located events is showing.
+  const [selected, setSelected] = useState<{ groupKey: string; index: number } | null>(null)
+  const selectedGroup = selected ? (groups.find((g) => g.key === selected.groupKey) ?? null) : null
+
+  // Filtering the map out from under an open sidebar (e.g. narrowing the
+  // date range) shouldn't leave it pointed at a marker that's no longer shown.
   useEffect(() => {
-    if (!isFullscreen) return
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setIsFullscreen(false)
-    }
-    document.addEventListener('keydown', onKeyDown)
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = previousOverflow
-    }
-  }, [isFullscreen])
+    if (selected && !selectedGroup) setSelected(null)
+  }, [selected, selectedGroup])
+
+  const selectGroup = useCallback((groupKey: string) => setSelected({ groupKey, index: 0 }), [])
 
   return (
-    <div className={`std-map-outer std-map-zoom-${zoomBucket}${isFullscreen ? ' std-map-outer-fullscreen' : ''}`}>
+    <div className={`std-map-outer std-map-zoom-${zoomBucket}`}>
       <MapContainer
         center={SF_CENTER}
         zoom={12}
-        scrollWheelZoom={false}
-        className={`std-map-container${isFullscreen ? ' std-map-container-fullscreen' : ''}`}
+        scrollWheelZoom
+        className="std-map-container"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -536,38 +361,25 @@ export default function LeafletMap({
             key={group.key}
             group={group}
             highlightedEventIds={highlightedEventIds}
-            dateColorByKey={dateColorByKey}
             placement={labelPlacements.get(group.key) ?? DEFAULT_LABEL_PLACEMENT}
             registerMarker={registerMarker}
-            topZIndexRef={topZIndexRef}
+            onSelect={selectGroup}
           />
         ))}
 
         <LabelPlacer groups={groups} markerRegistry={markerRegistry} onChange={setLabelPlacements} />
-        <TouchGate />
-        <FullscreenResize isFullscreen={isFullscreen} />
+        <MapResizeWatcher />
         <ZoomBucketWatcher onChange={setZoom} />
       </MapContainer>
 
-      <div className="std-map-overlay-controls">
-        <CalendarLegendControl
-          calendarKeys={calendarKeys}
-          selectedTypes={selectedTypes}
-          eventCounts={eventCounts}
-          onToggle={onToggleCalendar}
-          onSelectAll={onSelectAllCalendars}
-          onClear={onClearCalendars}
+      {selectedGroup && (
+        <MapEventSidebar
+          events={selectedGroup.events}
+          index={selected!.index}
+          onIndexChange={(index) => setSelected({ groupKey: selectedGroup.key, index })}
+          onClose={() => setSelected(null)}
         />
-      </div>
-
-      <button
-        type="button"
-        className="std-map-fullscreen-btn"
-        onClick={() => setIsFullscreen((v) => !v)}
-        aria-label={isFullscreen ? 'Exit fullscreen' : 'View map fullscreen'}
-      >
-        {isFullscreen ? '⤡ Exit fullscreen' : '⤢ Fullscreen'}
-      </button>
+      )}
     </div>
   )
 }
