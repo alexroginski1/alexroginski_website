@@ -564,6 +564,15 @@
     right: 10px;
   }
 
+  /* Shown in place of the whole topbar once filters are hidden, so the map
+     takes up the entire screen with only this floating button left to bring
+     the filters back — mirrors .std-map-overlay-close's floating-pill style. */
+  .std-map-filters-reveal {
+    @apply absolute z-[1002] flex items-center justify-center w-9 h-9 rounded-full border border-stone-300 bg-white/95 text-stone-600 shadow hover:bg-stone-50 cursor-pointer;
+    top: 10px;
+    left: 10px;
+  }
+
   /* Docked at the top rather than truly absolutely overlaid, so the filter
      sentence's variable-height wrapping (location/keyword edits, custom
      date row) can never get clipped by or clip the map beneath it — the

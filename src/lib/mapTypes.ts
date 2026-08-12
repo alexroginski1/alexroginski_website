@@ -10,9 +10,13 @@ export type ApiEvent = {
   end: string
   lat: number
   lng: number
+  calendarLink?: string
 }
 
-export type UnknownLocationEvent = Pick<ApiEvent, 'id' | 'calendar' | 'title' | 'description' | 'start' | 'end'>
+export type UnknownLocationEvent = Pick<
+  ApiEvent,
+  'id' | 'calendar' | 'title' | 'description' | 'start' | 'end' | 'calendarLink'
+>
 
 export type EventsResponse = {
   events: ApiEvent[]

@@ -490,17 +490,17 @@ export default function EventsMapSection() {
         ×
       </button>
 
+      {sentenceVisible ? (
       <div className="std-map-overlay-topbar">
       <div className="std-map-sentence-header">
         <button
           type="button"
           className="std-map-sentence-visibility-toggle"
-          onClick={() => setSentenceVisible((v) => !v)}
+          onClick={() => setSentenceVisible(false)}
         >
-          {sentenceVisible ? 'Hide filters ▲' : 'Show filters ▼'}
+          Hide filters ▲
         </button>
       </div>
-      {sentenceVisible && (
       <div className="std-map-sentence">
         <span>Find me </span>
         <CalendarLegendControl
@@ -597,7 +597,6 @@ export default function EventsMapSection() {
           </button>
         )}
       </div>
-      )}
 
       {activeDatePreset === 'custom' && (
         <div className="std-map-filter-row">
@@ -639,6 +638,16 @@ export default function EventsMapSection() {
         )}
       </p>
       </div>
+      ) : (
+        <button
+          type="button"
+          className="std-map-filters-reveal"
+          onClick={() => setSentenceVisible(true)}
+          aria-label="Show filters"
+        >
+          ▼
+        </button>
+      )}
 
       <div className="std-map-overlay-body">
         {eventsLoading ? (

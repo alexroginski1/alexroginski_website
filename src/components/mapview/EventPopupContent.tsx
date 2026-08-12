@@ -34,13 +34,18 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
             <span className="std-map-popup-ended-badge">Event Ended</span>
           </>
         )}
-        {event.location && (
-          <>
-            <br />
-            {event.location}
-          </>
-        )}
       </div>
+      {event.calendarLink && (
+        <a
+          href={event.calendarLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="std-map-gcal-link"
+        >
+          + Add to Google Calendar
+        </a>
+      )}
+      {event.location && <div className="std-map-popup-meta">{event.location}</div>}
       {descriptionHtml && (
         <p className="std-map-popup-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
       )}

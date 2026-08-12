@@ -10,6 +10,7 @@ export type StatsApiRow = {
   unknownLocation: boolean
   start: Date
   end: Date
+  calendarLink?: string
 }
 
 const STATS_API_URL = 'https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/'
@@ -178,10 +179,11 @@ function parseRow(cells: string[], columnIndex: Record<string, number>, now: Dat
   // preserved as-is so the client's sanitizeDescriptionHtml() can allowlist
   // it the same way it already does for calendar-sourced descriptions.
   const description = cell('Event Description').trim() || undefined
+  const calendarLink = decodeText(cell('Calendar Link')) || undefined
 
   const id = `${calendar}:${hashString(`${title}|${start.toISOString()}|${rawLocation ?? ''}`)}`
 
-  return { id, calendar, title, description, rawLocation, cleanedLocation, unknownLocation, start, end }
+  return { id, calendar, title, description, rawLocation, cleanedLocation, unknownLocation, start, end, calendarLink }
 }
 
 export async function fetchStatsApiEvents(now: Date): Promise<StatsApiRow[]> {

@@ -94,5 +94,5 @@ export function sfDateKey(iso: string): string {
 // so this list can render either without needing lat/lng.
 export type EventListItem = Pick<
   ApiEvent,
-  'id' | 'calendar' | 'title' | 'start' | 'end' | 'location' | 'description'
+  'id' | 'calendar' | 'title' | 'start' | 'end' | 'location' | 'description' | 'calendarLink'
 >
