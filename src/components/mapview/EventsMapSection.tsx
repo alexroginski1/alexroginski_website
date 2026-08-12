@@ -90,6 +90,8 @@ export default function EventsMapSection() {
   const [events, setEvents] = useState<ApiEvent[]>([])
   const [unknownLocationEvents, setUnknownLocationEvents] = useState<UnknownLocationEvent[]>([])
   const [loadError, setLoadError] = useState(false)
+  const [eventsLoading, setEventsLoading] = useState(true)
+  const [sentenceVisible, setSentenceVisible] = useState(true)
 
   const [selectedTypes, setSelectedTypes] = useState<Set<MapCalendarKey>>(() => new Set(ALL_SOURCE_KEYS))
   const [locationText, setLocationText] = useState(DEFAULT_LOCATION_TEXT)
@@ -140,6 +142,7 @@ export default function EventsMapSection() {
         if (Array.isArray(data?.unknownLocationEvents)) setUnknownLocationEvents(data.unknownLocationEvents)
       })
       .catch(() => setLoadError(true))
+      .finally(() => setEventsLoading(false))
   }, [])
 
   useEffect(() => {
@@ -463,7 +466,9 @@ export default function EventsMapSection() {
           <p className="std-map-count">
             {loadError
               ? "Couldn't load events right now — try again shortly."
-              : `${visibleEvents.length} event${visibleEvents.length === 1 ? '' : 's'} found`}
+              : eventsLoading
+                ? 'Loading events…'
+                : `${visibleEvents.length} event${visibleEvents.length === 1 ? '' : 's'} found`}
           </p>
           <button type="button" className="std-map-search-btn" onClick={() => setOverlayOpen(true)}>
             Open map
@@ -486,6 +491,16 @@ export default function EventsMapSection() {
       </button>
 
       <div className="std-map-overlay-topbar">
+      <div className="std-map-sentence-header">
+        <button
+          type="button"
+          className="std-map-sentence-visibility-toggle"
+          onClick={() => setSentenceVisible((v) => !v)}
+        >
+          {sentenceVisible ? 'Hide filters ▲' : 'Show filters ▼'}
+        </button>
+      </div>
+      {sentenceVisible && (
       <div className="std-map-sentence">
         <span>Find me </span>
         <CalendarLegendControl
@@ -582,6 +597,7 @@ export default function EventsMapSection() {
           </button>
         )}
       </div>
+      )}
 
       {activeDatePreset === 'custom' && (
         <div className="std-map-filter-row">
@@ -609,6 +625,8 @@ export default function EventsMapSection() {
       <p className="std-map-count">
         {loadError ? (
           "Couldn't load events right now — try again shortly."
+        ) : eventsLoading ? (
+          'Loading events…'
         ) : (
           <>
             {`${visibleEvents.length} event${visibleEvents.length === 1 ? '' : 's'} found`}
@@ -623,7 +641,9 @@ export default function EventsMapSection() {
       </div>
 
       <div className="std-map-overlay-body">
-        {viewMode === 'map' ? (
+        {eventsLoading ? (
+          <div className="std-map-loading h-full">Loading events…</div>
+        ) : viewMode === 'map' ? (
           <LeafletMap
             events={visibleEvents}
             searchOrigin={activeSearchOrigin}

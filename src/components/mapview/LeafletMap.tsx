@@ -7,15 +7,48 @@ import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Tooltip, useMap 
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
-import { isEventEnded } from '@/lib/mapEventFormat'
+import { isEventEnded, relativeTimeLabel, sfDateKey, shortEventDateParts } from '@/lib/mapEventFormat'
 import MapEventSidebar from './MapEventSidebar'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
-const MARKER_LABEL_MAX_CHARS = 20
+const MARKER_LABEL_MAX_CHARS = 30
 type ZoomBucket = 'sm' | 'md' | 'lg'
 const MARKER_SIZE = 28
+
+// Distinct pastel backgrounds for the weekday badge on marker labels, so
+// events on different days are visually distinguishable at a glance. Only
+// assigned when more than one date is present among the visible events —
+// a single-day view has nothing to distinguish, so the badge stays neutral.
+const DAY_BADGE_COLORS = ['#fde68a', '#bfdbfe', '#bbf7d0', '#fbcfe8', '#ddd6fe', '#fed7aa', '#a5f3fc', '#fecaca']
+
+function buildDayColorMap(events: ApiEvent[]): Map<string, string> {
+  const keys = Array.from(new Set(events.map((e) => sfDateKey(e.start)))).sort()
+  const map = new Map<string, string>()
+  if (keys.length <= 1) return map
+  keys.forEach((key, i) => map.set(key, DAY_BADGE_COLORS[i % DAY_BADGE_COLORS.length]))
+  return map
+}
+
+// Remembers the visitor's last map position/zoom across reloads, so they
+// don't have to re-navigate to where they left off every visit.
+const VIEW_STORAGE_KEY = 'std_map_view'
+type SavedView = { lat: number; lng: number; zoom: number }
+
+function loadSavedView(): SavedView | null {
+  try {
+    const raw = localStorage.getItem(VIEW_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.lat === 'number' && typeof parsed?.lng === 'number' && typeof parsed?.zoom === 'number') {
+      return parsed
+    }
+  } catch {
+    // ignore malformed/unavailable localStorage
+  }
+  return null
+}
 
 function markerIconHtml(color: string, emoji: string, count: number): string {
   const badge = count > 1 ? `<span class="std-map-marker-badge">${count}</span>` : ''
@@ -108,6 +141,68 @@ function RecenterOnOrigin({
       map.setView([origin.lat, origin.lng], 13)
     }
   }, [origin, radiusMiles, map])
+  return null
+}
+
+// Events below this count don't get a fit-to-bounds default view — a
+// couple of markers zoomed tight to fit is more disorienting than useful,
+// so those cases just keep the standard SF-wide view.
+const MIN_EVENTS_FOR_FIT = 3
+const EVENTS_FIT_PADDING: [number, number] = [40, 40]
+const EVENTS_FIT_MAX_ZOOM = 15
+
+// Establishes the map's starting position exactly once per mount: the
+// visitor's saved view takes priority (so reloads land where they left
+// off), otherwise the view fits all currently-visible events so the
+// default isn't zoomed out further than the events actually need. Origin-
+// driven centering (RecenterOnOrigin) always wins over both when active.
+function InitialViewSetter({
+  events,
+  savedView,
+  hasOrigin,
+}: {
+  events: ApiEvent[]
+  savedView: SavedView | null
+  hasOrigin: boolean
+}) {
+  const map = useMap()
+  const didInit = useRef(false)
+  useEffect(() => {
+    if (didInit.current || hasOrigin) return
+    didInit.current = true
+    if (savedView) {
+      map.setView([savedView.lat, savedView.lng], savedView.zoom)
+      return
+    }
+    if (events.length > MIN_EVENTS_FOR_FIT) {
+      const bounds = L.latLngBounds(events.map((e): [number, number] => [e.lat, e.lng]))
+      map.fitBounds(bounds, { padding: EVENTS_FIT_PADDING, maxZoom: EVENTS_FIT_MAX_ZOOM })
+    }
+  }, [map, events, savedView, hasOrigin])
+  return null
+}
+
+// Persists the visitor's current view on every pan/zoom so it can be
+// restored by InitialViewSetter on the next visit.
+function MapViewPersistence() {
+  const map = useMap()
+  useEffect(() => {
+    function save() {
+      const center = map.getCenter()
+      try {
+        localStorage.setItem(
+          VIEW_STORAGE_KEY,
+          JSON.stringify({ lat: center.lat, lng: center.lng, zoom: map.getZoom() })
+        )
+      } catch {
+        // ignore quota/availability errors
+      }
+    }
+    map.on('moveend zoomend', save)
+    return () => {
+      map.off('moveend zoomend', save)
+    }
+  }, [map])
   return null
 }
 
@@ -214,12 +309,14 @@ function EventMarkerGroup({
   group,
   highlightedEventIds,
   placement,
+  dayColors,
   registerMarker,
   onSelect,
 }: {
   group: EventGroup
   highlightedEventIds: Set<string> | null
   placement: LabelPlacement
+  dayColors: Map<string, string>
   registerMarker: (key: string, marker: L.Marker | null) => void
   onSelect: (groupKey: string) => void
 }) {
@@ -244,6 +341,13 @@ function EventMarkerGroup({
   const ended = isEventEnded(event.end)
   const highlighted = !!highlightedEventIds && withinRadius && !ended
 
+  const { weekday, time } = shortEventDateParts(event.start)
+  const dayColor = dayColors.get(sfDateKey(event.start))
+  const isToday = sfDateKey(event.start) === sfDateKey(new Date().toISOString())
+  const relative = isToday ? relativeTimeLabel(event.start, event.end) : null
+
+  const onLabelClick = () => onSelect(group.key)
+
   return (
     <Marker
       ref={markerRef}
@@ -251,21 +355,40 @@ function EventMarkerGroup({
       icon={icon}
       opacity={opacity}
       eventHandlers={{
-        click: () => onSelect(group.key),
+        click: onLabelClick,
       }}
     >
       <Tooltip
         permanent
-        interactive={false}
+        interactive
         direction="bottom"
         offset={LABEL_OFFSET}
         opacity={1}
+        eventHandlers={{
+          click: onLabelClick,
+        }}
         className={`std-map-marker-label${placement.hidden ? ' std-map-marker-label-hidden' : ''}${ended ? ' std-map-marker-label-ended' : ''}`}
       >
         <span
           className={`std-map-marker-label-title${highlighted ? ' font-bold' : ''}${ended ? ' std-map-marker-label-title-ended' : ''}`}
         >
           {truncateTitle(event.title, MARKER_LABEL_MAX_CHARS)}
+        </span>
+        <span className="std-map-marker-label-datetime">
+          <span
+            className="std-map-marker-label-day"
+            style={dayColor ? { backgroundColor: dayColor } : undefined}
+          >
+            {weekday}
+          </span>
+          <span className="std-map-marker-label-time">{time}</span>
+          {relative && (
+            <span
+              className={`std-map-marker-label-relative${relative === 'now' ? ' std-map-marker-label-relative-now' : ''}`}
+            >
+              {relative}
+            </span>
+          )}
         </span>
       </Tooltip>
     </Marker>
@@ -288,6 +411,10 @@ export default function LeafletMap({
   const [zoom, setZoom] = useState(12)
   const zoomBucket: ZoomBucket = zoom >= 16 ? 'lg' : zoom >= 14 ? 'md' : 'sm'
   const groups = useMemo(() => groupEventsByLocation(events), [events])
+  const dayColors = useMemo(() => buildDayColorMap(events), [events])
+  // Read once at mount — InitialViewSetter only ever needs this on its first
+  // run, and the saved view is re-captured on every subsequent pan/zoom.
+  const savedView = useRef(loadSavedView()).current
 
   const markerRegistry = useRef(new Map<string, L.Marker>()).current
   const registerMarker = useCallback(
@@ -328,6 +455,8 @@ export default function LeafletMap({
         />
 
         <RecenterOnOrigin origin={searchOrigin} radiusMiles={radiusMiles} />
+        <InitialViewSetter events={events} savedView={savedView} hasOrigin={!!searchOrigin} />
+        <MapViewPersistence />
 
         {searchOrigin && (
           <>
@@ -362,6 +491,7 @@ export default function LeafletMap({
             group={group}
             highlightedEventIds={highlightedEventIds}
             placement={labelPlacements.get(group.key) ?? DEFAULT_LABEL_PLACEMENT}
+            dayColors={dayColors}
             registerMarker={registerMarker}
             onSelect={selectGroup}
           />

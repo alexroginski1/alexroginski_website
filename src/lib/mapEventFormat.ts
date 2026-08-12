@@ -64,6 +64,22 @@ export function isEventEnded(end: string): boolean {
   return new Date(end).getTime() < Date.now()
 }
 
+// "now" while an event is in progress, "in x hours" while it's still ahead,
+// null once it's over — used on map marker labels so a same-day event's
+// urgency is visible without opening its details. Hours are rounded up to a
+// minimum of 1 so an event minutes away doesn't misleadingly read "in 0 hours".
+export function relativeTimeLabel(startIso: string, endIso: string, now: Date = new Date()): string | null {
+  const start = new Date(startIso).getTime()
+  const end = new Date(endIso).getTime()
+  const t = now.getTime()
+  if (t >= start && t <= end) return 'now'
+  if (t < start) {
+    const hours = Math.max(1, Math.round((start - t) / (60 * 60 * 1000)))
+    return `in ${hours} hour${hours === 1 ? '' : 's'}`
+  }
+  return null
+}
+
 // "YYYY-MM-DD" in SF time — used to group map markers by calendar day.
 export function sfDateKey(iso: string): string {
   return new Intl.DateTimeFormat('en-CA', {

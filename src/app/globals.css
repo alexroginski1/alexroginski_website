@@ -416,6 +416,17 @@
     @apply flex flex-wrap items-center gap-x-2 gap-y-2 mb-3 text-2xl text-stone-700;
   }
 
+  /* Houses the show/hide control for .std-map-sentence — kept as its own
+     row (rather than inline with the sentence) so it stays reachable even
+     while the sentence itself is hidden. */
+  .std-map-sentence-header {
+    @apply flex justify-end;
+  }
+
+  .std-map-sentence-visibility-toggle {
+    @apply text-xs font-medium text-stone-400 hover:text-stone-600 cursor-pointer;
+  }
+
   .std-map-sentence-select {
     @apply rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-2xl text-stone-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-300 transition;
   }
@@ -498,10 +509,9 @@
 
   .std-event-list {
     @apply flex flex-col gap-2;
-    /* Caps the list at 5 tiles (each ~4rem tall, plus gap-2 between them)
-       before it becomes its own scroll region. */
-    max-height: calc(5 * 4rem + 4 * 0.5rem);
-    overflow-y: auto;
+    /* No cap here — the list view takes up the whole screen, so scrolling
+       is handled by .std-map-overlay-list (the full-height page region)
+       rather than truncating to a handful of tiles in their own scrollbox. */
   }
 
   .std-event-item {
@@ -665,6 +675,7 @@
   .leaflet-tooltip.std-map-marker-label {
     @apply rounded-lg border border-stone-200 shadow-sm text-xs font-medium text-stone-700 text-center bg-white/90;
     padding: 3px 6px;
+    cursor: pointer;
   }
 
   .leaflet-tooltip.std-map-marker-label::before {
@@ -672,7 +683,39 @@
   }
 
   .std-map-marker-label-title {
+    display: block;
     white-space: nowrap;
+  }
+
+  /* The "Wed 11 AM" line under the title. Own row so it wraps independently
+     of the title above it. */
+  .std-map-marker-label-datetime {
+    @apply flex items-center justify-center gap-1 mt-0.5;
+    white-space: nowrap;
+    font-size: 10px;
+  }
+
+  /* Neutral by default; dayColors (LeafletMap.tsx) overrides the background
+     inline once more than one date is visible on the map, so each day reads
+     as a distinct color. */
+  .std-map-marker-label-day {
+    @apply rounded px-1 font-semibold text-stone-700;
+    background-color: #e7e5e4;
+  }
+
+  .std-map-marker-label-time {
+    @apply text-stone-500;
+  }
+
+  .std-map-marker-label-relative {
+    @apply rounded px-1 font-semibold;
+    background-color: #fed7aa;
+    color: #9a3412;
+  }
+
+  .std-map-marker-label-relative-now {
+    background-color: #bbf7d0;
+    color: #166534;
   }
 
   .std-map-marker-label-title-ended {
