@@ -8,7 +8,7 @@ import SortGroupControl from './SortGroupControl'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
-import { isEventEnded } from '@/lib/mapEventFormat'
+import { isEventEnded, matchesTimeOfDay, type TimeOfDay } from '@/lib/mapEventFormat'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
 import {
   haversineMiles,
@@ -47,6 +47,8 @@ type PersistedMapFilters = {
   keywordsEnabled: boolean
   keywordsText: string
   excludeEnded?: boolean
+  timeOfDayEnabled?: boolean
+  timeOfDay?: TimeOfDay
 }
 
 function transportLabel(mode: TransportMode): string {
@@ -86,6 +88,9 @@ function weekendRange(todayKey: string): { from: string; to: string } {
 // Tap-to-cycle minutes control: 20 -> 30 -> 40 -> 50 -> 60 -> 10 -> 20 ...
 const MINUTES_CYCLE = [20, 30, 40, 50, 60, 10]
 
+// Tap-to-cycle time-of-day control: morning -> afternoon -> evening -> morning ...
+const TIME_OF_DAY_CYCLE: TimeOfDay[] = ['morning', 'afternoon', 'evening']
+
 type DatePreset = 'today' | 'tomorrow' | 'weekend' | 'next3' | 'next7' | 'all' | 'custom'
 
 const DATE_PRESET_ORDER: DatePreset[] = ['today', 'tomorrow', 'next3', 'next7', 'weekend', 'all', 'custom']
@@ -113,6 +118,8 @@ export default function EventsMapSection() {
   const [editingKeywords, setEditingKeywords] = useState(false)
   const [keywordsDraft, setKeywordsDraft] = useState('')
   const [excludeEnded, setExcludeEnded] = useState(false)
+  const [timeOfDayEnabled, setTimeOfDayEnabled] = useState(false)
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('morning')
   const [searchOrigin, setSearchOrigin] = useState<{ lat: number; lng: number } | null>(null)
   const [lastGeocode, setLastGeocode] = useState<LastGeocode | null>(null)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -181,6 +188,10 @@ export default function EventsMapSection() {
             setKeywordsText(parsed.keywordsText)
           }
           if (parsed.excludeEnded) setExcludeEnded(true)
+          if (parsed.timeOfDayEnabled && TIME_OF_DAY_CYCLE.includes(parsed.timeOfDay as TimeOfDay)) {
+            setTimeOfDayEnabled(true)
+            setTimeOfDay(parsed.timeOfDay as TimeOfDay)
+          }
         }
       }
     } catch {
@@ -204,6 +215,8 @@ export default function EventsMapSection() {
         keywordsEnabled,
         keywordsText,
         excludeEnded,
+        timeOfDayEnabled,
+        timeOfDay,
       }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
@@ -223,6 +236,8 @@ export default function EventsMapSection() {
     keywordsEnabled,
     keywordsText,
     excludeEnded,
+    timeOfDayEnabled,
+    timeOfDay,
   ])
 
   function toggleCalendarType(key: MapCalendarKey) {
@@ -389,6 +404,19 @@ export default function EventsMapSection() {
     setExcludeEnded((v) => !v)
   }
 
+  function enableTimeOfDay() {
+    setTimeOfDayEnabled(true)
+    setTimeOfDay('morning')
+  }
+
+  function disableTimeOfDay() {
+    setTimeOfDayEnabled(false)
+  }
+
+  function cycleTimeOfDay() {
+    setTimeOfDay((t) => TIME_OF_DAY_CYCLE[(TIME_OF_DAY_CYCLE.indexOf(t) + 1) % TIME_OF_DAY_CYCLE.length])
+  }
+
   // Gated on radiusEnabled (rather than clearing searchOrigin outright) so
   // the last-searched location stays cached for instant reuse on reopen.
   const activeSearchOrigin = radiusEnabled ? searchOrigin : null
@@ -398,6 +426,10 @@ export default function EventsMapSection() {
   // event contains" clause. Null (rather than empty string) when the filter
   // is off, so callers can skip the check entirely.
   const activeKeywords = keywordsEnabled && keywordsText ? keywordsText.toLowerCase() : null
+
+  // Null (rather than a default bucket) when the filter is off, so callers
+  // can skip the check entirely — mirrors activeKeywords above.
+  const activeTimeOfDay = timeOfDayEnabled ? timeOfDay : null
 
   // Counts events matching the current date/keyword filters per calendar,
   // independent of which calendars are checked, so the legend shows what's
@@ -416,11 +448,12 @@ export default function EventsMapSection() {
       ) {
         continue
       }
+      if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) continue
       if (excludeEnded && isEventEnded(event.end)) continue
       counts[event.calendar] = (counts[event.calendar] ?? 0) + 1
     }
     return counts
-  }, [events, allDates, dateFrom, dateTo, activeKeywords, excludeEnded])
+  }, [events, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, excludeEnded])
 
   // Whether any event matching the other active filters has already ended —
   // gates whether the "+ not ended" clause is offered at all, so it's not
@@ -441,10 +474,11 @@ export default function EventsMapSection() {
       ) {
         continue
       }
+      if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) continue
       if (isEventEnded(event.end)) return true
     }
     return false
-  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords])
+  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay])
 
   const visibleEvents = useMemo(() => {
     return (events ?? []).filter((event) => {
@@ -460,12 +494,13 @@ export default function EventsMapSection() {
       ) {
         return false
       }
+      if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) return false
       if (excludeEnded && isEventEnded(event.end)) return false
       // Events outside the travel radius stay visible (dimmed in LeafletMap)
       // rather than being dropped — the radius is a highlight, not a filter.
       return true
     })
-  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, excludeEnded])
+  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, excludeEnded])
 
   // Same calendar/date/keyword filters as visibleEvents, applied to events
   // whose location couldn't be placed on the map at all.
@@ -483,10 +518,20 @@ export default function EventsMapSection() {
       ) {
         return false
       }
+      if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) return false
       if (excludeEnded && isEventEnded(event.end)) return false
       return true
     })
-  }, [unknownLocationEvents, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, excludeEnded])
+  }, [
+    unknownLocationEvents,
+    selectedTypes,
+    allDates,
+    dateFrom,
+    dateTo,
+    activeKeywords,
+    activeTimeOfDay,
+    excludeEnded,
+  ])
 
   // Events within the active travel radius — highlighted on the map and
   // pinned to the top of the list below. Null (not an empty set) when the
@@ -560,6 +605,27 @@ export default function EventsMapSection() {
         <button type="button" className="std-map-sentence-toggle" onClick={cycleDatePreset}>
           {dateSentence}
         </button>
+
+        {timeOfDayEnabled ? (
+          <>
+            <span>in the </span>
+            <button type="button" className="std-map-sentence-toggle" onClick={cycleTimeOfDay}>
+              {timeOfDay}
+            </button>
+            <button
+              type="button"
+              className="std-map-sentence-remove"
+              onClick={disableTimeOfDay}
+              aria-label="Remove time of day filter"
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <button type="button" className="std-map-sentence-toggle" onClick={enableTimeOfDay}>
+            +Time of day
+          </button>
+        )}
 
         {radiusEnabled ? (
           <>

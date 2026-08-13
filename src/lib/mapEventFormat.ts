@@ -127,6 +127,29 @@ export function sfDateKey(iso: string): string {
   }).format(new Date(iso))
 }
 
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening'
+
+// Hour-of-day (0-23) in SF time, the basis for the "+Time of day" filter.
+// hourCycle: 'h23' (rather than hour12: false) avoids a known Intl quirk
+// where midnight formats as "24" instead of "0" in some environments.
+function sfHour(iso: string): number {
+  return Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles',
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(new Date(iso))
+  )
+}
+
+// morning 5am-12pm, afternoon 12pm-5pm, evening 5pm-5am (wraps past midnight).
+export function matchesTimeOfDay(startIso: string, timeOfDay: TimeOfDay): boolean {
+  const hour = sfHour(startIso)
+  if (timeOfDay === 'morning') return hour >= 5 && hour < 12
+  if (timeOfDay === 'afternoon') return hour >= 12 && hour < 17
+  return hour >= 17 || hour < 5
+}
+
 // A subset of ApiEvent's fields — also satisfied by UnknownLocationEvent,
 // so this list can render either without needing lat/lng. lat/lng stay
 // optional (rather than omitted) so the list view's distance grouping can
