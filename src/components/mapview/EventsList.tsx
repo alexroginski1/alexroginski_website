@@ -3,15 +3,23 @@
 import { useMemo, useState } from 'react'
 import { EVENT_ENDED_BACKGROUND_COLOR, MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import { dateTimeFormatter, isEventEnded, type EventListItem } from '@/lib/mapEventFormat'
+import { groupEvents, type EventGroupNode, type ListCriterion } from '@/lib/mapListGrouping'
+import type { LatLng } from '@/lib/geo'
 import MapEventSidebar from './MapEventSidebar'
 
 export default function EventsList({
   events,
   highlightedEventIds = null,
+  sortGroupOrder = [],
+  distanceOrigin = null,
 }: {
   events: EventListItem[]
   // Events within the travel radius — shown bolded and pinned to the top.
   highlightedEventIds?: Set<string> | null
+  // User-picked sort/group criteria, in priority order — see SortGroupControl.
+  sortGroupOrder?: ListCriterion[]
+  // Origin for 'distance' grouping; ignored (criterion falls through) when null.
+  distanceOrigin?: LatLng | null
 }) {
   // Reuses the same click-triggered sidebar as the Map view (see
   // LeafletMap's `selected` state) rather than a separate popup, so an
@@ -29,12 +37,42 @@ export default function EventsList({
 
   const showSectionHeaders = !!highlightedEventIds && within.length > 0 && outside.length > 0
 
+  // The "within region" split (above) is always the outermost partition when
+  // active; the user's own sort/group picks are layered inside each side of
+  // it, rather than replacing it, so the radius highlight never disappears.
+  function renderNode(node: EventGroupNode, keyPrefix: string, level: number) {
+    if (node.items) {
+      if (node.items.length === 0) return null
+      return <ul className="std-event-list">{node.items.map(renderTile)}</ul>
+    }
+    return (
+      <>
+        {node.children.map(({ label, node: child }, index) => {
+          const rendered = renderNode(child, `${keyPrefix}-${index}`, level + 1)
+          if (!rendered) return null
+          return (
+            <div className="std-event-group" key={`${keyPrefix}-${label}`}>
+              <div
+                className="std-event-group-header"
+                style={level > 0 ? { paddingLeft: `${level * 12}px` } : undefined}
+              >
+                {label}
+              </div>
+              {rendered}
+            </div>
+          )
+        })}
+      </>
+    )
+  }
+
   function renderGroup(items: EventListItem[], header: string | null) {
     if (items.length === 0) return null
+    const tree = groupEvents(items, sortGroupOrder, distanceOrigin)
     return (
       <div className="std-event-group">
         {header && <div className="std-event-group-header">{header}</div>}
-        <ul className="std-event-list">{items.map(renderTile)}</ul>
+        {renderNode(tree, header ?? 'root', 0)}
       </div>
     )
   }
@@ -54,6 +92,7 @@ export default function EventsList({
             <span
               className={`std-event-item-title${highlighted && !ended ? ' font-bold' : ''}${ended ? ' std-event-item-title-ended' : ''}`}
             >
+              <span className="std-event-item-source">{legend.label}: </span>
               {event.title}
             </span>
           </div>

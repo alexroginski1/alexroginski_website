@@ -94,8 +94,10 @@ export function sfDateKey(iso: string): string {
 }
 
 // A subset of ApiEvent's fields — also satisfied by UnknownLocationEvent,
-// so this list can render either without needing lat/lng.
+// so this list can render either without needing lat/lng. lat/lng stay
+// optional (rather than omitted) so the list view's distance grouping can
+// use them when present and fall back gracefully when not.
 export type EventListItem = Pick<
   ApiEvent,
   'id' | 'calendar' | 'title' | 'start' | 'end' | 'location' | 'description' | 'calendarLink'
->
+> & { lat?: number; lng?: number }

@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import EventsList from './EventsList'
 import CalendarLegendControl from './CalendarLegendControl'
+import SortGroupControl from './SortGroupControl'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
+import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
 import {
@@ -117,6 +119,11 @@ export default function EventsMapSection() {
 
   const [overlayOpen, setOverlayOpen] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('map')
+  const [sortGroupOrder, setSortGroupOrder] = useState<ListCriterion[]>([])
+
+  function toggleSortGroupCriterion(criterion: ListCriterion) {
+    setSortGroupOrder((prev) => (prev.includes(criterion) ? prev.filter((c) => c !== criterion) : [...prev, criterion]))
+  }
 
   useEffect(() => {
     if (!overlayOpen) return
@@ -661,15 +668,27 @@ export default function EventsMapSection() {
           />
         ) : (
           <div className="std-map-overlay-list">
+            <div className="std-list-toolbar">
+              <SortGroupControl
+                order={sortGroupOrder}
+                onToggle={toggleSortGroupCriterion}
+                distanceAvailable={!!activeSearchOrigin}
+              />
+            </div>
             {visibleEvents.length > 0 ? (
-              <EventsList events={visibleEvents} highlightedEventIds={highlightedEventIds} />
+              <EventsList
+                events={visibleEvents}
+                highlightedEventIds={highlightedEventIds}
+                sortGroupOrder={sortGroupOrder}
+                distanceOrigin={activeSearchOrigin}
+              />
             ) : (
               <p className="std-map-empty">No events match your filters.</p>
             )}
             {visibleUnknownLocationEvents.length > 0 && (
               <>
                 <h3 className="std-map-unknown-location-heading">Events with unknown locations</h3>
-                <EventsList events={visibleUnknownLocationEvents} />
+                <EventsList events={visibleUnknownLocationEvents} sortGroupOrder={sortGroupOrder} />
               </>
             )}
           </div>

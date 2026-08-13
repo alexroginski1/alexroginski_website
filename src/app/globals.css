@@ -542,6 +542,10 @@
     @apply line-through text-stone-500;
   }
 
+  .std-event-item-source {
+    @apply font-normal text-stone-500;
+  }
+
   .std-event-item-ended-badge {
     @apply flex-shrink-0 text-[10px] font-semibold uppercase tracking-wide text-stone-500;
   }
@@ -629,6 +633,23 @@
     width: max-content;
     min-width: 200px;
     max-width: 260px;
+  }
+
+  .std-map-sort-hint {
+    @apply px-1 pb-1.5 mb-0.5 border-b border-stone-200 text-xs text-stone-400;
+    max-width: 220px;
+  }
+
+  .std-map-legend-item-disabled {
+    @apply opacity-40 cursor-not-allowed hover:bg-transparent;
+  }
+
+  .std-map-legend-order-badge {
+    @apply flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-full bg-orange-100 text-orange-700 text-[10px] font-semibold;
+  }
+
+  .std-list-toolbar {
+    @apply flex justify-end mb-3;
   }
 
   /* The click-triggered detail panel for a marker — analogous to Google
