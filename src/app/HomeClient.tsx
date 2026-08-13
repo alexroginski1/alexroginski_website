@@ -63,6 +63,7 @@ const LINES: Line[] = [
 
 ]
 
+const MUSIC_ENABLED = false
 const MUSIC_VOLUME = 0.03
 const CAFE_NOISE_VOLUME = 0.1
 const TYPEWRITER_VOLUME = 0.1
@@ -225,7 +226,7 @@ export default function HomeClient() {
       startCafe()
       gestureEvents.forEach(e => window.removeEventListener(e, onGesture))
     }
-    gestureEvents.forEach(e => window.addEventListener(e, onGesture, { passive: true, once: true }))
+    if (MUSIC_ENABLED) gestureEvents.forEach(e => window.addEventListener(e, onGesture, { passive: true, once: true }))
 
     const onScroll = () => {
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight

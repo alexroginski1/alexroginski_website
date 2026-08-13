@@ -46,6 +46,13 @@ function decodeText(cellHtml: string): string {
   return decodeEntities(cellHtml.replace(/<[^>]+>/g, '')).trim()
 }
 
+// The "Calendar Link" cell holds an <a href="...">Open</a> tag — unlike the
+// other cells, what we need is the href, not the visible text.
+function extractHref(cellHtml: string): string | undefined {
+  const match = cellHtml.match(/<a[^>]*\shref="([^"]*)"/i)
+  return match ? decodeEntities(match[1]) : undefined
+}
+
 function hashString(s: string): string {
   let h = 2166136261
   for (let i = 0; i < s.length; i++) {
@@ -179,7 +186,7 @@ function parseRow(cells: string[], columnIndex: Record<string, number>, now: Dat
   // preserved as-is so the client's sanitizeDescriptionHtml() can allowlist
   // it the same way it already does for calendar-sourced descriptions.
   const description = cell('Event Description').trim() || undefined
-  const calendarLink = decodeText(cell('Calendar Link')) || undefined
+  const calendarLink = extractHref(cell('Calendar Link'))
 
   const id = `${calendar}:${hashString(`${title}|${start.toISOString()}|${rawLocation ?? ''}`)}`
 
