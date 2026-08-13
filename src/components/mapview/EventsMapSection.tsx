@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import type { Map as LeafletMapInstance } from 'leaflet'
 import EventsList from './EventsList'
 import CalendarLegendControl from './CalendarLegendControl'
 import SortGroupControl from './SortGroupControl'
+import HelpSidebar from './HelpSidebar'
+import SurveySidebar from './SurveySidebar'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
@@ -127,27 +130,25 @@ export default function EventsMapSection() {
   const hydratedRef = useRef(false)
   const [hydrated, setHydrated] = useState(false)
 
-  const [overlayOpen, setOverlayOpen] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('map')
   const [sortGroupOrder, setSortGroupOrder] = useState<ListCriterion[]>(['source', 'time'])
+  const [mapInstance, setMapInstance] = useState<LeafletMapInstance | null>(null)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [surveyOpen, setSurveyOpen] = useState(false)
 
   function toggleSortGroupCriterion(criterion: ListCriterion) {
     setSortGroupOrder((prev) => (prev.includes(criterion) ? prev.filter((c) => c !== criterion) : [...prev, criterion]))
   }
 
+  // The map is the whole page now — no collapse/close, so this only needs
+  // to run once to stop the page itself from scrolling behind it.
   useEffect(() => {
-    if (!overlayOpen) return
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOverlayOpen(false)
-    }
-    document.addEventListener('keydown', onKeyDown)
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
-      document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
     }
-  }, [overlayOpen])
+  }, [])
 
   useEffect(() => {
     fetch('/api/events')
@@ -548,45 +549,64 @@ export default function EventsMapSection() {
     return ids
   }, [visibleEvents, activeSearchOrigin, activeRadiusMiles])
 
-  if (!overlayOpen) {
-    return (
-      <section className="std-map-section">
-        <div className="std-map-collapsed">
-          <p className="std-map-count">
-            {loadError
-              ? "Couldn't load events right now — try again shortly."
-              : eventsLoading
-                ? 'Loading events…'
-                : `${visibleEvents.length} event${visibleEvents.length === 1 ? '' : 's'} found`}
-          </p>
-          <button type="button" className="std-map-search-btn" onClick={() => setOverlayOpen(true)}>
-            Open map
-          </button>
-        </div>
-      </section>
-    )
-  }
-
   return (
     <section className="std-map-section">
     <div className="std-map-overlay">
-      <button
-        type="button"
-        className="std-map-overlay-close"
-        onClick={() => setOverlayOpen(false)}
-        aria-label="Close map view"
-      >
-        ×
-      </button>
+      <div className="std-map-button-stack">
+        <button
+          type="button"
+          className="std-map-stack-btn"
+          onClick={() => setSentenceVisible((v) => !v)}
+          aria-label={sentenceVisible ? 'Hide filters' : 'Show filters'}
+        >
+          {sentenceVisible ? '▲' : '▼'}
+        </button>
 
-      <button
-        type="button"
-        className="std-map-filters-toggle"
-        onClick={() => setSentenceVisible((v) => !v)}
-        aria-label={sentenceVisible ? 'Hide filters' : 'Show filters'}
-      >
-        {sentenceVisible ? '▲' : '▼'}
-      </button>
+        {viewMode === 'map' && (
+          <>
+            <button
+              type="button"
+              className="std-map-stack-btn"
+              onClick={() => mapInstance?.zoomIn()}
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              className="std-map-stack-btn"
+              onClick={() => mapInstance?.zoomOut()}
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+          </>
+        )}
+
+        <button
+          type="button"
+          className={`std-map-stack-btn${helpOpen ? ' std-map-stack-btn-active' : ''}`}
+          onClick={() => {
+            setHelpOpen((v) => !v)
+            setSurveyOpen(false)
+          }}
+          aria-label={helpOpen ? 'Close about this project' : 'About this project'}
+        >
+          ?
+        </button>
+
+        <button
+          type="button"
+          className={`std-map-stack-btn${surveyOpen ? ' std-map-stack-btn-active' : ''}`}
+          onClick={() => {
+            setSurveyOpen((v) => !v)
+            setHelpOpen(false)
+          }}
+          aria-label={surveyOpen ? 'Close survey' : 'Quick survey'}
+        >
+          🤚
+        </button>
+      </div>
 
       {sentenceVisible && (
       <div className="std-map-overlay-topbar">
@@ -778,6 +798,7 @@ export default function EventsMapSection() {
             searchOrigin={activeSearchOrigin}
             radiusMiles={activeRadiusMiles}
             highlightedEventIds={highlightedEventIds}
+            onMapReady={setMapInstance}
           />
         ) : (
           <div className="std-map-overlay-list">
@@ -806,6 +827,9 @@ export default function EventsMapSection() {
             )}
           </div>
         )}
+
+        {helpOpen && <HelpSidebar onClose={() => setHelpOpen(false)} />}
+        {surveyOpen && <SurveySidebar onClose={() => setSurveyOpen(false)} />}
       </div>
 
       <div className="std-map-view-toggle">

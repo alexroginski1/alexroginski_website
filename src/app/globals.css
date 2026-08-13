@@ -444,10 +444,6 @@
     @apply flex items-center justify-center w-5 h-5 rounded-full border border-stone-300 text-xs text-stone-500 font-serif italic cursor-help select-none;
   }
 
-  .std-map-search-btn {
-    @apply rounded-lg bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-sm font-medium px-4 py-2 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed;
-  }
-
   .std-map-checkbox-label {
     @apply flex items-center gap-2 text-sm text-stone-700 cursor-pointer select-none;
   }
@@ -567,20 +563,24 @@
     @apply fixed inset-0 z-[9999] bg-white flex flex-col;
   }
 
-  .std-map-overlay-close {
-    @apply absolute z-[1002] flex items-center justify-center w-8 h-8 rounded-full border border-stone-300 bg-white/95 text-stone-600 text-2xl leading-none shadow hover:bg-stone-50 cursor-pointer;
+  /* Vertical stack of round buttons pinned to the top-right corner of the
+     map — filters toggle, then zoom in/out, then the help and survey
+     popups. Keeping every floating control in one column (rather than
+     scattered across corners) means the filters toggle can never end up
+     sitting on top of the zoom buttons the way it used to when both lived
+     in the top-left corner. */
+  .std-map-button-stack {
+    @apply absolute z-[1002] flex flex-col items-center gap-2;
     top: 10px;
     right: 10px;
   }
 
-  /* Floating pill that shows/hides the filter sentence — same button either
-     way, just the triangle flips direction (▲ open / ▼ closed) — mirrors
-     .std-map-overlay-close's floating-pill style. Stays put whether the
-     topbar below it is showing or not, so it's always reachable. */
-  .std-map-filters-toggle {
-    @apply absolute z-[1002] flex items-center justify-center w-9 h-9 rounded-full border border-stone-300 bg-white/95 text-stone-600 shadow hover:bg-stone-50 cursor-pointer;
-    top: 10px;
-    left: 10px;
+  .std-map-stack-btn {
+    @apply flex items-center justify-center w-9 h-9 rounded-full border border-stone-300 bg-white/95 text-stone-600 shadow hover:bg-stone-50 cursor-pointer text-base leading-none select-none;
+  }
+
+  .std-map-stack-btn-active {
+    @apply bg-orange-100 border-orange-300 text-orange-700;
   }
 
   /* Docked at the top rather than truly absolutely overlaid, so the filter
@@ -591,7 +591,7 @@
   .std-map-overlay-topbar {
     @apply relative z-[1001] flex-shrink-0 bg-white/95 border-b border-stone-200 shadow-sm px-4 pt-4 pb-2;
     padding-right: 3.5rem;
-    padding-left: 3.5rem;
+    padding-left: 1rem;
   }
 
   .std-map-overlay-body {
@@ -610,13 +610,6 @@
 
   .std-map-view-toggle button {
     @apply rounded-full bg-stone-900 text-white text-sm font-medium px-5 py-2.5 shadow-lg hover:bg-stone-800 active:bg-stone-950 transition-colors cursor-pointer;
-  }
-
-  /* Shown in place of the overlay once the visitor closes it — a small
-     inline summary with a way back in, rather than leaving a dead gap in
-     the page where the map used to sit. */
-  .std-map-collapsed {
-    @apply flex flex-wrap items-center gap-3;
   }
 
   .std-map-outer {
@@ -681,6 +674,30 @@
     @apply absolute flex items-center justify-center w-7 h-7 rounded-full border border-stone-300 bg-white text-stone-600 text-xl leading-none hover:bg-stone-50 cursor-pointer;
     top: 8px;
     right: 8px;
+  }
+
+  .std-map-help-content {
+    @apply space-y-3 text-sm leading-relaxed text-stone-700;
+  }
+
+  .std-map-help-content a {
+    @apply text-blue-600 hover:text-blue-800 transition-colors;
+  }
+
+  .std-map-help-calendar-links {
+    @apply text-sm;
+  }
+
+  .std-map-survey-step {
+    @apply text-xs font-semibold uppercase tracking-wide text-stone-400 mb-3;
+  }
+
+  .std-map-survey-actions {
+    @apply flex items-center gap-2 mt-3;
+  }
+
+  .std-map-survey-back {
+    @apply text-sm text-stone-500 hover:text-stone-700 px-3 py-2.5 cursor-pointer;
   }
 
   .std-map-loading {

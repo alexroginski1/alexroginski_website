@@ -206,6 +206,18 @@ function MapViewPersistence() {
   return null
 }
 
+// Hands the underlying Leaflet map instance up to the parent once, so
+// page-level chrome (the right-side zoom buttons) can drive it without the
+// default top-left Leaflet zoom control, which used to collide with the
+// filters toggle in the same corner.
+function MapReadyNotifier({ onReady }: { onReady: (map: L.Map) => void }) {
+  const map = useMap()
+  useEffect(() => {
+    onReady(map)
+  }, [map, onReady])
+  return null
+}
+
 // Tracks the map's current zoom level (bucketed) so markers/labels can use a
 // bit more of the available screen space once the user has zoomed in.
 function ZoomBucketWatcher({ onChange }: { onChange: (zoom: number) => void }) {
@@ -400,6 +412,7 @@ export default function LeafletMap({
   searchOrigin,
   radiusMiles,
   highlightedEventIds,
+  onMapReady,
 }: {
   events: ApiEvent[]
   searchOrigin: { lat: number; lng: number } | null
@@ -407,6 +420,9 @@ export default function LeafletMap({
   // Events within the travel radius — non-null only while the radius filter
   // is active. Drives marker dimming/bolding to match the event list below.
   highlightedEventIds: Set<string> | null
+  // Reports the Leaflet map instance up once it's mounted, so the page's
+  // own right-side zoom buttons can call zoomIn()/zoomOut() on it.
+  onMapReady?: (map: L.Map) => void
 }) {
   const [zoom, setZoom] = useState(12)
   const zoomBucket: ZoomBucket = zoom >= 16 ? 'lg' : zoom >= 14 ? 'md' : 'sm'
@@ -445,8 +461,10 @@ export default function LeafletMap({
         center={SF_CENTER}
         zoom={12}
         scrollWheelZoom
+        zoomControl={false}
         className="std-map-container"
       >
+        {onMapReady && <MapReadyNotifier onReady={onMapReady} />}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
