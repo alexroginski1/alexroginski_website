@@ -8,6 +8,7 @@ import SortGroupControl from './SortGroupControl'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
+import { isEventEnded } from '@/lib/mapEventFormat'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
 import {
   haversineMiles,
@@ -45,6 +46,7 @@ type PersistedMapFilters = {
   radiusEnabled: boolean
   keywordsEnabled: boolean
   keywordsText: string
+  excludeEnded?: boolean
 }
 
 function transportLabel(mode: TransportMode): string {
@@ -110,6 +112,7 @@ export default function EventsMapSection() {
   const [keywordsText, setKeywordsText] = useState('')
   const [editingKeywords, setEditingKeywords] = useState(false)
   const [keywordsDraft, setKeywordsDraft] = useState('')
+  const [excludeEnded, setExcludeEnded] = useState(false)
   const [searchOrigin, setSearchOrigin] = useState<{ lat: number; lng: number } | null>(null)
   const [lastGeocode, setLastGeocode] = useState<LastGeocode | null>(null)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -177,6 +180,7 @@ export default function EventsMapSection() {
             setKeywordsEnabled(true)
             setKeywordsText(parsed.keywordsText)
           }
+          if (parsed.excludeEnded) setExcludeEnded(true)
         }
       }
     } catch {
@@ -199,6 +203,7 @@ export default function EventsMapSection() {
         radiusEnabled,
         keywordsEnabled,
         keywordsText,
+        excludeEnded,
       }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
@@ -217,6 +222,7 @@ export default function EventsMapSection() {
     radiusEnabled,
     keywordsEnabled,
     keywordsText,
+    excludeEnded,
   ])
 
   function toggleCalendarType(key: MapCalendarKey) {
@@ -379,6 +385,10 @@ export default function EventsMapSection() {
     if (!text) setKeywordsEnabled(false)
   }
 
+  function toggleExcludeEnded() {
+    setExcludeEnded((v) => !v)
+  }
+
   // Gated on radiusEnabled (rather than clearing searchOrigin outright) so
   // the last-searched location stays cached for instant reuse on reopen.
   const activeSearchOrigin = radiusEnabled ? searchOrigin : null
@@ -406,10 +416,35 @@ export default function EventsMapSection() {
       ) {
         continue
       }
+      if (excludeEnded && isEventEnded(event.end)) continue
       counts[event.calendar] = (counts[event.calendar] ?? 0) + 1
     }
     return counts
-  }, [events, allDates, dateFrom, dateTo, activeKeywords])
+  }, [events, allDates, dateFrom, dateTo, activeKeywords, excludeEnded])
+
+  // Whether any event matching the other active filters has already ended —
+  // gates whether the "+ not ended" clause is offered at all, so it's not
+  // dangled in front of the user when there's nothing for it to exclude.
+  // Computed without excludeEnded itself, so the clause doesn't vanish out
+  // from under the user the moment they turn it on.
+  const hasEndedEvents = useMemo(() => {
+    for (const event of events ?? []) {
+      if (!selectedTypes.has(event.calendar)) continue
+      if (!allDates) {
+        const eventDateKey = sfDateKey(new Date(event.start))
+        if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
+      }
+      if (
+        activeKeywords &&
+        !event.title.toLowerCase().includes(activeKeywords) &&
+        !(event.description ?? '').toLowerCase().includes(activeKeywords)
+      ) {
+        continue
+      }
+      if (isEventEnded(event.end)) return true
+    }
+    return false
+  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords])
 
   const visibleEvents = useMemo(() => {
     return (events ?? []).filter((event) => {
@@ -425,11 +460,12 @@ export default function EventsMapSection() {
       ) {
         return false
       }
+      if (excludeEnded && isEventEnded(event.end)) return false
       // Events outside the travel radius stay visible (dimmed in LeafletMap)
       // rather than being dropped — the radius is a highlight, not a filter.
       return true
     })
-  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords])
+  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, excludeEnded])
 
   // Same calendar/date/keyword filters as visibleEvents, applied to events
   // whose location couldn't be placed on the map at all.
@@ -447,9 +483,10 @@ export default function EventsMapSection() {
       ) {
         return false
       }
+      if (excludeEnded && isEventEnded(event.end)) return false
       return true
     })
-  }, [unknownLocationEvents, selectedTypes, allDates, dateFrom, dateTo, activeKeywords])
+  }, [unknownLocationEvents, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, excludeEnded])
 
   // Events within the active travel radius — highlighted on the map and
   // pinned to the top of the list below. Null (not an empty set) when the
@@ -497,17 +534,17 @@ export default function EventsMapSection() {
         ×
       </button>
 
-      {sentenceVisible ? (
+      <button
+        type="button"
+        className="std-map-filters-toggle"
+        onClick={() => setSentenceVisible((v) => !v)}
+        aria-label={sentenceVisible ? 'Hide filters' : 'Show filters'}
+      >
+        {sentenceVisible ? '▲' : '▼'}
+      </button>
+
+      {sentenceVisible && (
       <div className="std-map-overlay-topbar">
-      <div className="std-map-sentence-header">
-        <button
-          type="button"
-          className="std-map-sentence-visibility-toggle"
-          onClick={() => setSentenceVisible(false)}
-        >
-          Hide filters ▲
-        </button>
-      </div>
       <div className="std-map-sentence">
         <span>Find me </span>
         <CalendarLegendControl
@@ -603,6 +640,25 @@ export default function EventsMapSection() {
             +keywords
           </button>
         )}
+
+        {hasEndedEvents &&
+          (excludeEnded ? (
+            <>
+              <span>and has not ended yet </span>
+              <button
+                type="button"
+                className="std-map-sentence-remove"
+                onClick={toggleExcludeEnded}
+                aria-label="Remove not-ended filter"
+              >
+                ×
+              </button>
+            </>
+          ) : (
+            <button type="button" className="std-map-sentence-toggle" onClick={toggleExcludeEnded}>
+              +not ended
+            </button>
+          ))}
       </div>
 
       {activeDatePreset === 'custom' && (
@@ -645,15 +701,6 @@ export default function EventsMapSection() {
         )}
       </p>
       </div>
-      ) : (
-        <button
-          type="button"
-          className="std-map-filters-reveal"
-          onClick={() => setSentenceVisible(true)}
-          aria-label="Show filters"
-        >
-          ▼
-        </button>
       )}
 
       <div className="std-map-overlay-body">

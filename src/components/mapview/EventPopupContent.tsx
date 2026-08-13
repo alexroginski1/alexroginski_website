@@ -6,6 +6,7 @@ import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
 import {
   googleMapsUrl,
   isEventEnded,
+  nowTillLabel,
   popupEventDateTime,
   relativeTimeLabel,
   shortLocationLabel,
@@ -19,6 +20,7 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
   const legend = MAP_CALENDAR_LEGEND[event.calendar]
   const ended = isEventEnded(event.end)
   const relative = ended ? null : relativeTimeLabel(event.start, event.end)
+  const ongoingNow = relative === 'now'
   const descriptionHtml = useMemo(
     () => (event.description ? sanitizeDescriptionHtml(event.description) : null),
     [event.description]
@@ -35,15 +37,11 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
         </strong>
       </div>
       <div className="std-map-popup-meta-row">
-        <span className="std-map-popup-meta">{popupEventDateTime(event.start, event.end)}</span>
+        <span className="std-map-popup-meta">
+          {ongoingNow ? nowTillLabel(event.end) : popupEventDateTime(event.start, event.end)}
+        </span>
         {ended && <span className="std-map-popup-ended-badge">Event Ended</span>}
-        {relative && (
-          <span
-            className={`std-map-popup-relative${relative === 'now' ? ' std-map-popup-relative-now' : ''}`}
-          >
-            {relative}
-          </span>
-        )}
+        {relative && !ongoingNow && <span className="std-map-popup-relative">{relative}</span>}
       </div>
       {event.location && (
         <div className="std-map-popup-meta std-map-popup-location">

@@ -12,11 +12,15 @@ export default function MapEventSidebar({
   index,
   onIndexChange,
   onClose,
+  className = '',
 }: {
   events: EventListItem[]
   index: number
   onIndexChange: (index: number) => void
   onClose: () => void
+  // Extra class for placement — e.g. the list view anchors it to the right
+  // edge instead of the left, so it doesn't cover the event titles.
+  className?: string
 }) {
   // Happening now first, then soonest-upcoming, with already-ended events
   // pushed to the bottom — `index` then just walks this ordered list.
@@ -42,7 +46,7 @@ export default function MapEventSidebar({
   }, [onClose])
 
   return (
-    <div ref={rootRef} className="std-map-sidebar">
+    <div ref={rootRef} className={`std-map-sidebar${className ? ` ${className}` : ''}`}>
       <button type="button" className="std-map-sidebar-close" onClick={onClose} aria-label="Close event details">
         ×
       </button>

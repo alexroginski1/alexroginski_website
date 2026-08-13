@@ -14,7 +14,7 @@ const shortWeekdayFormatter = new Intl.DateTimeFormat('en-US', {
   weekday: 'short',
 })
 
-const shortTimeFormatter = new Intl.DateTimeFormat('en-US', {
+export const shortTimeFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/Los_Angeles',
   hour: 'numeric',
   minute: '2-digit',
@@ -55,6 +55,13 @@ export function popupEventDateTime(startIso: string, endIso?: string): string {
       ? shortTimeFormatter.format(end)
       : `${longWeekdayFormatter.format(end)}, ${longMonthDayFormatter.format(end)}, ${shortTimeFormatter.format(end)}`
   return `${startStr} – ${endStr}`
+}
+
+// "now till 9 PM" — used in place of the usual start/end display while an
+// event is currently in progress, so its remaining duration is legible at a
+// glance instead of requiring the reader to compare two clock times.
+export function nowTillLabel(endIso: string): string {
+  return `now till ${shortTimeFormatter.format(new Date(endIso)).replace(':00 ', ' ')}`
 }
 
 // True once an event's end time has passed — drives the greyed-out,

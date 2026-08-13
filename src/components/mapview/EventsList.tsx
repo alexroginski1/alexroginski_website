@@ -2,7 +2,14 @@
 
 import { useMemo, useState } from 'react'
 import { EVENT_ENDED_BACKGROUND_COLOR, MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
-import { dateTimeFormatter, isEventEnded, shortLocationLabel, type EventListItem } from '@/lib/mapEventFormat'
+import {
+  dateTimeFormatter,
+  isEventEnded,
+  nowTillLabel,
+  relativeTimeLabel,
+  shortLocationLabel,
+  type EventListItem,
+} from '@/lib/mapEventFormat'
 import { groupEvents, type EventGroupNode, type ListCriterion } from '@/lib/mapListGrouping'
 import type { LatLng } from '@/lib/geo'
 import MapEventSidebar from './MapEventSidebar'
@@ -86,6 +93,7 @@ export default function EventsList({
     // Ended styling takes priority over the "within region" highlight —
     // a past event reads as inactive regardless of where it was.
     const ended = isEventEnded(event.end)
+    const ongoingNow = !ended && relativeTimeLabel(event.start, event.end) === 'now'
     const tileBackground = ended ? EVENT_ENDED_BACKGROUND_COLOR : highlighted ? RADIUS_HIGHLIGHT_FILL_COLOR : undefined
     return (
       <li key={event.id} className="std-event-item" style={tileBackground ? { backgroundColor: tileBackground } : undefined}>
@@ -100,7 +108,7 @@ export default function EventsList({
             </span>
           </div>
           <div className="std-event-item-meta">
-            {dateTimeFormatter.format(new Date(event.start))}
+            {ongoingNow ? nowTillLabel(event.end) : dateTimeFormatter.format(new Date(event.start))}
             {ended && (
               <>
                 <br />
@@ -128,7 +136,13 @@ export default function EventsList({
         {renderGroup(outside, showSectionHeaders ? 'Events not in region' : null)}
       </div>
       {selected && (
-        <MapEventSidebar events={[selected]} index={0} onIndexChange={() => {}} onClose={() => setSelected(null)} />
+        <MapEventSidebar
+          events={[selected]}
+          index={0}
+          onIndexChange={() => {}}
+          onClose={() => setSelected(null)}
+          className="std-map-sidebar-right"
+        />
       )}
     </>
   )
