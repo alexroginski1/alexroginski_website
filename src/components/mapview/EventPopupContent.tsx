@@ -3,7 +3,14 @@
 import { useMemo } from 'react'
 import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
 import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
-import { isEventEnded, popupEventDateTime, type EventListItem } from '@/lib/mapEventFormat'
+import {
+  googleMapsUrl,
+  isEventEnded,
+  popupEventDateTime,
+  relativeTimeLabel,
+  shortLocationLabel,
+  type EventListItem,
+} from '@/lib/mapEventFormat'
 
 // Shared between the map marker popup and the event-list tile popup, so
 // hovering or clicking a dot and hovering or clicking its matching list tile
@@ -11,6 +18,7 @@ import { isEventEnded, popupEventDateTime, type EventListItem } from '@/lib/mapE
 export default function EventPopupContent({ event }: { event: EventListItem }) {
   const legend = MAP_CALENDAR_LEGEND[event.calendar]
   const ended = isEventEnded(event.end)
+  const relative = ended ? null : relativeTimeLabel(event.start, event.end)
   const descriptionHtml = useMemo(
     () => (event.description ? sanitizeDescriptionHtml(event.description) : null),
     [event.description]
@@ -26,15 +34,25 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
           <span className={ended ? 'std-map-popup-title-ended' : undefined}>{event.title}</span>
         </strong>
       </div>
-      <div className="std-map-popup-meta">
-        {popupEventDateTime(event.start, event.end)}
-        {ended && (
-          <>
-            <br />
-            <span className="std-map-popup-ended-badge">Event Ended</span>
-          </>
+      <div className="std-map-popup-meta-row">
+        <span className="std-map-popup-meta">{popupEventDateTime(event.start, event.end)}</span>
+        {ended && <span className="std-map-popup-ended-badge">Event Ended</span>}
+        {relative && (
+          <span
+            className={`std-map-popup-relative${relative === 'now' ? ' std-map-popup-relative-now' : ''}`}
+          >
+            {relative}
+          </span>
         )}
       </div>
+      {event.location && (
+        <div className="std-map-popup-meta std-map-popup-location">
+          {event.rawLocation && event.rawLocation !== event.location && `${event.rawLocation} · `}
+          <a href={googleMapsUrl(event.location)} target="_blank" rel="noopener noreferrer" className="std-map-location-link">
+            {shortLocationLabel(event.location)}
+          </a>
+        </div>
+      )}
       {event.calendarLink && (
         <a
           href={event.calendarLink}
@@ -45,7 +63,6 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
           + Add to Google Calendar
         </a>
       )}
-      {event.location && <div className="std-map-popup-meta">{event.location}</div>}
       {descriptionHtml && (
         <p className="std-map-popup-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
       )}

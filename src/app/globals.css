@@ -849,7 +849,32 @@
   }
 
   .std-map-popup-meta {
-    @apply mt-1 text-xs text-stone-500;
+    @apply text-xs text-stone-500;
+  }
+
+  /* Compact "Event view" summary row — date/time, the ended badge, and the
+     now/in-x-hr badge all share one line instead of stacking. */
+  .std-map-popup-meta-row {
+    @apply mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5;
+  }
+
+  .std-map-popup-relative {
+    @apply rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none;
+    background-color: #fed7aa;
+    color: #9a3412;
+  }
+
+  .std-map-popup-relative-now {
+    background-color: #bbf7d0;
+    color: #166534;
+  }
+
+  .std-map-popup-location {
+    @apply mt-1;
+  }
+
+  .std-map-location-link {
+    @apply text-orange-600 underline decoration-orange-300 underline-offset-2 hover:text-orange-700;
   }
 
   .std-map-popup-desc {

@@ -6,6 +6,10 @@ export type ApiEvent = {
   title: string
   description?: string
   location?: string
+  // The venue's original, uncleaned text (e.g. "The Function") — often more
+  // recognizable than the geocoded address in `location`, so it's shown
+  // alongside it rather than in place of it.
+  rawLocation?: string
   start: string
   end: string
   lat: number
@@ -15,7 +19,7 @@ export type ApiEvent = {
 
 export type UnknownLocationEvent = Pick<
   ApiEvent,
-  'id' | 'calendar' | 'title' | 'description' | 'start' | 'end' | 'calendarLink'
+  'id' | 'calendar' | 'title' | 'description' | 'rawLocation' | 'start' | 'end' | 'calendarLink'
 >
 
 export type EventsResponse = {

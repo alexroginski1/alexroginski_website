@@ -66,21 +66,48 @@ export function isEventEnded(end: string): boolean {
 
 // "now" while an event is in progress, "in x min"/"in x hr" while it's still
 // ahead, null once it's over — used on map marker labels so a same-day
-// event's urgency is visible without opening its details. Under 2 hours away
-// shows minutes (rounded up to a minimum of 1) so it doesn't misleadingly
-// read "in 0 hr"; 2 hours or more rounds to the nearest hour.
+// event's urgency is visible without opening its details. Minutes round to
+// the nearest 5 (minimum 5, so it doesn't misleadingly read "in 0 min"); 2
+// hours or more rounds to the nearest hour instead.
 export function relativeTimeLabel(startIso: string, endIso: string, now: Date = new Date()): string | null {
   const start = new Date(startIso).getTime()
   const end = new Date(endIso).getTime()
   const t = now.getTime()
   if (t >= start && t <= end) return 'now'
   if (t < start) {
-    const minutes = Math.max(1, Math.round((start - t) / (60 * 1000)))
+    const minutes = Math.max(5, Math.round((start - t) / (5 * 60 * 1000)) * 5)
     if (minutes < 120) return `in ${minutes} min`
     const hours = Math.round(minutes / 60)
     return `in ${hours} hr`
   }
   return null
+}
+
+// Status bucket for ordering a group of events by urgency: happening now
+// sorts first, upcoming next, already-ended last — used by the Event view
+// when several events share a marker/location.
+export function eventStatusRank(startIso: string, endIso: string, now: Date = new Date()): 0 | 1 | 2 {
+  const start = new Date(startIso).getTime()
+  const end = new Date(endIso).getTime()
+  const t = now.getTime()
+  if (t >= start && t <= end) return 0
+  if (t < start) return 1
+  return 2
+}
+
+const STREET_SUFFIX_RE =
+  /\s+(street|st|avenue|ave|boulevard|blvd|drive|dr|road|rd|lane|ln|way|place|pl|court|ct|terrace|ter|highway|hwy)\.?$/i
+
+// "1994 Lombard St, San Francisco, CA" -> "1994 Lombard" — just enough to
+// recognize the block without the visual weight of a full address; the full
+// text stays queryable via `googleMapsUrl`.
+export function shortLocationLabel(location: string): string {
+  const firstSegment = location.split(',')[0].trim()
+  return firstSegment.replace(STREET_SUFFIX_RE, '') || firstSegment
+}
+
+export function googleMapsUrl(location: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
 }
 
 // "YYYY-MM-DD" in SF time — used to group map markers by calendar day.
@@ -99,5 +126,5 @@ export function sfDateKey(iso: string): string {
 // use them when present and fall back gracefully when not.
 export type EventListItem = Pick<
   ApiEvent,
-  'id' | 'calendar' | 'title' | 'start' | 'end' | 'location' | 'description' | 'calendarLink'
+  'id' | 'calendar' | 'title' | 'start' | 'end' | 'location' | 'rawLocation' | 'description' | 'calendarLink'
 > & { lat?: number; lng?: number }

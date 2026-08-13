@@ -119,7 +119,7 @@ export default function EventsMapSection() {
 
   const [overlayOpen, setOverlayOpen] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('map')
-  const [sortGroupOrder, setSortGroupOrder] = useState<ListCriterion[]>([])
+  const [sortGroupOrder, setSortGroupOrder] = useState<ListCriterion[]>(['source', 'time'])
 
   function toggleSortGroupCriterion(criterion: ListCriterion) {
     setSortGroupOrder((prev) => (prev.includes(criterion) ? prev.filter((c) => c !== criterion) : [...prev, criterion]))

@@ -1,4 +1,4 @@
-import type { EventListItem } from './mapEventFormat'
+import { isEventEnded, type EventListItem } from './mapEventFormat'
 import { MAP_CALENDAR_LEGEND } from './mapCalendarLegend'
 import { haversineMiles, type LatLng } from './geo'
 
@@ -30,8 +30,16 @@ function distanceBandLabel(miles: number): string {
   return (DISTANCE_BANDS.find((band) => miles < band.max) ?? DISTANCE_BANDS[DISTANCE_BANDS.length - 1]).label
 }
 
+// Ended events sink to the bottom of every time-sorted grouping — otherwise
+// interleaved with everything still upcoming, which is what someone
+// glancing down a group actually cares about.
 function sortByTime(items: EventListItem[]): EventListItem[] {
-  return [...items].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+  return [...items].sort((a, b) => {
+    const aEnded = isEventEnded(a.end)
+    const bEnded = isEventEnded(b.end)
+    if (aEnded !== bEnded) return aEnded ? 1 : -1
+    return new Date(a.start).getTime() - new Date(b.start).getTime()
+  })
 }
 
 export type EventGroupNode =

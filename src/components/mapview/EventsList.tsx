@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { EVENT_ENDED_BACKGROUND_COLOR, MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
-import { dateTimeFormatter, isEventEnded, type EventListItem } from '@/lib/mapEventFormat'
+import { dateTimeFormatter, isEventEnded, shortLocationLabel, type EventListItem } from '@/lib/mapEventFormat'
 import { groupEvents, type EventGroupNode, type ListCriterion } from '@/lib/mapListGrouping'
 import type { LatLng } from '@/lib/geo'
 import MapEventSidebar from './MapEventSidebar'
@@ -36,6 +36,9 @@ export default function EventsList({
   }, [events, highlightedEventIds])
 
   const showSectionHeaders = !!highlightedEventIds && within.length > 0 && outside.length > 0
+  // A "source" section header already names the calendar — repeating it on
+  // every tile inside that section is redundant.
+  const hideSourceLabel = sortGroupOrder.includes('source')
 
   // The "within region" split (above) is always the outermost partition when
   // active; the user's own sort/group picks are layered inside each side of
@@ -92,7 +95,7 @@ export default function EventsList({
             <span
               className={`std-event-item-title${highlighted && !ended ? ' font-bold' : ''}${ended ? ' std-event-item-title-ended' : ''}`}
             >
-              <span className="std-event-item-source">{legend.label}: </span>
+              {!hideSourceLabel && <span className="std-event-item-source">{legend.label}: </span>}
               {event.title}
             </span>
           </div>
@@ -107,7 +110,7 @@ export default function EventsList({
             {event.location && (
               <>
                 <br />
-                {event.location}
+                {shortLocationLabel(event.location)}
               </>
             )}
           </div>
