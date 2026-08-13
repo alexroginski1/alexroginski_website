@@ -543,6 +543,22 @@
     @apply mt-1 text-xs text-stone-500 truncate;
   }
 
+  .std-event-ended-section {
+    @apply mt-4 border-t border-stone-200 pt-3;
+  }
+
+  .std-event-ended-toggle {
+    @apply flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-stone-500 hover:text-stone-700 cursor-pointer select-none;
+  }
+
+  .std-event-ended-toggle-caret {
+    @apply inline-block transition-transform duration-150;
+  }
+
+  .std-event-ended-toggle-caret-open {
+    @apply rotate-90;
+  }
+
   /* Fixed, full-viewport takeover for the events map/list experience —
      open by default (see EventsMapSection) so the map "takes up the whole
      screen" the way it would on a dedicated map app, rather than sitting

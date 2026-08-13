@@ -212,31 +212,22 @@ export default function StuffToDo() {
         <div className="std-intro">
           <p>Hi, I'm Alex.</p>
           <p>I want to make it easier for people to find community in San Francisco.</p>
-          <p>Check it out:</p>
+          <p>I automatically collect events happening across the city and organize them into Google Calendars (which get put on a map shown below), so you can discover what's going on without searching several websites.</p>
+          <p>Everything is free. This is for you and your friends.</p>
+          <p>I really hope this helps you. </p>
         </div>
 
         <EventsMapSection />
 
-        <div className="std-hero">
-          <video
-            src="/gifs/stuff_to_do_calendar_scroll.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="std-hero-video"
-          />
-          <div className="std-hero-title">
-            <h1>Stuff To Do</h1>
-          </div>
-        </div>
-
         <div className="std-intro">
-          <p>Hi, I'm Alex.</p>
-          <p>I want to make it easier for people to find community in San Francisco.</p>
-          <p>I automatically collect events happening across the city and organize them into Google Calendars, so you can discover what's going on without searching several websites.</p>
-          <p>Everything is free. This is for you and your friends.</p>
+          <p>This project started as a <a href="https://docs.google.com/spreadsheets/d/1x1EeFDPKNDULmW1_EE-4xsTcPV0RQ7pdZd4oK_fh0Dg/edit?gid=545113219#gid=545113219">spreadsheet</a>, then moved to Google Calendars, 
+          and most recently uses a map to easily visualize events happening in your neighborhood.</p>
 
+          <p>The rest of this page was written before I created the event map. Users had to manually go through the events in a list form and check the locations themselves.
+            I'll leave it here in case anyone still uses this.
+            All of the events on the map still come from these Google Calendars. You could still add them to your personal Google Calendar if you want, but it's not necessary.
+          </p>
+          
 
           <p><b>Click these links to add to your Google Calendar:</b></p>
 
@@ -278,7 +269,6 @@ export default function StuffToDo() {
 
         <h2>Preview all events</h2>
         <CalendarEmbed title="" src={combinedPreviewSrc} />
-
 
         <br></br>
         <h2>Demo</h2>
@@ -333,20 +323,7 @@ export default function StuffToDo() {
         
         <h3>Luma Discover Page</h3>
         <CalendarEmbed title="" src={CALENDARS.luma.preview} />
-
-
-        
-
-        
-
-        <h2>Origins of this project</h2>
-        <p>Last year, I lived in Sunnyvale where there wasn't much to do. Once I moved to the city,
-          I started keeping track of the fun reoccuring events in <a href="https://docs.google.com/spreadsheets/d/1x1EeFDPKNDULmW1_EE-4xsTcPV0RQ7pdZd4oK_fh0Dg/edit?gid=545113219#gid=545113219">this spreadsheet</a>.
-          There are more resources there for finding fun stuff like partner dancing, jamming (instruments), trivia, and unique clubs.
-
-        </p>
-
-        <h2></h2>
+      
 
         <div className="std-footer">
           <PageHeader backLabel="← Back home" />

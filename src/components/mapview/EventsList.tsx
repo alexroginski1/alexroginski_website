@@ -32,13 +32,19 @@ export default function EventsList({
   // LeafletMap's `selected` state) rather than a separate popup, so an
   // event's detail view looks and behaves identically from either tab.
   const [selected, setSelected] = useState<EventListItem | null>(null)
+  // Collapsed by default — ended events are stashed out of the way so
+  // scrolling the list only surfaces things still relevant to the user.
+  const [endedExpanded, setEndedExpanded] = useState(false)
 
-  const { within, outside } = useMemo(() => {
+  const { within, outside, ended } = useMemo(() => {
     const byStart = [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
-    if (!highlightedEventIds) return { within: byStart, outside: [] as EventListItem[] }
+    const active = byStart.filter((event) => !isEventEnded(event.end))
+    const ended = byStart.filter((event) => isEventEnded(event.end))
+    if (!highlightedEventIds) return { within: active, outside: [] as EventListItem[], ended }
     return {
-      within: byStart.filter((event) => highlightedEventIds.has(event.id)),
-      outside: byStart.filter((event) => !highlightedEventIds.has(event.id)),
+      within: active.filter((event) => highlightedEventIds.has(event.id)),
+      outside: active.filter((event) => !highlightedEventIds.has(event.id)),
+      ended,
     }
   }, [events, highlightedEventIds])
 
@@ -127,7 +133,7 @@ export default function EventsList({
     )
   }
 
-  if (within.length === 0 && outside.length === 0) return null
+  if (within.length === 0 && outside.length === 0 && ended.length === 0) return null
 
   return (
     <>
@@ -135,6 +141,20 @@ export default function EventsList({
         {renderGroup(within, showSectionHeaders ? 'Events within region' : null)}
         {renderGroup(outside, showSectionHeaders ? 'Events not in region' : null)}
       </div>
+      {ended.length > 0 && (
+        <div className="std-event-ended-section">
+          <button
+            type="button"
+            className="std-event-ended-toggle"
+            onClick={() => setEndedExpanded((expanded) => !expanded)}
+            aria-expanded={endedExpanded}
+          >
+            <span className={`std-event-ended-toggle-caret${endedExpanded ? ' std-event-ended-toggle-caret-open' : ''}`}>▸</span>
+            Ended Events ({ended.length})
+          </button>
+          {endedExpanded && <div className="std-event-groups">{renderGroup(ended, null)}</div>}
+        </div>
+      )}
       {selected && (
         <MapEventSidebar
           events={[selected]}
