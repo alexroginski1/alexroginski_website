@@ -35,6 +35,19 @@ export default function EventsList({
   // Collapsed by default — ended events are stashed out of the way so
   // scrolling the list only surfaces things still relevant to the user.
   const [endedExpanded, setEndedExpanded] = useState(false)
+  // Every other section (source/time/distance groups, plus the "within
+  // region" split) is open by default and collapsed individually by key —
+  // absence from this set means expanded.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+
+  function toggleGroup(key: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   const { within, outside, ended } = useMemo(() => {
     const byStart = [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
@@ -64,17 +77,23 @@ export default function EventsList({
     return (
       <>
         {node.children.map(({ label, node: child }, index) => {
-          const rendered = renderNode(child, `${keyPrefix}-${index}`, level + 1)
+          const key = `${keyPrefix}-${index}-${label}`
+          const rendered = renderNode(child, key, level + 1)
           if (!rendered) return null
+          const collapsed = collapsedGroups.has(key)
           return (
-            <div className="std-event-group" key={`${keyPrefix}-${label}`}>
-              <div
-                className="std-event-group-header"
+            <div className="std-event-group" key={key}>
+              <button
+                type="button"
+                className="std-event-group-header std-event-group-header-toggle"
                 style={level > 0 ? { paddingLeft: `${level * 12}px` } : undefined}
+                onClick={() => toggleGroup(key)}
+                aria-expanded={!collapsed}
               >
+                <span className={`std-event-group-caret${collapsed ? '' : ' std-event-group-caret-open'}`}>▸</span>
                 {label}
-              </div>
-              {rendered}
+              </button>
+              {!collapsed && rendered}
             </div>
           )
         })}
@@ -85,10 +104,22 @@ export default function EventsList({
   function renderGroup(items: EventListItem[], header: string | null) {
     if (items.length === 0) return null
     const tree = groupEvents(items, sortGroupOrder, distanceOrigin)
+    const key = header ?? 'root'
+    const collapsed = header ? collapsedGroups.has(key) : false
     return (
       <div className="std-event-group">
-        {header && <div className="std-event-group-header">{header}</div>}
-        {renderNode(tree, header ?? 'root', 0)}
+        {header && (
+          <button
+            type="button"
+            className="std-event-group-header std-event-group-header-toggle"
+            onClick={() => toggleGroup(key)}
+            aria-expanded={!collapsed}
+          >
+            <span className={`std-event-group-caret${collapsed ? '' : ' std-event-group-caret-open'}`}>▸</span>
+            {header}
+          </button>
+        )}
+        {!collapsed && renderNode(tree, key, 0)}
       </div>
     )
   }

@@ -7,7 +7,7 @@ import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Tooltip, useMap 
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
-import { isEventEnded, relativeTimeLabel, sfDateKey, shortEventDateParts } from '@/lib/mapEventFormat'
+import { isEventEnded, nowTillLabel, relativeTimeLabel, sfDateKey, shortEventDateParts } from '@/lib/mapEventFormat'
 import MapEventSidebar from './MapEventSidebar'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
@@ -237,18 +237,20 @@ function ZoomBucketWatcher({ onChange }: { onChange: (zoom: number) => void }) {
 
 // Leaflet caches the container's pixel size at init, but the map now always
 // renders inside a flex layout whose final height isn't necessarily settled
-// on the first paint — so tiles can come in misaligned until re-measured.
+// on the first paint — so tiles can come in misaligned (or, when the topbar
+// toggles and reveals more container without any window resize firing,
+// simply unloaded/grey) until re-measured. A ResizeObserver on the container
+// itself catches every layout-driven size change, not just window resizes.
 function MapResizeWatcher() {
   const map = useMap()
   useEffect(() => {
+    const container = map.getContainer()
+    const observer = new ResizeObserver(() => map.invalidateSize())
+    observer.observe(container)
     const timeout = setTimeout(() => map.invalidateSize(), 50)
-    function onResize() {
-      map.invalidateSize()
-    }
-    window.addEventListener('resize', onResize)
     return () => {
       clearTimeout(timeout)
-      window.removeEventListener('resize', onResize)
+      observer.disconnect()
     }
   }, [map])
   return null
@@ -356,7 +358,10 @@ function EventMarkerGroup({
   const { weekday, time } = shortEventDateParts(event.start)
   const dayColor = dayColors.get(sfDateKey(event.start))
   const isToday = sfDateKey(event.start) === sfDateKey(new Date().toISOString())
-  const relative = isToday ? relativeTimeLabel(event.start, event.end) : null
+  const relativeRaw = isToday ? relativeTimeLabel(event.start, event.end) : null
+  // "now till 9 PM" is more useful under the icon than a bare "now" — it
+  // tells the viewer how much longer the event runs without a click.
+  const relative = relativeRaw === 'now' ? nowTillLabel(event.end) : relativeRaw
 
   const onLabelClick = () => onSelect(group.key)
 
@@ -396,7 +401,7 @@ function EventMarkerGroup({
           <span className="std-map-marker-label-time">{time}</span>
           {relative && (
             <span
-              className={`std-map-marker-label-relative${relative === 'now' ? ' std-map-marker-label-relative-now' : ''}`}
+              className={`std-map-marker-label-relative${relativeRaw === 'now' ? ' std-map-marker-label-relative-now' : ''}`}
             >
               {relative}
             </span>

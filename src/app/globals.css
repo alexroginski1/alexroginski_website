@@ -162,7 +162,7 @@
   }
 
   .std-container a {
-    @apply text-blue-600 hover:text-blue-800 transition-colors;
+    @apply text-blue-600 underline hover:text-blue-800 transition-colors;
   }
 
   .std-container h1,
@@ -410,18 +410,19 @@
 
   .std-map-section {
     @apply mb-14;
+    font-family: Georgia, 'Times New Roman', Times, serif;
   }
 
   .std-map-sentence {
-    @apply flex flex-wrap items-center gap-x-2 gap-y-2 mb-3 text-2xl text-stone-700;
+    @apply flex flex-wrap items-center gap-x-2 gap-y-2 mb-3 text-base md:text-2xl text-stone-700;
   }
 
   .std-map-sentence-select {
-    @apply rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-2xl text-stone-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-300 transition;
+    @apply rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-base md:text-2xl text-stone-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-300 transition;
   }
 
   .std-map-sentence-toggle {
-    @apply rounded-lg border border-dashed border-stone-300 px-2.5 py-1 text-2xl text-orange-600 font-medium hover:bg-stone-50 active:bg-stone-100 transition-colors cursor-pointer;
+    @apply rounded-lg border border-dashed border-stone-300 px-2.5 py-1 text-base md:text-2xl text-orange-600 font-medium hover:bg-stone-50 active:bg-stone-100 transition-colors cursor-pointer;
   }
 
   .std-map-filters {
@@ -441,7 +442,7 @@
   }
 
   .std-map-info-icon {
-    @apply flex items-center justify-center w-5 h-5 rounded-full border border-stone-300 text-xs text-stone-500 font-serif italic cursor-help select-none;
+    @apply flex items-center justify-center w-5 h-5 rounded-full border border-stone-300 bg-white text-xs text-stone-500 font-serif italic cursor-pointer select-none hover:bg-stone-100 hover:text-stone-700;
   }
 
   .std-map-checkbox-label {
@@ -507,20 +508,32 @@
     @apply px-1 text-xs font-semibold uppercase tracking-wide text-stone-500;
   }
 
+  .std-event-group-header-toggle {
+    @apply flex items-center gap-1.5 w-full bg-transparent border-0 cursor-pointer hover:text-stone-700 select-none;
+  }
+
+  .std-event-group-caret {
+    @apply inline-block transition-transform duration-150;
+  }
+
+  .std-event-group-caret-open {
+    @apply rotate-90;
+  }
+
   .std-event-item-main {
     @apply min-w-0 flex-1 text-left cursor-pointer rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300;
   }
 
   .std-event-item-title-row {
-    @apply flex items-center gap-2;
+    @apply flex items-start gap-2;
   }
 
   .std-event-item-dot {
-    @apply w-2.5 h-2.5 rounded-full flex-shrink-0;
+    @apply w-2.5 h-2.5 rounded-full flex-shrink-0 mt-[5px];
   }
 
   .std-event-item-title {
-    @apply text-sm font-medium text-stone-800 truncate;
+    @apply text-sm font-medium text-stone-800;
   }
 
   .std-event-item-title-ended {
@@ -536,7 +549,7 @@
   }
 
   .std-event-item-meta {
-    @apply mt-1 text-xs text-stone-500 truncate;
+    @apply mt-1 text-sm text-stone-500 truncate;
   }
 
   .std-event-ended-section {
@@ -681,7 +694,7 @@
   }
 
   .std-map-help-content a {
-    @apply text-blue-600 hover:text-blue-800 transition-colors;
+    @apply text-blue-600 underline hover:text-blue-800 transition-colors;
   }
 
   .std-map-help-calendar-links {
@@ -717,12 +730,17 @@
   }
 
   .std-map-sentence-input {
-    @apply text-2xl py-1;
+    @apply text-base md:text-2xl py-1;
     width: 14rem;
   }
 
+  .std-map-sentence-time-input {
+    @apply flex-none rounded-lg border border-stone-200 bg-stone-50 px-2 py-1 text-base md:text-2xl text-stone-700 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent transition;
+    width: auto;
+  }
+
   .std-map-sentence-remove {
-    @apply text-stone-400 hover:text-stone-600 text-2xl leading-none px-1 cursor-pointer;
+    @apply text-stone-400 hover:text-stone-600 text-base md:text-2xl leading-none px-1 cursor-pointer;
   }
 
   .std-map-unknown-location-heading {
@@ -881,7 +899,7 @@
   }
 
   .std-map-popup-meta {
-    @apply text-xs text-stone-500;
+    @apply text-sm text-stone-500;
   }
 
   /* Compact "Event view" summary row — date/time, the ended badge, and the
@@ -901,13 +919,74 @@
   }
 
   .std-map-location-link {
-    @apply text-orange-600 underline decoration-orange-300 underline-offset-2 hover:text-orange-700;
+    @apply text-blue-600 underline underline-offset-2 hover:text-blue-800;
+  }
+
+  .std-map-location-line {
+    @apply flex flex-wrap items-center gap-1;
+  }
+
+  /* "(Location from source)" / "(Location looked up)" suffixes — set apart
+     from the address itself so the two are visually distinct at a glance. */
+  .std-map-location-tag {
+    @apply text-stone-400 italic;
+  }
+
+  .std-map-location-info-popup {
+    @apply relative mt-2 rounded-lg border border-stone-200 bg-stone-50 px-3 pt-5 pb-3 text-xs leading-relaxed text-stone-600 space-y-2;
+  }
+
+  .std-map-location-info-close {
+    @apply absolute flex items-center justify-center w-5 h-5 rounded-full text-stone-500 text-base leading-none hover:text-stone-800 cursor-pointer;
+    top: 4px;
+    right: 4px;
+  }
+
+  .std-map-location-info-sign {
+    @apply text-stone-500 italic;
+  }
+
+  .std-map-survey-btn-wrap {
+    @apply relative;
+  }
+
+  /* Non-intrusive nudge toward the survey button — sits to its left rather
+     than blocking any control, dismissible, and shown at most once (see
+     EventsMapSection's visit-count effect). */
+  .std-map-survey-nudge {
+    @apply absolute flex flex-col gap-1 rounded-xl border border-orange-200 bg-white shadow-lg text-sm text-stone-700 px-4 py-3;
+    top: 50%;
+    right: calc(100% + 10px);
+    transform: translateY(-50%);
+    width: 200px;
+  }
+
+  .std-map-survey-nudge p {
+    @apply m-0;
+  }
+
+  .std-map-survey-nudge-close {
+    @apply absolute flex items-center justify-center w-5 h-5 rounded-full text-stone-400 text-base leading-none hover:text-stone-700 cursor-pointer;
+    top: 4px;
+    right: 4px;
   }
 
   .std-map-popup-desc {
     @apply mt-2 text-xs text-stone-700 whitespace-pre-wrap;
     overflow-wrap: break-word;
     word-break: break-word;
+  }
+
+  /* Links embedded in a calendar source's description HTML (e.g. "Event
+     Link", "Source") — buttonized so they read as tappable actions rather
+     than inline text links. Each sits on its own line since a description
+     can carry more than one. */
+  .std-map-popup-desc .std-map-desc-link {
+    @apply mt-2 inline-block rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 no-underline hover:bg-stone-100 transition-colors;
+  }
+
+  .std-map-popup-desc .std-map-desc-link + .std-map-desc-link {
+    @apply ml-2;
   }
 
   /* Below the desktop breakpoint the click-triggered sidebar becomes a

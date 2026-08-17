@@ -11,7 +11,7 @@ import SurveySidebar from './SurveySidebar'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
-import { isEventEnded, matchesTimeOfDay, type TimeOfDay } from '@/lib/mapEventFormat'
+import { isEventEnded, matchesPreciseTime, matchesTimeOfDay, type TimeOfDay } from '@/lib/mapEventFormat'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
 import {
   haversineMiles,
@@ -31,6 +31,14 @@ const ALL_SOURCE_KEYS = Object.keys(MAP_CALENDAR_LEGEND) as MapCalendarKey[]
 const TRANSPORT_MODES = Object.keys(TRANSPORT_SPEEDS_MPH) as TransportMode[]
 const STORAGE_KEY = 'std_map_filters'
 const STORAGE_VERSION = 5
+
+// Nudges a returning visitor toward the survey button once they've been
+// here enough times to plausibly have an opinion — shown at most once ever,
+// tracked separately from the visit count so it doesn't reappear once the
+// count keeps climbing past the threshold.
+const VISIT_COUNT_KEY = 'std_visit_count'
+const SURVEY_NUDGE_SHOWN_KEY = 'std_survey_nudge_shown'
+const SURVEY_NUDGE_VISIT_THRESHOLD = 5
 
 // Default "+location" anchor and its known coordinates, so the location
 // clause can activate instantly on open without a geocode round-trip.
@@ -52,6 +60,9 @@ type PersistedMapFilters = {
   excludeEnded?: boolean
   timeOfDayEnabled?: boolean
   timeOfDay?: TimeOfDay
+  preciseTimeEnabled?: boolean
+  preciseTimeMin?: string
+  preciseTimeMax?: string
 }
 
 function transportLabel(mode: TransportMode): string {
@@ -94,6 +105,10 @@ const MINUTES_CYCLE = [20, 30, 40, 50, 60, 10]
 // Tap-to-cycle time-of-day control: morning -> afternoon -> evening -> morning ...
 const TIME_OF_DAY_CYCLE: TimeOfDay[] = ['morning', 'afternoon', 'evening']
 
+// Default "+precise time" bounds — "between 3 PM and 8 PM".
+const DEFAULT_PRECISE_TIME_MIN = '15:00'
+const DEFAULT_PRECISE_TIME_MAX = '20:00'
+
 type DatePreset = 'today' | 'tomorrow' | 'weekend' | 'next3' | 'next7' | 'all' | 'custom'
 
 const DATE_PRESET_ORDER: DatePreset[] = ['today', 'tomorrow', 'next3', 'next7', 'weekend', 'all', 'custom']
@@ -123,6 +138,9 @@ export default function EventsMapSection() {
   const [excludeEnded, setExcludeEnded] = useState(false)
   const [timeOfDayEnabled, setTimeOfDayEnabled] = useState(false)
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('morning')
+  const [preciseTimeEnabled, setPreciseTimeEnabled] = useState(false)
+  const [preciseTimeMin, setPreciseTimeMin] = useState(DEFAULT_PRECISE_TIME_MIN)
+  const [preciseTimeMax, setPreciseTimeMax] = useState(DEFAULT_PRECISE_TIME_MAX)
   const [searchOrigin, setSearchOrigin] = useState<{ lat: number; lng: number } | null>(null)
   const [lastGeocode, setLastGeocode] = useState<LastGeocode | null>(null)
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -135,10 +153,28 @@ export default function EventsMapSection() {
   const [mapInstance, setMapInstance] = useState<LeafletMapInstance | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [surveyOpen, setSurveyOpen] = useState(false)
+  const [surveyNudgeVisible, setSurveyNudgeVisible] = useState(false)
 
   function toggleSortGroupCriterion(criterion: ListCriterion) {
     setSortGroupOrder((prev) => (prev.includes(criterion) ? prev.filter((c) => c !== criterion) : [...prev, criterion]))
   }
+
+  // Counts this page load as a visit and, the first time the count crosses
+  // the threshold, flags the survey nudge to show — the shown-flag is set
+  // immediately (not on dismiss) so it never reappears on a later visit.
+  useEffect(() => {
+    try {
+      const count = Number(localStorage.getItem(VISIT_COUNT_KEY) ?? '0') + 1
+      localStorage.setItem(VISIT_COUNT_KEY, String(count))
+      const alreadyShown = localStorage.getItem(SURVEY_NUDGE_SHOWN_KEY) === '1'
+      if (count > SURVEY_NUDGE_VISIT_THRESHOLD && !alreadyShown) {
+        setSurveyNudgeVisible(true)
+        localStorage.setItem(SURVEY_NUDGE_SHOWN_KEY, '1')
+      }
+    } catch {
+      // ignore quota/availability errors
+    }
+  }, [])
 
   // The map is the whole page now — no collapse/close, so this only needs
   // to run once to stop the page itself from scrolling behind it.
@@ -193,6 +229,11 @@ export default function EventsMapSection() {
             setTimeOfDayEnabled(true)
             setTimeOfDay(parsed.timeOfDay as TimeOfDay)
           }
+          if (parsed.preciseTimeEnabled) {
+            setPreciseTimeEnabled(true)
+            if (parsed.preciseTimeMin) setPreciseTimeMin(parsed.preciseTimeMin)
+            if (parsed.preciseTimeMax) setPreciseTimeMax(parsed.preciseTimeMax)
+          }
         }
       }
     } catch {
@@ -218,6 +259,9 @@ export default function EventsMapSection() {
         excludeEnded,
         timeOfDayEnabled,
         timeOfDay,
+        preciseTimeEnabled,
+        preciseTimeMin,
+        preciseTimeMax,
       }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
@@ -239,6 +283,9 @@ export default function EventsMapSection() {
     excludeEnded,
     timeOfDayEnabled,
     timeOfDay,
+    preciseTimeEnabled,
+    preciseTimeMin,
+    preciseTimeMax,
   ])
 
   function toggleCalendarType(key: MapCalendarKey) {
@@ -418,6 +465,14 @@ export default function EventsMapSection() {
     setTimeOfDay((t) => TIME_OF_DAY_CYCLE[(TIME_OF_DAY_CYCLE.indexOf(t) + 1) % TIME_OF_DAY_CYCLE.length])
   }
 
+  function enablePreciseTime() {
+    setPreciseTimeEnabled(true)
+  }
+
+  function disablePreciseTime() {
+    setPreciseTimeEnabled(false)
+  }
+
   // Gated on radiusEnabled (rather than clearing searchOrigin outright) so
   // the last-searched location stays cached for instant reuse on reopen.
   const activeSearchOrigin = radiusEnabled ? searchOrigin : null
@@ -431,6 +486,10 @@ export default function EventsMapSection() {
   // Null (rather than a default bucket) when the filter is off, so callers
   // can skip the check entirely — mirrors activeKeywords above.
   const activeTimeOfDay = timeOfDayEnabled ? timeOfDay : null
+
+  // Null when the filter is off, so callers can skip the check entirely —
+  // mirrors activeTimeOfDay above.
+  const activePreciseTime = preciseTimeEnabled ? { min: preciseTimeMin, max: preciseTimeMax } : null
 
   // Counts events matching the current date/keyword filters per calendar,
   // independent of which calendars are checked, so the legend shows what's
@@ -450,11 +509,12 @@ export default function EventsMapSection() {
         continue
       }
       if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) continue
+      if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) continue
       if (excludeEnded && isEventEnded(event.end)) continue
       counts[event.calendar] = (counts[event.calendar] ?? 0) + 1
     }
     return counts
-  }, [events, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, excludeEnded])
+  }, [events, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, activePreciseTime, excludeEnded])
 
   // Whether any event matching the other active filters has already ended —
   // gates whether the "+ not ended" clause is offered at all, so it's not
@@ -476,10 +536,11 @@ export default function EventsMapSection() {
         continue
       }
       if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) continue
+      if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) continue
       if (isEventEnded(event.end)) return true
     }
     return false
-  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay])
+  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, activePreciseTime])
 
   const visibleEvents = useMemo(() => {
     return (events ?? []).filter((event) => {
@@ -496,12 +557,13 @@ export default function EventsMapSection() {
         return false
       }
       if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) return false
+      if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) return false
       if (excludeEnded && isEventEnded(event.end)) return false
       // Events outside the travel radius stay visible (dimmed in LeafletMap)
       // rather than being dropped — the radius is a highlight, not a filter.
       return true
     })
-  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, excludeEnded])
+  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, activePreciseTime, excludeEnded])
 
   // Same calendar/date/keyword filters as visibleEvents, applied to events
   // whose location couldn't be placed on the map at all.
@@ -520,6 +582,7 @@ export default function EventsMapSection() {
         return false
       }
       if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) return false
+      if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) return false
       if (excludeEnded && isEventEnded(event.end)) return false
       return true
     })
@@ -531,6 +594,7 @@ export default function EventsMapSection() {
     dateTo,
     activeKeywords,
     activeTimeOfDay,
+    activePreciseTime,
     excludeEnded,
   ])
 
@@ -595,17 +659,34 @@ export default function EventsMapSection() {
           ?
         </button>
 
-        <button
-          type="button"
-          className={`std-map-stack-btn${surveyOpen ? ' std-map-stack-btn-active' : ''}`}
-          onClick={() => {
-            setSurveyOpen((v) => !v)
-            setHelpOpen(false)
-          }}
-          aria-label={surveyOpen ? 'Close survey' : 'Quick survey'}
-        >
-          🤚
-        </button>
+        <div className="std-map-survey-btn-wrap">
+          <button
+            type="button"
+            className={`std-map-stack-btn${surveyOpen ? ' std-map-stack-btn-active' : ''}`}
+            onClick={() => {
+              setSurveyOpen((v) => !v)
+              setHelpOpen(false)
+              setSurveyNudgeVisible(false)
+            }}
+            aria-label={surveyOpen ? 'Close survey' : 'Quick survey'}
+          >
+            🤚
+          </button>
+
+          {surveyNudgeVisible && (
+            <div className="std-map-survey-nudge" role="status">
+              <button
+                type="button"
+                className="std-map-survey-nudge-close"
+                onClick={() => setSurveyNudgeVisible(false)}
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+              <p>Enjoying the map? Tap 🤚 to share quick feedback!</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {sentenceVisible && (
@@ -644,6 +725,39 @@ export default function EventsMapSection() {
         ) : (
           <button type="button" className="std-map-sentence-toggle" onClick={enableTimeOfDay}>
             +Time of day
+          </button>
+        )}
+
+        {preciseTimeEnabled ? (
+          <>
+            <span>and is between </span>
+            <input
+              type="time"
+              className="std-map-sentence-time-input"
+              value={preciseTimeMin}
+              onChange={(e) => setPreciseTimeMin(e.target.value)}
+              aria-label="Earliest start time"
+            />
+            <span>and </span>
+            <input
+              type="time"
+              className="std-map-sentence-time-input"
+              value={preciseTimeMax}
+              onChange={(e) => setPreciseTimeMax(e.target.value)}
+              aria-label="Latest start time"
+            />
+            <button
+              type="button"
+              className="std-map-sentence-remove"
+              onClick={disablePreciseTime}
+              aria-label="Remove precise time filter"
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <button type="button" className="std-map-sentence-toggle" onClick={enablePreciseTime}>
+            +precise time
           </button>
         )}
 

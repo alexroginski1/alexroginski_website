@@ -38,6 +38,10 @@ export function sanitizeDescriptionHtml(raw: string): string {
         } else {
           el.setAttribute('target', '_blank')
           el.setAttribute('rel', 'noopener noreferrer')
+          // Calendar sources embed links like "Event Link" or "Source" as
+          // plain inline text — buttonize them so they read as tappable
+          // actions rather than blending into the description prose.
+          el.setAttribute('class', 'std-map-desc-link')
         }
       }
 

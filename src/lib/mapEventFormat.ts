@@ -74,7 +74,7 @@ export function isEventEnded(end: string): boolean {
 // "now" while an event is in progress, "in x min"/"in x hr" while it's still
 // ahead, null once it's over — used on map marker labels so a same-day
 // event's urgency is visible without opening its details. Minutes round to
-// the nearest 5 (minimum 5, so it doesn't misleadingly read "in 0 min"); 2
+// the nearest 10 (minimum 10, so it doesn't misleadingly read "in 0 min"); 2
 // hours or more rounds to the nearest hour instead.
 export function relativeTimeLabel(startIso: string, endIso: string, now: Date = new Date()): string | null {
   const start = new Date(startIso).getTime()
@@ -82,7 +82,7 @@ export function relativeTimeLabel(startIso: string, endIso: string, now: Date = 
   const t = now.getTime()
   if (t >= start && t <= end) return 'now'
   if (t < start) {
-    const minutes = Math.max(5, Math.round((start - t) / (5 * 60 * 1000)) * 5)
+    const minutes = Math.max(10, Math.round((start - t) / (10 * 60 * 1000)) * 10)
     if (minutes < 120) return `in ${minutes} min`
     const hours = Math.round(minutes / 60)
     return `in ${hours} hr`
@@ -117,6 +117,23 @@ export function googleMapsUrl(location: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
 }
 
+// Trailing ", San Francisco, CA 94117", ", CA", or a bare zip — every
+// combination a geocoder's display name or a manually-typed address might
+// end in. Every piece is optional so partial suffixes (just a zip, just the
+// city) still match, but the leading comma is required so real address
+// content is never mistaken for it.
+const CITY_STATE_ZIP_SUFFIX_RE =
+  /,\s*(san francisco\s*,?\s*)?(ca|california)?\s*(\d{5}(-\d{4})?)?\s*(,\s*(usa|united states))?\.?\s*$/i
+
+// "500 Divisadero St, San Francisco, CA 94117" -> "500 Divisadero St" — used
+// in the event sidebar so addresses read as just the block, not a full
+// mailing address. Unlike `shortLocationLabel`, this keeps every segment
+// (e.g. a venue name) and only drops the trailing city/state/zip.
+export function addressWithoutCityStateZip(location: string): string {
+  const stripped = location.replace(CITY_STATE_ZIP_SUFFIX_RE, '').replace(/,\s*$/, '').trim()
+  return stripped || location
+}
+
 // "YYYY-MM-DD" in SF time — used to group map markers by calendar day.
 export function sfDateKey(iso: string): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -148,6 +165,35 @@ export function matchesTimeOfDay(startIso: string, timeOfDay: TimeOfDay): boolea
   if (timeOfDay === 'morning') return hour >= 5 && hour < 12
   if (timeOfDay === 'afternoon') return hour >= 12 && hour < 17
   return hour >= 17 || hour < 5
+}
+
+// Minutes since midnight (SF time) for the event's start — the basis for the
+// "+precise time" filter's "HH:MM" bounds.
+function sfMinutesOfDay(iso: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(iso))
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0)
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? 0)
+  return hour * 60 + minute
+}
+
+function timeStringToMinutes(time: string): number {
+  const [hour, minute] = time.split(':').map(Number)
+  return hour * 60 + minute
+}
+
+// Matches when the event's start time (in SF time) falls within [min, max].
+// min > max wraps past midnight (e.g. 10 PM - 2 AM), mirroring matchesTimeOfDay.
+export function matchesPreciseTime(startIso: string, min: string, max: string): boolean {
+  const t = sfMinutesOfDay(startIso)
+  const minM = timeStringToMinutes(min)
+  const maxM = timeStringToMinutes(max)
+  if (minM <= maxM) return t >= minM && t <= maxM
+  return t >= minM || t <= maxM
 }
 
 // A subset of ApiEvent's fields — also satisfied by UnknownLocationEvent,
