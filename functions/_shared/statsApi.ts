@@ -46,6 +46,15 @@ function decodeText(cellHtml: string): string {
   return decodeEntities(cellHtml.replace(/<[^>]+>/g, '')).trim()
 }
 
+// The Bars calendar's source prefixes some titles with a category label
+// like "Live Music: " or "Karaoke: " — strip that label, keeping only the
+// actual event name.
+const BARS_TITLE_PREFIX_RE = /^[A-Z][A-Za-z&/'-]*(?:\s[A-Z][A-Za-z&/'-]*){0,2}:\s+/
+
+function stripBarsTitlePrefix(title: string): string {
+  return title.replace(BARS_TITLE_PREFIX_RE, '')
+}
+
 // The "Calendar Link" cell holds an <a href="...">Open</a> tag — unlike the
 // other cells, what we need is the href, not the visible text.
 function extractHref(cellHtml: string): string | undefined {
@@ -168,11 +177,12 @@ function parseRow(cells: string[], columnIndex: Record<string, number>, now: Dat
     return i === undefined ? '' : (cells[i] ?? '')
   }
 
-  const title = decodeText(cell('Event Title'))
-  if (!title) return null
-
   const calendar = SOURCE_CALENDAR_TO_KEY[decodeText(cell('Source Google Calendar'))]
   if (!calendar) return null
+
+  const rawTitle = decodeText(cell('Event Title'))
+  if (!rawTitle) return null
+  const title = calendar === 'sf_bars' ? stripBarsTitlePrefix(rawTitle) : rawTitle
 
   const start = parseEventDate(decodeText(cell('Start')), now)
   const end = parseEventDate(decodeText(cell('End')), now)
