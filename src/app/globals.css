@@ -751,27 +751,22 @@
     @apply mt-6 mb-1 text-sm font-semibold text-stone-600;
   }
 
-  /* "Our Stories" — a full takeover of the map/list body (see
-     EventsMapSection's storiesOpen branch), not a docked sidebar, since the
-     embedded form wants the whole width to read well. */
-  .stories-view {
-    @apply h-full flex flex-col px-4 py-6 max-w-2xl mx-auto;
-  }
-
-  .stories-header {
-    @apply mb-4 text-center;
-  }
-
+  /* "Our Stories" — a docked sidebar (see HelpSidebar/SurveySidebar)
+     listing story submissions read back from the linked Google Sheet. */
   .stories-title {
-    @apply text-2xl font-semibold text-stone-900 mb-1;
+    @apply text-xl font-semibold text-stone-900 mb-3;
   }
 
-  .stories-tagline {
-    @apply text-stone-500 mb-4;
+  .stories-submit-btn {
+    @apply block w-full text-center rounded-full bg-orange-400 text-white font-medium px-4 py-2.5 mb-5 shadow hover:bg-orange-500 active:bg-orange-600 transition-colors cursor-pointer;
   }
 
-  .stories-form-iframe {
-    @apply flex-1 w-full rounded-lg border border-stone-200;
+  .stories-list {
+    @apply flex flex-col gap-3;
+  }
+
+  .stories-card {
+    @apply rounded-2xl px-4 py-3 text-sm leading-relaxed text-stone-800 shadow-sm whitespace-pre-wrap;
   }
 
   /* The always-visible title preview below each marker. No hover state —

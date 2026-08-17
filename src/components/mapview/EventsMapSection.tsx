@@ -656,6 +656,7 @@ export default function EventsMapSection() {
           onClick={() => {
             setHelpOpen((v) => !v)
             setSurveyOpen(false)
+            setStoriesOpen(false)
           }}
           aria-label={helpOpen ? 'Close about this project' : 'About this project'}
         >
@@ -671,6 +672,7 @@ export default function EventsMapSection() {
               setSurveyOpen((v) => !v)
               setHelpOpen(false)
               setSurveyNudgeVisible(false)
+              setStoriesOpen(false)
             }}
             aria-label={surveyOpen ? 'Close survey' : 'Quick survey'}
           >
@@ -707,7 +709,7 @@ export default function EventsMapSection() {
         </button>
       </div>
 
-      {sentenceVisible && !storiesOpen && (
+      {sentenceVisible && (
       <div className="std-map-overlay-topbar">
       <div className="std-map-sentence">
         <span>Find me </span>
@@ -922,9 +924,7 @@ export default function EventsMapSection() {
       )}
 
       <div className="std-map-overlay-body">
-        {storiesOpen ? (
-          <StoriesView />
-        ) : eventsLoading ? (
+        {eventsLoading ? (
           <div className="std-map-loading h-full">Loading events…</div>
         ) : viewMode === 'map' ? (
           <LeafletMap
@@ -964,15 +964,14 @@ export default function EventsMapSection() {
 
         {helpOpen && <HelpSidebar onClose={() => setHelpOpen(false)} />}
         {surveyOpen && <SurveySidebar onClose={() => setSurveyOpen(false)} />}
+        {storiesOpen && <StoriesView onClose={() => setStoriesOpen(false)} />}
       </div>
 
-      {!storiesOpen && (
-        <div className="std-map-view-toggle">
-          <button type="button" onClick={() => setViewMode((v) => (v === 'map' ? 'list' : 'map'))}>
-            {viewMode === 'map' ? '☰ List' : '🗺️ Map'}
-          </button>
-        </div>
-      )}
+      <div className="std-map-view-toggle">
+        <button type="button" onClick={() => setViewMode((v) => (v === 'map' ? 'list' : 'map'))}>
+          {viewMode === 'map' ? '☰ List' : '🗺️ Map'}
+        </button>
+      </div>
     </div>
     </section>
   )
