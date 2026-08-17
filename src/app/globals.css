@@ -389,7 +389,7 @@
   }
 
   .survey-submit {
-    @apply rounded-lg bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-medium px-5 py-2.5 text-sm transition-colors cursor-pointer;
+    @apply rounded-lg bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-medium px-5 py-2.5 text-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .survey-error {
@@ -701,6 +701,10 @@
     @apply text-sm;
   }
 
+  .std-map-help-divider {
+    @apply my-4 border-t border-stone-200;
+  }
+
   .std-map-survey-step {
     @apply text-xs font-semibold uppercase tracking-wide text-stone-400 mb-3;
   }
@@ -745,6 +749,29 @@
 
   .std-map-unknown-location-heading {
     @apply mt-6 mb-1 text-sm font-semibold text-stone-600;
+  }
+
+  /* "Our Stories" — a full takeover of the map/list body (see
+     EventsMapSection's storiesOpen branch), not a docked sidebar, since the
+     embedded form wants the whole width to read well. */
+  .stories-view {
+    @apply h-full flex flex-col px-4 py-6 max-w-2xl mx-auto;
+  }
+
+  .stories-header {
+    @apply mb-4 text-center;
+  }
+
+  .stories-title {
+    @apply text-2xl font-semibold text-stone-900 mb-1;
+  }
+
+  .stories-tagline {
+    @apply text-stone-500 mb-4;
+  }
+
+  .stories-form-iframe {
+    @apply flex-1 w-full rounded-lg border border-stone-200;
   }
 
   /* The always-visible title preview below each marker. No hover state —
@@ -881,7 +908,7 @@
   }
 
   .std-map-gcal-link {
-    @apply mt-2 inline-block rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white no-underline hover:bg-orange-600 transition-colors;
+    @apply mt-2 inline-block rounded-full bg-emerald-100 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-800 no-underline hover:bg-emerald-200 transition-colors;
   }
 
   /* Shared by the map marker popup and the event-tile popup below the map,
@@ -919,7 +946,7 @@
   }
 
   .std-map-location-link {
-    @apply text-blue-600 underline underline-offset-2 hover:text-blue-800;
+    @apply inline-block rounded-full bg-sky-100 border border-sky-200 px-3 py-1 text-xs font-medium text-sky-800 no-underline hover:bg-sky-200 transition-colors;
   }
 
   .std-map-location-line {
@@ -982,7 +1009,14 @@
      than inline text links. Each sits on its own line since a description
      can carry more than one. */
   .std-map-popup-desc .std-map-desc-link {
-    @apply mt-2 inline-block rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 no-underline hover:bg-stone-100 transition-colors;
+    @apply mt-2 inline-block rounded-full border px-3 py-1.5 text-xs font-medium no-underline transition-colors;
+    @apply bg-violet-100 border-violet-200 text-violet-800 hover:bg-violet-200;
+  }
+
+  /* Alternates colors when a description carries more than one link (e.g.
+     both "Source" and "Event Link"), so the set reads as distinct actions. */
+  .std-map-popup-desc .std-map-desc-link:nth-of-type(even) {
+    @apply bg-amber-100 border-amber-200 text-amber-800 hover:bg-amber-200;
   }
 
   .std-map-popup-desc .std-map-desc-link + .std-map-desc-link {

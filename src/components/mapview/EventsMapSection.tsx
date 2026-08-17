@@ -8,6 +8,7 @@ import CalendarLegendControl from './CalendarLegendControl'
 import SortGroupControl from './SortGroupControl'
 import HelpSidebar from './HelpSidebar'
 import SurveySidebar from './SurveySidebar'
+import StoriesView from './StoriesView'
 import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
@@ -154,6 +155,7 @@ export default function EventsMapSection() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [surveyOpen, setSurveyOpen] = useState(false)
   const [surveyNudgeVisible, setSurveyNudgeVisible] = useState(false)
+  const [storiesOpen, setStoriesOpen] = useState(false)
 
   function toggleSortGroupCriterion(criterion: ListCriterion) {
     setSortGroupOrder((prev) => (prev.includes(criterion) ? prev.filter((c) => c !== criterion) : [...prev, criterion]))
@@ -650,6 +652,7 @@ export default function EventsMapSection() {
         <button
           type="button"
           className={`std-map-stack-btn${helpOpen ? ' std-map-stack-btn-active' : ''}`}
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={() => {
             setHelpOpen((v) => !v)
             setSurveyOpen(false)
@@ -663,6 +666,7 @@ export default function EventsMapSection() {
           <button
             type="button"
             className={`std-map-stack-btn${surveyOpen ? ' std-map-stack-btn-active' : ''}`}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => {
               setSurveyOpen((v) => !v)
               setHelpOpen(false)
@@ -687,9 +691,23 @@ export default function EventsMapSection() {
             </div>
           )}
         </div>
+
+        <button
+          type="button"
+          className={`std-map-stack-btn${storiesOpen ? ' std-map-stack-btn-active' : ''}`}
+          onClick={() => {
+            setStoriesOpen((v) => !v)
+            setHelpOpen(false)
+            setSurveyOpen(false)
+            setSurveyNudgeVisible(false)
+          }}
+          aria-label={storiesOpen ? 'Close Our Stories' : 'Our Stories'}
+        >
+          📖
+        </button>
       </div>
 
-      {sentenceVisible && (
+      {sentenceVisible && !storiesOpen && (
       <div className="std-map-overlay-topbar">
       <div className="std-map-sentence">
         <span>Find me </span>
@@ -904,7 +922,9 @@ export default function EventsMapSection() {
       )}
 
       <div className="std-map-overlay-body">
-        {eventsLoading ? (
+        {storiesOpen ? (
+          <StoriesView />
+        ) : eventsLoading ? (
           <div className="std-map-loading h-full">Loading events…</div>
         ) : viewMode === 'map' ? (
           <LeafletMap
@@ -946,11 +966,13 @@ export default function EventsMapSection() {
         {surveyOpen && <SurveySidebar onClose={() => setSurveyOpen(false)} />}
       </div>
 
-      <div className="std-map-view-toggle">
-        <button type="button" onClick={() => setViewMode((v) => (v === 'map' ? 'list' : 'map'))}>
-          {viewMode === 'map' ? '☰ List' : '🗺️ Map'}
-        </button>
-      </div>
+      {!storiesOpen && (
+        <div className="std-map-view-toggle">
+          <button type="button" onClick={() => setViewMode((v) => (v === 'map' ? 'list' : 'map'))}>
+            {viewMode === 'map' ? '☰ List' : '🗺️ Map'}
+          </button>
+        </div>
+      )}
     </div>
     </section>
   )

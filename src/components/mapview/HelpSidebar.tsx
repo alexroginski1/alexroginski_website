@@ -102,6 +102,36 @@ export default function HelpSidebar({ onClose }: { onClose: () => void }) {
             </tr>
           </tbody>
         </table>
+
+        <hr className="std-map-help-divider" />
+
+        <p>Project made by Alex Roginski</p>
+        <p>
+          All code is open source here:
+          <br />
+          -{' '}
+          <a href="https://github.com/alexroginski1/stuff_to_do" target="_blank" rel="noopener noreferrer">
+            event scraping
+          </a>
+          <br />
+          -{' '}
+          <a
+            href="https://github.com/alexroginski1/alexroginski_website"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            website code
+          </a>
+        </p>
+        <p>
+          <a
+            href="https://www.linkedin.com/in/alex-roginski-68b40219a/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            LinkedIn
+          </a>
+        </p>
       </div>
     </div>
   )
