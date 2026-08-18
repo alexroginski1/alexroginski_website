@@ -1,5 +1,5 @@
 import { isEventEnded, type EventListItem } from './mapEventFormat'
-import { MAP_CALENDAR_LEGEND } from './mapCalendarLegend'
+import { getCalendarStyle } from './mapCalendarLegend'
 import { haversineMiles, type LatLng } from './geo'
 
 // The list view's sort/group control lets the user pick any combination of
@@ -69,7 +69,7 @@ function buildNode(items: EventListItem[], criteria: ListCriterion[], origin: La
   for (const event of items) {
     const key =
       criterion === 'source'
-        ? MAP_CALENDAR_LEGEND[event.calendar].label
+        ? getCalendarStyle(event.calendar).label
         : event.lat === undefined || event.lng === undefined
           ? 'Unknown distance'
           : distanceBandLabel(haversineMiles(origin as LatLng, { lat: event.lat, lng: event.lng }))

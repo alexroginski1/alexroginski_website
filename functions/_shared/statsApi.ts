@@ -8,26 +8,30 @@ export type StatsApiRow = {
   rawLocation?: string
   cleanedLocation: string
   unknownLocation: boolean
+  // "inexact" means the source only pinned down a neighborhood (e.g.
+  // "Mission District"), not an exact address — geocoding that name still
+  // lands roughly in the right place, but the map should flag it as
+  // approximate rather than implying a precise venue.
+  locationType: 'exact' | 'inexact'
   start: Date
   end: Date
   calendarLink?: string
+  eventSource: string
 }
 
 const STATS_API_URL = 'https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/'
 const FETCH_TIMEOUT_MS = 8000
 const FETCH_CACHE_TTL_SECONDS = 300
 
-// The debug table's "Source Google Calendar" column values, mapped to the
-// same MapCalendarKey union the map legend/filters already use.
-const SOURCE_CALENDAR_TO_KEY: Record<string, MapCalendarKey> = {
-  'SF Arts/Culture': 'sf_arts_culture',
-  'SF Community': 'sf_community',
-  'SF Fun Cheap': 'sf_fun_cheap',
-  'SF Partiful': 'sf_partiful',
-  'SF Tech': 'sf_tech',
-  'SF Bars': 'sf_bars',
-  'SF Dancing': 'sf_dancing',
-  'SF Exercise': 'sf_sports_exercise',
+// The "Source Google Calendar" column is the source of truth for which
+// calendars exist — every distinct value becomes a MapCalendarKey (its
+// leading "SF " is cosmetic, so it's stripped for display). New calendars
+// added upstream show up automatically instead of being silently dropped
+// for lacking an entry in a hardcoded map.
+const SF_PREFIX_RE = /^SF\s+/
+
+function calendarKeyFromSourceLabel(label: string): MapCalendarKey {
+  return label.replace(SF_PREFIX_RE, '')
 }
 
 function decodeEntities(text: string): string {
@@ -157,7 +161,9 @@ const REQUIRED_COLUMNS = [
   'End',
   'Raw Location',
   'Cleaned Location',
+  'Location Type',
   'Source Google Calendar',
+  'Event Source',
 ] as const
 
 function parseHeaderIndex(html: string): Record<string, number> | null {
@@ -177,12 +183,12 @@ function parseRow(cells: string[], columnIndex: Record<string, number>, now: Dat
     return i === undefined ? '' : (cells[i] ?? '')
   }
 
-  const calendar = SOURCE_CALENDAR_TO_KEY[decodeText(cell('Source Google Calendar'))]
+  const calendar = calendarKeyFromSourceLabel(decodeText(cell('Source Google Calendar')))
   if (!calendar) return null
 
   const rawTitle = decodeText(cell('Event Title'))
   if (!rawTitle) return null
-  const title = calendar === 'sf_bars' ? stripBarsTitlePrefix(rawTitle) : rawTitle
+  const title = calendar === 'Bars' ? stripBarsTitlePrefix(rawTitle) : rawTitle
 
   const start = parseEventDate(decodeText(cell('Start')), now)
   const end = parseEventDate(decodeText(cell('End')), now)
@@ -191,16 +197,31 @@ function parseRow(cells: string[], columnIndex: Record<string, number>, now: Dat
   const rawLocation = decodeText(cell('Raw Location')) || undefined
   const cleanedLocation = decodeText(cell('Cleaned Location'))
   const unknownLocation = !cleanedLocation || cleanedLocation.toLowerCase() === 'location not found'
+  const locationType: 'exact' | 'inexact' = decodeText(cell('Location Type')).toLowerCase() === 'inexact' ? 'inexact' : 'exact'
 
   // Description cells hold raw HTML (some sources embed literal <a> tags),
   // preserved as-is so the client's sanitizeDescriptionHtml() can allowlist
   // it the same way it already does for calendar-sourced descriptions.
   const description = cell('Event Description').trim() || undefined
   const calendarLink = extractHref(cell('Calendar Link'))
+  const eventSource = decodeText(cell('Event Source')) || 'Unknown'
 
   const id = `${calendar}:${hashString(`${title}|${start.toISOString()}|${rawLocation ?? ''}`)}`
 
-  return { id, calendar, title, description, rawLocation, cleanedLocation, unknownLocation, start, end, calendarLink }
+  return {
+    id,
+    calendar,
+    title,
+    description,
+    rawLocation,
+    cleanedLocation,
+    unknownLocation,
+    locationType,
+    start,
+    end,
+    calendarLink,
+    eventSource,
+  }
 }
 
 export async function fetchStatsApiEvents(now: Date): Promise<StatsApiRow[]> {

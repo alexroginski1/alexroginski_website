@@ -9,7 +9,7 @@ import SortGroupControl from './SortGroupControl'
 import HelpSidebar from './HelpSidebar'
 import SurveySidebar from './SurveySidebar'
 import StoriesView from './StoriesView'
-import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
+import { RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import { isEventEnded, matchesPreciseTime, matchesTimeOfDay, type TimeOfDay } from '@/lib/mapEventFormat'
@@ -28,10 +28,9 @@ const LeafletMap = dynamic(() => import('./LeafletMap'), {
 
 type ViewMode = 'map' | 'list'
 
-const ALL_SOURCE_KEYS = Object.keys(MAP_CALENDAR_LEGEND) as MapCalendarKey[]
 const TRANSPORT_MODES = Object.keys(TRANSPORT_SPEEDS_MPH) as TransportMode[]
 const STORAGE_KEY = 'std_map_filters'
-const STORAGE_VERSION = 5
+const STORAGE_VERSION = 6
 
 // Nudges a returning visitor toward the survey button once they've been
 // here enough times to plausibly have an opinion — shown at most once ever,
@@ -121,7 +120,11 @@ export default function EventsMapSection() {
   const [eventsLoading, setEventsLoading] = useState(true)
   const [sentenceVisible, setSentenceVisible] = useState(true)
 
-  const [selectedTypes, setSelectedTypes] = useState<Set<MapCalendarKey>>(() => new Set(ALL_SOURCE_KEYS))
+  // Empty until either localStorage supplies an explicit selection or the
+  // "default to everything" effect below runs once the actual set of
+  // calendars (allCalendarKeys) is known from fetched event data.
+  const [selectedTypes, setSelectedTypes] = useState<Set<MapCalendarKey>>(() => new Set())
+  const selectedTypesInitializedRef = useRef(false)
   const [locationText, setLocationText] = useState(DEFAULT_LOCATION_TEXT)
   const [editingLocation, setEditingLocation] = useState(false)
   const [locationDraft, setLocationDraft] = useState('')
@@ -201,6 +204,25 @@ export default function EventsMapSection() {
       .finally(() => setEventsLoading(false))
   }, [])
 
+  // The set of calendars is whatever's actually present in the fetched
+  // events — not a hardcoded list — so a calendar added upstream shows up
+  // here (and in the "all types of" menu) without a code change.
+  const allCalendarKeys = useMemo(() => {
+    const keys = new Set<MapCalendarKey>()
+    for (const event of events) keys.add(event.calendar)
+    for (const event of unknownLocationEvents) keys.add(event.calendar)
+    return [...keys].sort((a, b) => a.localeCompare(b))
+  }, [events, unknownLocationEvents])
+
+  // Defaults selectedTypes to "everything" once the real calendar list is
+  // known, unless localStorage already supplied an explicit selection (that
+  // branch below sets the initialized ref first, so this is skipped).
+  useEffect(() => {
+    if (!hydrated || selectedTypesInitializedRef.current || allCalendarKeys.length === 0) return
+    setSelectedTypes(new Set(allCalendarKeys))
+    selectedTypesInitializedRef.current = true
+  }, [hydrated, allCalendarKeys])
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
@@ -212,8 +234,8 @@ export default function EventsMapSection() {
           setTransportMode(TRANSPORT_MODES.includes(parsed.transportMode) ? parsed.transportMode : 'walk')
           setMinutes(MINUTES_CYCLE.includes(parsed.minutes) ? parsed.minutes : 20)
           if (Array.isArray(parsed.selectedTypes)) {
-            const validTypes = parsed.selectedTypes.filter((key) => ALL_SOURCE_KEYS.includes(key))
-            setSelectedTypes(new Set(validTypes))
+            setSelectedTypes(new Set(parsed.selectedTypes))
+            selectedTypesInitializedRef.current = true
           }
           if (parsed.lastGeocode) {
             setLastGeocode(parsed.lastGeocode)
@@ -497,7 +519,7 @@ export default function EventsMapSection() {
   // independent of which calendars are checked, so the legend shows what's
   // available for a source even while it's unchecked.
   const eventCountsByCalendar = useMemo(() => {
-    const counts = Object.fromEntries(ALL_SOURCE_KEYS.map((key) => [key, 0])) as Record<MapCalendarKey, number>
+    const counts = Object.fromEntries(allCalendarKeys.map((key) => [key, 0])) as Record<MapCalendarKey, number>
     for (const event of events ?? []) {
       if (!allDates) {
         const eventDateKey = sfDateKey(new Date(event.start))
@@ -516,7 +538,7 @@ export default function EventsMapSection() {
       counts[event.calendar] = (counts[event.calendar] ?? 0) + 1
     }
     return counts
-  }, [events, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, activePreciseTime, excludeEnded])
+  }, [events, allCalendarKeys, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, activePreciseTime, excludeEnded])
 
   // Whether any event matching the other active filters has already ended —
   // gates whether the "+ not ended" clause is offered at all, so it's not
@@ -714,11 +736,11 @@ export default function EventsMapSection() {
       <div className="std-map-sentence">
         <span>Find me </span>
         <CalendarLegendControl
-          calendarKeys={ALL_SOURCE_KEYS}
+          calendarKeys={allCalendarKeys}
           selectedTypes={selectedTypes}
           eventCounts={eventCountsByCalendar}
           onToggle={toggleCalendarType}
-          onSelectAll={() => setSelectedTypes(new Set(ALL_SOURCE_KEYS))}
+          onSelectAll={() => setSelectedTypes(new Set(allCalendarKeys))}
           onClear={() => setSelectedTypes(new Set())}
           toggleClassName="std-map-sentence-toggle"
         />

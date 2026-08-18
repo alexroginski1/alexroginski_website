@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { EVENT_ENDED_BACKGROUND_COLOR, MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
+import { EVENT_ENDED_BACKGROUND_COLOR, getCalendarStyle, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import {
   dateTimeFormatter,
   isEventEnded,
@@ -125,7 +125,7 @@ export default function EventsList({
   }
 
   function renderTile(event: EventListItem) {
-    const legend = MAP_CALENDAR_LEGEND[event.calendar]
+    const legend = getCalendarStyle(event.calendar)
     const highlighted = highlightedEventIds?.has(event.id) ?? false
     // Ended styling takes priority over the "within region" highlight —
     // a past event reads as inactive regardless of where it was.

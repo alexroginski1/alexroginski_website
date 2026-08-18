@@ -15,6 +15,11 @@ export type ApiEvent = {
   description?: string
   location?: string
   rawLocation?: string
+  // True when the source only pinned this event down to a neighborhood
+  // (e.g. "Mission District") rather than an exact address — `lat`/`lng`
+  // are still a reasonable point within that area, but the map should mark
+  // it as approximate rather than implying a precise venue.
+  approximateLocation?: boolean
   start: string
   end: string
   lat: number
@@ -39,6 +44,10 @@ type EventsResponse = {
   generatedAt: string
 }
 
+const PRESIDIO_EVENT_SOURCE = 'Presidio Events'
+// Main Post, roughly the center of the Presidio's public area.
+const PRESIDIO_CENTER = { lat: 37.7989, lng: -122.4662 }
+
 const CACHE_TTL_SECONDS = 300
 const MAX_NEW_GEOCODES_PER_REQUEST = 25
 const GEOCODE_THROTTLE_MS = 1100
@@ -48,7 +57,7 @@ const GEOCODE_THROTTLE_MS = 1100
 // cache key, a stale pre-deploy response can still be served for up to
 // CACHE_TTL_SECONDS after a shape change ships — which crashes any client
 // expecting the new shape.
-const RESPONSE_SHAPE_VERSION = 'v5'
+const RESPONSE_SHAPE_VERSION = 'v6'
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -77,8 +86,14 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     )
   }
 
+  // Presidio Events' own listings are frequently missing a specific venue
+  // (e.g. recurring "Habitat Stewards" volunteer shifts), but they're always
+  // somewhere within the Presidio itself — rather than falling into the
+  // unknown-location bucket, they're placed at the park's center with an
+  // approximate-location flag.
+  const presidioUnknownRows = rows.filter((r) => r.unknownLocation && r.eventSource === PRESIDIO_EVENT_SOURCE)
   const knownLocationRows = rows.filter((r) => !r.unknownLocation)
-  const unknownLocationRows = rows.filter((r) => r.unknownLocation)
+  const unknownLocationRows = rows.filter((r) => r.unknownLocation && r.eventSource !== PRESIDIO_EVENT_SOURCE)
 
   // Soonest-starting rows first, so when the per-request geocode budget
   // below is exhausted, it's later rows' locations that get left behind
@@ -137,10 +152,28 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       description: row.description,
       location: row.cleanedLocation,
       rawLocation: row.rawLocation,
+      approximateLocation: row.locationType === 'inexact' ? true : undefined,
       start: row.start.toISOString(),
       end: row.end.toISOString(),
       lat: coords.lat,
       lng: coords.lng,
+      calendarLink: row.calendarLink,
+    })
+  }
+
+  for (const row of presidioUnknownRows) {
+    events.push({
+      id: row.id,
+      calendar: row.calendar,
+      title: row.title,
+      description: row.description,
+      location: 'Presidio, San Francisco, CA',
+      rawLocation: row.rawLocation,
+      approximateLocation: true,
+      start: row.start.toISOString(),
+      end: row.end.toISOString(),
+      lat: PRESIDIO_CENTER.lat,
+      lng: PRESIDIO_CENTER.lng,
       calendarLink: row.calendarLink,
     })
   }

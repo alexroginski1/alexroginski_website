@@ -10,6 +10,10 @@ export type ApiEvent = {
   // recognizable than the geocoded address in `location`, so it's shown
   // alongside it rather than in place of it.
   rawLocation?: string
+  // True when the source only pinned this event down to a neighborhood
+  // rather than an exact address — lat/lng are still a reasonable point
+  // within that area, but the UI should mark it as approximate.
+  approximateLocation?: boolean
   start: string
   end: string
   lat: number
@@ -25,5 +29,21 @@ export type UnknownLocationEvent = Pick<
 export type EventsResponse = {
   events: ApiEvent[]
   unknownLocationEvents: UnknownLocationEvent[]
+  generatedAt: string
+}
+
+export type EventSourceBreakdown = {
+  key: MapCalendarKey
+  label: string
+  count: number
+  eventSources: {
+    label: string
+    count: number
+    eventTitles?: string[]
+  }[]
+}
+
+export type EventSourcesResponse = {
+  calendars: EventSourceBreakdown[]
   generatedAt: string
 }

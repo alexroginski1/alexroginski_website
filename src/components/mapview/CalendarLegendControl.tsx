@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { MapCalendarKey } from '@/lib/calendarIds'
-import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
+import { getCalendarStyle } from '@/lib/mapCalendarLegend'
 
 export default function CalendarLegendControl({
   calendarKeys,
@@ -32,7 +32,7 @@ export default function CalendarLegendControl({
     toggleLabel = 'all types of'
   } else if (selectedTypes.size === 1) {
     const [onlyKey] = selectedTypes
-    toggleLabel = MAP_CALENDAR_LEGEND[onlyKey].label
+    toggleLabel = getCalendarStyle(onlyKey).label
   } else if (selectedTypes.size > 1) {
     toggleLabel = `${selectedTypes.size} types of`
   } else {
@@ -69,7 +69,7 @@ export default function CalendarLegendControl({
             </button>
           </div>
           {calendarKeys.map((key) => {
-            const { label, color, emoji } = MAP_CALENDAR_LEGEND[key]
+            const { label, color, emoji } = getCalendarStyle(key)
             return (
               <label key={key} className="std-map-legend-item">
                 <input type="checkbox" checked={selectedTypes.has(key)} onChange={() => onToggle(key)} />

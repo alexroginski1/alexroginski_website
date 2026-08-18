@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Tooltip, useMap } from 'react-leaflet'
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
-import { MAP_CALENDAR_LEGEND, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
+import { getCalendarStyle, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import { isEventEnded, nowTillLabel, relativeTimeLabel, sfDateKey, shortEventDateParts } from '@/lib/mapEventFormat'
 import MapEventSidebar from './MapEventSidebar'
 
@@ -50,38 +50,42 @@ function loadSavedView(): SavedView | null {
   return null
 }
 
-function markerIconHtml(color: string, emoji: string, count: number): string {
+function markerIconHtml(color: string, emoji: string, count: number, approximate: boolean): string {
   const badge = count > 1 ? `<span class="std-map-marker-badge">${count}</span>` : ''
-  return `<span class="std-map-marker-emoji" style="background-color:${color}">${emoji}</span>${badge}`
+  // A small "?" flag for events only pinned to a neighborhood rather than
+  // an exact address, so the marker's position doesn't read as a precise
+  // venue when it's really just "somewhere around here".
+  const approxBadge = approximate
+    ? `<span class="std-map-marker-approx-badge" title="Approximate location — exact address not available">?</span>`
+    : ''
+  return `<span class="std-map-marker-emoji" style="background-color:${color}">${emoji}</span>${badge}${approxBadge}`
 }
 
-// Precomputed once per calendar source — same emoji/color for every
-// single-event marker of that type, so there's no need to build a new
-// divIcon for the common case. Locations with more than one event get a
-// count badge, built on demand since the count varies per marker.
-const MARKER_ICONS: Record<MapCalendarKey, L.DivIcon> = Object.fromEntries(
-  (Object.keys(MAP_CALENDAR_LEGEND) as MapCalendarKey[]).map((key) => {
-    const { color, emoji } = MAP_CALENDAR_LEGEND[key]
-    return [
-      key,
-      L.divIcon({
-        className: 'std-map-marker-icon',
-        html: markerIconHtml(color, emoji, 1),
-        iconSize: [MARKER_SIZE, MARKER_SIZE],
-        iconAnchor: [MARKER_SIZE / 2, MARKER_SIZE / 2],
-      }),
-    ]
-  })
-) as Record<MapCalendarKey, L.DivIcon>
-
-function buildMarkerIcon(calendar: MapCalendarKey, count: number): L.DivIcon {
-  const { color, emoji } = MAP_CALENDAR_LEGEND[calendar]
+function buildMarkerIcon(calendar: MapCalendarKey, count: number, approximate: boolean): L.DivIcon {
+  const { color, emoji } = getCalendarStyle(calendar)
   return L.divIcon({
     className: 'std-map-marker-icon',
-    html: markerIconHtml(color, emoji, count),
+    html: markerIconHtml(color, emoji, count, approximate),
     iconSize: [MARKER_SIZE, MARKER_SIZE],
     iconAnchor: [MARKER_SIZE / 2, MARKER_SIZE / 2],
   })
+}
+
+// Cached lazily per calendar key (rather than precomputed from a fixed list)
+// since calendar keys are discovered from event data at runtime — same
+// emoji/color for every single-event marker of that type, so there's no
+// need to rebuild the divIcon for the common case. Locations with more than
+// one event get a count badge, built fresh each time since the count varies.
+// Keyed by calendar + approximate-flag since the two need different icons.
+const singleEventIconCache = new Map<string, L.DivIcon>()
+function getSingleEventIcon(calendar: MapCalendarKey, approximate: boolean): L.DivIcon {
+  const key = `${calendar}:${approximate}`
+  let icon = singleEventIconCache.get(key)
+  if (!icon) {
+    icon = buildMarkerIcon(calendar, 1, approximate)
+    singleEventIconCache.set(key, icon)
+  }
+  return icon
 }
 
 function truncateTitle(title: string, maxChars: number): string {
@@ -337,10 +341,14 @@ function EventMarkerGroup({
   const markerRef = useRef<L.Marker>(null)
   const count = group.events.length
   const event = group.events[0]
+  const approximate = group.events.some((e) => e.approximateLocation)
 
   const icon = useMemo(
-    () => (count > 1 ? buildMarkerIcon(event.calendar, count) : MARKER_ICONS[event.calendar]),
-    [event.calendar, count]
+    () =>
+      count > 1
+        ? buildMarkerIcon(event.calendar, count, approximate)
+        : getSingleEventIcon(event.calendar, approximate),
+    [event.calendar, count, approximate]
   )
 
   useEffect(() => {

@@ -701,6 +701,38 @@
     @apply text-sm;
   }
 
+  .std-map-help-sources-heading {
+    @apply text-sm font-semibold text-stone-800;
+  }
+
+  .std-map-help-sources {
+    @apply text-sm border border-stone-200 rounded-lg divide-y divide-stone-200 overflow-hidden;
+  }
+
+  .std-map-help-sources-cal > summary {
+    @apply flex items-center justify-between gap-2 px-3 py-2 font-semibold text-stone-800 cursor-pointer select-none bg-stone-50 hover:bg-stone-100;
+  }
+
+  .std-map-help-sources-list {
+    @apply divide-y divide-stone-100 bg-white;
+  }
+
+  .std-map-help-sources-source > summary {
+    @apply flex items-center justify-between gap-2 px-3 py-1.5 pl-6 text-stone-700 cursor-pointer select-none hover:bg-stone-50;
+  }
+
+  .std-map-help-sources-source-flat {
+    @apply flex items-center justify-between gap-2 px-3 py-1.5 pl-6 text-stone-700;
+  }
+
+  .std-map-help-sources-count {
+    @apply flex-shrink-0 text-xs text-stone-400 tabular-nums;
+  }
+
+  .std-map-help-sources-titles {
+    @apply px-3 py-1.5 pl-9 pb-2 space-y-0.5 text-stone-500 text-xs bg-stone-50;
+  }
+
   .std-map-help-divider {
     @apply my-4 border-t border-stone-200;
   }
@@ -891,6 +923,19 @@
     height: 18px;
     padding: 0 3px;
     font-size: 12px;
+    border: 1.5px solid white;
+  }
+
+  /* Flags a marker whose event is only placed at a neighborhood's (or the
+     Presidio's) center rather than an exact address — opposite corner from
+     the count badge so the two never collide. */
+  .std-map-marker-approx-badge {
+    @apply absolute flex items-center justify-center rounded-full bg-amber-400 text-amber-950 font-bold leading-none;
+    top: -4px;
+    left: -4px;
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
     border: 1.5px solid white;
   }
 

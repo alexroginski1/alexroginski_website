@@ -202,5 +202,14 @@ export function matchesPreciseTime(startIso: string, min: string, max: string): 
 // use them when present and fall back gracefully when not.
 export type EventListItem = Pick<
   ApiEvent,
-  'id' | 'calendar' | 'title' | 'start' | 'end' | 'location' | 'rawLocation' | 'description' | 'calendarLink'
+  | 'id'
+  | 'calendar'
+  | 'title'
+  | 'start'
+  | 'end'
+  | 'location'
+  | 'rawLocation'
+  | 'approximateLocation'
+  | 'description'
+  | 'calendarLink'
 > & { lat?: number; lng?: number }

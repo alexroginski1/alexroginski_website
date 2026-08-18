@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import CalendarLink from '@/components/CalendarLink'
 import { CALENDARS } from '@/lib/googleCalendars'
+import type { EventSourceBreakdown, EventSourcesResponse } from '@/lib/mapTypes'
 
 // The "?" popup — background on the project and links to add each source
 // calendar directly, without leaving the map. Anchored to the right edge so
@@ -10,6 +11,7 @@ import { CALENDARS } from '@/lib/googleCalendars'
 // side, where a clicked marker's own sidebar can appear.
 export default function HelpSidebar({ onClose }: { onClose: () => void }) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const [calendars, setCalendars] = useState<EventSourceBreakdown[] | null>(null)
   useEffect(() => {
     function onPointerDown(e: PointerEvent) {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose()
@@ -17,6 +19,15 @@ export default function HelpSidebar({ onClose }: { onClose: () => void }) {
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [onClose])
+
+  useEffect(() => {
+    fetch('/api/event-sources')
+      .then((res) => res.json())
+      .then((data: EventSourcesResponse) => {
+        if (Array.isArray(data?.calendars)) setCalendars(data.calendars)
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <div ref={rootRef} className="std-map-sidebar std-map-sidebar-right std-map-help-sidebar">
@@ -43,6 +54,43 @@ export default function HelpSidebar({ onClose }: { onClose: () => void }) {
           , then moved to Google Calendars, and most recently uses a map to easily visualize events
           happening in your neighborhood.
         </p>
+
+        <h3 className="std-map-help-sources-heading">Where do these events come from?</h3>
+
+        {calendars && calendars.length > 0 && (
+          <div className="std-map-help-sources">
+            {calendars.map((cal) => (
+              <details key={cal.key} className="std-map-help-sources-cal">
+                <summary>
+                  <span>{cal.label}</span>
+                  <span className="std-map-help-sources-count">{cal.count}</span>
+                </summary>
+                <div className="std-map-help-sources-list">
+                  {cal.eventSources.map((source) =>
+                    source.eventTitles ? (
+                      <details key={source.label} className="std-map-help-sources-source">
+                        <summary>
+                          <span>{source.label}</span>
+                          <span className="std-map-help-sources-count">{source.count}</span>
+                        </summary>
+                        <ul className="std-map-help-sources-titles">
+                          {source.eventTitles.map((title) => (
+                            <li key={title}>{title}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    ) : (
+                      <div key={source.label} className="std-map-help-sources-source std-map-help-sources-source-flat">
+                        <span>{source.label}</span>
+                        <span className="std-map-help-sources-count">{source.count}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
 
         <p>
           The rest of this page was written before I created the event map. Users had to manually go

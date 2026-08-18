@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { MAP_CALENDAR_LEGEND } from '@/lib/mapCalendarLegend'
+import { getCalendarStyle } from '@/lib/mapCalendarLegend'
 import { sanitizeDescriptionHtml } from '@/lib/sanitizeHtml'
 import {
   addressWithoutCityStateZip,
@@ -17,7 +17,7 @@ import {
 // hovering or clicking a dot and hovering or clicking its matching list tile
 // show identical content.
 export default function EventPopupContent({ event }: { event: EventListItem }) {
-  const legend = MAP_CALENDAR_LEGEND[event.calendar]
+  const legend = getCalendarStyle(event.calendar)
   const ended = isEventEnded(event.end)
   const relative = ended ? null : relativeTimeLabel(event.start, event.end)
   const ongoingNow = relative === 'now'
@@ -61,7 +61,10 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
             >
               {addressWithoutCityStateZip(event.location)}
             </a>
-            <span className="std-map-location-tag"> (Location looked up)</span>
+            <span className="std-map-location-tag">
+              {' '}
+              ({event.approximateLocation ? 'Approximate — exact address not available' : 'Location looked up'})
+            </span>
             <button
               type="button"
               className="std-map-info-icon"
