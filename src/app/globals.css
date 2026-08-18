@@ -365,7 +365,7 @@
   }
 
   .survey-question-label {
-    @apply block text-stone-700 font-medium text-sm;
+    @apply block text-stone-700 font-medium text-base;
   }
 
   .survey-question-label-hint {
@@ -377,7 +377,7 @@
   }
 
   .survey-radio-option {
-    @apply flex items-center gap-2 cursor-pointer text-stone-600 text-sm;
+    @apply flex items-center gap-2 cursor-pointer text-stone-600 text-base;
   }
 
   .survey-radio-option input[type='radio'] {
@@ -385,11 +385,11 @@
   }
 
   .survey-textarea {
-    @apply w-full rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-stone-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent placeholder:text-stone-400 transition;
+    @apply w-full rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-stone-700 text-base resize-none focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent placeholder:text-stone-400 transition;
   }
 
   .survey-submit {
-    @apply rounded-lg bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-medium px-5 py-2.5 text-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply rounded-lg bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-medium px-5 py-2.5 text-base transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .survey-error {
@@ -405,7 +405,7 @@
   }
 
   .survey-success-sub {
-    @apply text-stone-500 text-sm mt-2;
+    @apply text-stone-500 text-base mt-2;
   }
 
   .std-map-section {
@@ -690,7 +690,7 @@
   }
 
   .std-map-help-content {
-    @apply space-y-3 text-sm leading-relaxed text-stone-700;
+    @apply space-y-3 text-base leading-relaxed text-stone-700;
   }
 
   .std-map-help-content a {
@@ -698,15 +698,15 @@
   }
 
   .std-map-help-calendar-links {
-    @apply text-sm;
+    @apply text-base;
   }
 
   .std-map-help-sources-heading {
-    @apply text-sm font-semibold text-stone-800;
+    @apply text-base font-semibold text-stone-800;
   }
 
   .std-map-help-sources {
-    @apply text-sm border border-stone-200 rounded-lg divide-y divide-stone-200 overflow-hidden;
+    @apply text-base border border-stone-200 rounded-lg divide-y divide-stone-200 overflow-hidden;
   }
 
   .std-map-help-sources-cal > summary {
@@ -798,7 +798,7 @@
   }
 
   .stories-card {
-    @apply rounded-2xl px-4 py-3 text-sm leading-relaxed text-stone-800 shadow-sm whitespace-pre-wrap;
+    @apply rounded-2xl px-4 py-3 text-base leading-relaxed text-stone-800 shadow-sm whitespace-pre-wrap;
   }
 
   /* The always-visible title preview below each marker. No hover state —
@@ -957,6 +957,10 @@
     @apply flex items-center gap-2 pr-1;
   }
 
+  .std-map-popup-title-row strong {
+    @apply text-lg;
+  }
+
   .std-map-popup-title-ended {
     @apply line-through text-stone-500;
   }
@@ -966,7 +970,7 @@
   }
 
   .std-map-popup-meta {
-    @apply text-sm text-stone-500;
+    @apply text-base text-stone-500;
   }
 
   /* Compact "Event view" summary row — date/time, the ended badge, and the
@@ -986,7 +990,7 @@
   }
 
   .std-map-location-link {
-    @apply inline-block rounded-full bg-sky-100 border border-sky-200 px-3 py-1 text-xs font-medium text-sky-800 no-underline hover:bg-sky-200 transition-colors;
+    @apply inline-block rounded-full bg-sky-100 border border-sky-200 px-3 py-1 text-sm font-medium text-sky-800 no-underline hover:bg-sky-200 transition-colors;
   }
 
   .std-map-location-line {
@@ -1039,7 +1043,7 @@
   }
 
   .std-map-popup-desc {
-    @apply mt-2 text-xs text-stone-700 whitespace-pre-wrap;
+    @apply mt-2 text-sm text-stone-700 whitespace-pre-wrap;
     overflow-wrap: break-word;
     word-break: break-word;
   }
