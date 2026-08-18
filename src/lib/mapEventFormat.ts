@@ -31,6 +31,12 @@ const longMonthDayFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
 })
 
+const shortMonthDayFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Los_Angeles',
+  month: 'short',
+  day: 'numeric',
+})
+
 // "Mon" + "5:30 PM" / "Sat" + "10 AM" — used for the map marker labels,
 // which are too small for the fuller `dateTimeFormatter` output. Split so
 // the weekday can be styled separately (e.g. color-coded per day).
@@ -55,6 +61,14 @@ export function popupEventDateTime(startIso: string, endIso?: string): string {
       ? shortTimeFormatter.format(end)
       : `${longWeekdayFormatter.format(end)}, ${longMonthDayFormatter.format(end)}, ${shortTimeFormatter.format(end)}`
   return `${startStr} – ${endStr}`
+}
+
+// "Aug 9, 7 PM" — compact date+time for constrained UI (the "?" sidebar's
+// per-source event lists) where a weekday and long month name don't fit.
+export function shortMonthDayTime(iso: string): string {
+  const date = new Date(iso)
+  const time = shortTimeFormatter.format(date).replace(':00 ', ' ')
+  return `${shortMonthDayFormatter.format(date)}, ${time}`
 }
 
 // "now till 9 PM" — used in place of the usual start/end display while an

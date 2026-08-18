@@ -32,6 +32,12 @@ export type EventsResponse = {
   generatedAt: string
 }
 
+export type EventSourceEventSummary = {
+  title: string
+  start: string
+  calendarLink?: string
+}
+
 export type EventSourceBreakdown = {
   key: MapCalendarKey
   label: string
@@ -39,11 +45,13 @@ export type EventSourceBreakdown = {
   eventSources: {
     label: string
     count: number
-    eventTitles?: string[]
+    events: EventSourceEventSummary[]
   }[]
 }
 
 export type EventSourcesResponse = {
   calendars: EventSourceBreakdown[]
+  totalCount: number
+  totalSourceCount: number
   generatedAt: string
 }

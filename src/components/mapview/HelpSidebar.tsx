@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import CalendarLink from '@/components/CalendarLink'
+import { EVENT_SOURCE_LINKS } from '@/lib/eventSourceLinks'
 import { CALENDARS } from '@/lib/googleCalendars'
+import { shortMonthDayTime } from '@/lib/mapEventFormat'
 import type { EventSourceBreakdown, EventSourcesResponse } from '@/lib/mapTypes'
 
 // The "?" popup — background on the project and links to add each source
@@ -12,6 +14,7 @@ import type { EventSourceBreakdown, EventSourcesResponse } from '@/lib/mapTypes'
 export default function HelpSidebar({ onClose }: { onClose: () => void }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [calendars, setCalendars] = useState<EventSourceBreakdown[] | null>(null)
+  const [totals, setTotals] = useState<{ count: number; sourceCount: number } | null>(null)
   useEffect(() => {
     function onPointerDown(e: PointerEvent) {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose()
@@ -25,6 +28,9 @@ export default function HelpSidebar({ onClose }: { onClose: () => void }) {
       .then((res) => res.json())
       .then((data: EventSourcesResponse) => {
         if (Array.isArray(data?.calendars)) setCalendars(data.calendars)
+        if (typeof data?.totalCount === 'number' && typeof data?.totalSourceCount === 'number') {
+          setTotals({ count: data.totalCount, sourceCount: data.totalSourceCount })
+        }
       })
       .catch(() => {})
   }, [])
@@ -57,6 +63,12 @@ export default function HelpSidebar({ onClose }: { onClose: () => void }) {
 
         <h3 className="std-map-help-sources-heading">Where do these events come from?</h3>
 
+        {totals && (
+          <p className="std-map-help-sources-totals">
+            {totals.count} events from {totals.sourceCount} sources
+          </p>
+        )}
+
         {calendars && calendars.length > 0 && (
           <div className="std-map-help-sources">
             {calendars.map((cal) => (
@@ -66,26 +78,49 @@ export default function HelpSidebar({ onClose }: { onClose: () => void }) {
                   <span className="std-map-help-sources-count">{cal.count}</span>
                 </summary>
                 <div className="std-map-help-sources-list">
-                  {cal.eventSources.map((source) =>
-                    source.eventTitles ? (
+                  {cal.eventSources.map((source) => {
+                    const sourceUrl = EVENT_SOURCE_LINKS[source.label]
+                    return (
                       <details key={source.label} className="std-map-help-sources-source">
                         <summary>
-                          <span>{source.label}</span>
+                          {sourceUrl ? (
+                            <a
+                              href={sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {source.label}
+                            </a>
+                          ) : (
+                            <span>{source.label}</span>
+                          )}
                           <span className="std-map-help-sources-count">{source.count}</span>
                         </summary>
-                        <ul className="std-map-help-sources-titles">
-                          {source.eventTitles.map((title) => (
-                            <li key={title}>{title}</li>
+                        <div className="std-map-help-sources-events">
+                          {source.events.map((ev, i) => (
+                            <div key={i} className="std-map-help-sources-event">
+                              - <span className="std-map-help-event-date">{shortMonthDayTime(ev.start)}</span>
+                              {ev.calendarLink && (
+                                <>
+                                  {' '}
+                                  <a
+                                    href={ev.calendarLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="std-map-help-event-link"
+                                  >
+                                    Link
+                                  </a>
+                                </>
+                              )}{' '}
+                              {ev.title}
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       </details>
-                    ) : (
-                      <div key={source.label} className="std-map-help-sources-source std-map-help-sources-source-flat">
-                        <span>{source.label}</span>
-                        <span className="std-map-help-sources-count">{source.count}</span>
-                      </div>
                     )
-                  )}
+                  })}
                 </div>
               </details>
             ))}
