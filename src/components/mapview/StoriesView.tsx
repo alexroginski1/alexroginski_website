@@ -11,10 +11,11 @@ const STORY_FORM_URL =
 
 const PASTEL_COLORS = ['#FDE2E4', '#DFE7FD', '#E2F0CB', '#FFF1E6', '#E2ECE9', '#FDE2FF', '#F0EFEB', '#BEE1E6']
 
-type StoriesResponse = { stories: string[] }
+type Story = { text: string; timestamp: string | null }
+type StoriesResponse = { stories: Story[] }
 
 export default function StoriesView({ onClose }: { onClose: () => void }) {
-  const [stories, setStories] = useState<string[] | null>(null)
+  const [stories, setStories] = useState<Story[] | null>(null)
   const [loadError, setLoadError] = useState(false)
 
   const rootRef = useRef<HTMLDivElement>(null)
@@ -66,7 +67,8 @@ export default function StoriesView({ onClose }: { onClose: () => void }) {
         <div className="stories-list">
           {stories.map((story, i) => (
             <div key={i} className="stories-card" style={{ backgroundColor: PASTEL_COLORS[i % PASTEL_COLORS.length] }}>
-              {story}
+              {story.text}
+              {story.timestamp && <p className="stories-card-timestamp">- {story.timestamp}</p>}
             </div>
           ))}
         </div>

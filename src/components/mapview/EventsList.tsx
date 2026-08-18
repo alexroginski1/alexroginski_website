@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react'
 import { EVENT_ENDED_BACKGROUND_COLOR, getCalendarStyle, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import {
-  dateTimeFormatter,
+  buildDayColorMap,
+  eventListDateParts,
   isEventEnded,
   nowTillLabel,
   relativeTimeLabel,
+  sfDateKey,
   shortLocationLabel,
   type EventListItem,
 } from '@/lib/mapEventFormat'
@@ -48,6 +50,11 @@ export default function EventsList({
       return next
     })
   }
+
+  // Same palette/assignment as the map view's marker weekday badges, built
+  // from the same underlying event set, so a given date reads as the same
+  // color whether the user is looking at the map or the list.
+  const dayColors = useMemo(() => buildDayColorMap(events), [events])
 
   const { within, outside, ended } = useMemo(() => {
     const byStart = [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
@@ -132,6 +139,8 @@ export default function EventsList({
     const ended = isEventEnded(event.end)
     const ongoingNow = !ended && relativeTimeLabel(event.start, event.end) === 'now'
     const tileBackground = ended ? EVENT_ENDED_BACKGROUND_COLOR : highlighted ? RADIUS_HIGHLIGHT_FILL_COLOR : undefined
+    const dayColor = dayColors.get(sfDateKey(event.start))
+    const { weekday, rest } = eventListDateParts(event.start)
     return (
       <li key={event.id} className="std-event-item" style={tileBackground ? { backgroundColor: tileBackground } : undefined}>
         <button type="button" className="std-event-item-main" onClick={() => setSelected(event)}>
@@ -145,7 +154,16 @@ export default function EventsList({
             </span>
           </div>
           <div className="std-event-item-meta">
-            {ongoingNow ? nowTillLabel(event.end) : dateTimeFormatter.format(new Date(event.start))}
+            {ongoingNow ? (
+              nowTillLabel(event.end)
+            ) : (
+              <>
+                <span className="std-event-item-day" style={dayColor ? { backgroundColor: dayColor } : undefined}>
+                  {weekday}
+                </span>{' '}
+                {rest}
+              </>
+            )}
             {ended && (
               <>
                 <br />

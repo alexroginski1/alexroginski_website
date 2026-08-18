@@ -109,6 +109,58 @@ const TIME_OF_DAY_CYCLE: TimeOfDay[] = ['morning', 'afternoon', 'evening']
 const DEFAULT_PRECISE_TIME_MIN = '15:00'
 const DEFAULT_PRECISE_TIME_MAX = '20:00'
 
+// Formats an "HH:MM" time string as a whole-hour label, e.g. "15:00" -> "3 PM".
+function formatHourLabel(value: string): string {
+  const hour = Number(value.split(':')[0])
+  const period = hour >= 12 ? 'PM' : 'AM'
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12
+  return `${displayHour} ${period}`
+}
+
+// Shifts an "HH:MM" time string by whole hours, wrapping around the clock —
+// minutes are dropped since the +precise time control only steps by hour.
+function shiftHour(value: string, deltaHours: number): string {
+  const hour = Number(value.split(':')[0])
+  const next = ((hour + deltaHours) % 24 + 24) % 24
+  return `${String(next).padStart(2, '0')}:00`
+}
+
+// Whole-hour stepper for the +precise time clause: the box shows the hour
+// (e.g. "3 PM") and is split down the middle — hovering the left half reveals
+// a faint "−" that decrements by 1 hour on click, the right half a faint "+"
+// that increments.
+function HourStepper({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string
+  onChange: (next: string) => void
+  ariaLabel: string
+}) {
+  return (
+    <span className="std-map-hour-stepper">
+      <span className="std-map-hour-stepper-label">{formatHourLabel(value)}</span>
+      <button
+        type="button"
+        className="std-map-hour-stepper-zone std-map-hour-stepper-zone-left"
+        onClick={() => onChange(shiftHour(value, -1))}
+        aria-label={`Decrease ${ariaLabel} by 1 hour`}
+      >
+        <span aria-hidden="true">−</span>
+      </button>
+      <button
+        type="button"
+        className="std-map-hour-stepper-zone std-map-hour-stepper-zone-right"
+        onClick={() => onChange(shiftHour(value, 1))}
+        aria-label={`Increase ${ariaLabel} by 1 hour`}
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+    </span>
+  )
+}
+
 type DatePreset = 'today' | 'tomorrow' | 'weekend' | 'next3' | 'next7' | 'all' | 'custom'
 
 const DATE_PRESET_ORDER: DatePreset[] = ['today', 'tomorrow', 'next3', 'next7', 'weekend', 'all', 'custom']
@@ -749,7 +801,7 @@ export default function EventsMapSection() {
           {dateSentence}
         </button>
 
-        {timeOfDayEnabled ? (
+        {timeOfDayEnabled && (
           <>
             <span>in the </span>
             <button type="button" className="std-map-sentence-toggle" onClick={cycleTimeOfDay}>
@@ -764,30 +816,14 @@ export default function EventsMapSection() {
               ×
             </button>
           </>
-        ) : (
-          <button type="button" className="std-map-sentence-toggle" onClick={enableTimeOfDay}>
-            +Time of day
-          </button>
         )}
 
-        {preciseTimeEnabled ? (
+        {preciseTimeEnabled && (
           <>
             <span>and is between </span>
-            <input
-              type="time"
-              className="std-map-sentence-time-input"
-              value={preciseTimeMin}
-              onChange={(e) => setPreciseTimeMin(e.target.value)}
-              aria-label="Earliest start time"
-            />
+            <HourStepper value={preciseTimeMin} onChange={setPreciseTimeMin} ariaLabel="earliest start time" />
             <span>and </span>
-            <input
-              type="time"
-              className="std-map-sentence-time-input"
-              value={preciseTimeMax}
-              onChange={(e) => setPreciseTimeMax(e.target.value)}
-              aria-label="Latest start time"
-            />
+            <HourStepper value={preciseTimeMax} onChange={setPreciseTimeMax} ariaLabel="latest start time" />
             <button
               type="button"
               className="std-map-sentence-remove"
@@ -797,13 +833,9 @@ export default function EventsMapSection() {
               ×
             </button>
           </>
-        ) : (
-          <button type="button" className="std-map-sentence-toggle" onClick={enablePreciseTime}>
-            +precise time
-          </button>
         )}
 
-        {radiusEnabled ? (
+        {radiusEnabled && (
           <>
             <span>within </span>
             <button type="button" className="std-map-sentence-toggle" onClick={cycleMinutes}>
@@ -841,13 +873,9 @@ export default function EventsMapSection() {
               ×
             </button>
           </>
-        ) : (
-          <button type="button" className="std-map-sentence-toggle" onClick={enableLocation}>
-            +location
-          </button>
         )}
 
-        {keywordsEnabled ? (
+        {keywordsEnabled && (
           <>
             <span>where event contains </span>
             {editingKeywords ? (
@@ -877,31 +905,56 @@ export default function EventsMapSection() {
               ×
             </button>
           </>
-        ) : (
-          <button type="button" className="std-map-sentence-toggle" onClick={enableKeywords}>
-            +keywords
-          </button>
         )}
 
-        {hasEndedEvents &&
-          (excludeEnded ? (
-            <>
-              <span>and has not ended yet </span>
-              <button
-                type="button"
-                className="std-map-sentence-remove"
-                onClick={toggleExcludeEnded}
-                aria-label="Remove not-ended filter"
-              >
-                ×
-              </button>
-            </>
-          ) : (
-            <button type="button" className="std-map-sentence-toggle" onClick={toggleExcludeEnded}>
+        {hasEndedEvents && excludeEnded && (
+          <>
+            <span>and has not ended yet </span>
+            <button
+              type="button"
+              className="std-map-sentence-remove"
+              onClick={toggleExcludeEnded}
+              aria-label="Remove not-ended filter"
+            >
+              ×
+            </button>
+          </>
+        )}
+      </div>
+
+      {(!timeOfDayEnabled ||
+        !preciseTimeEnabled ||
+        !radiusEnabled ||
+        !keywordsEnabled ||
+        (hasEndedEvents && !excludeEnded)) && (
+        <div className="std-map-sentence-extra">
+          {!timeOfDayEnabled && (
+            <button type="button" className="std-map-sentence-toggle-sm" onClick={enableTimeOfDay}>
+              +Time of day
+            </button>
+          )}
+          {!preciseTimeEnabled && (
+            <button type="button" className="std-map-sentence-toggle-sm" onClick={enablePreciseTime}>
+              +precise time
+            </button>
+          )}
+          {!radiusEnabled && (
+            <button type="button" className="std-map-sentence-toggle-sm" onClick={enableLocation}>
+              +location
+            </button>
+          )}
+          {!keywordsEnabled && (
+            <button type="button" className="std-map-sentence-toggle-sm" onClick={enableKeywords}>
+              +keywords
+            </button>
+          )}
+          {hasEndedEvents && !excludeEnded && (
+            <button type="button" className="std-map-sentence-toggle-sm" onClick={toggleExcludeEnded}>
               +not ended
             </button>
-          ))}
-      </div>
+          )}
+        </div>
+      )}
 
       {activeDatePreset === 'custom' && (
         <div className="std-map-filter-row">

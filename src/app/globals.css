@@ -52,7 +52,11 @@
 @layer components {
   .std-stuff-to-do {
     font-family: Georgia, 'Times New Roman', Times, serif;
-    font-size: 12px;
+    /* Floor for readable text on this page — matches the smallest Tailwind
+       text utility (text-sm) still in use here. Compact UI chrome (marker
+       label badges, pin count circles, etc.) is exempted and keeps its own
+       smaller explicit sizes. */
+    font-size: 14px;
   }
 
   .std-root {
@@ -425,6 +429,14 @@
     @apply rounded-lg border border-dashed border-stone-300 px-2.5 py-1 text-base md:text-2xl text-orange-600 font-medium hover:bg-stone-50 active:bg-stone-100 transition-colors cursor-pointer;
   }
 
+  .std-map-sentence-extra {
+    @apply flex flex-wrap items-center gap-x-2 gap-y-1.5 mb-3;
+  }
+
+  .std-map-sentence-toggle-sm {
+    @apply rounded-lg border border-dashed border-stone-300 px-2 py-0.5 text-sm md:text-base text-orange-600 font-medium hover:bg-stone-50 active:bg-stone-100 transition-colors cursor-pointer;
+  }
+
   .std-map-filters {
     @apply flex flex-col gap-3 mb-4;
   }
@@ -466,7 +478,7 @@
   }
 
   .std-map-legend-action {
-    @apply text-xs font-medium text-orange-600 hover:text-orange-700 cursor-pointer;
+    @apply text-sm font-medium text-orange-600 hover:text-orange-700 cursor-pointer;
   }
 
   .std-map-legend-item {
@@ -505,7 +517,7 @@
   }
 
   .std-event-group-header {
-    @apply px-1 text-xs font-semibold uppercase tracking-wide text-stone-500;
+    @apply px-1 text-sm font-semibold uppercase tracking-wide text-stone-500;
   }
 
   .std-event-group-header-toggle {
@@ -545,11 +557,20 @@
   }
 
   .std-event-item-ended-badge {
-    @apply flex-shrink-0 text-[10px] font-semibold uppercase tracking-wide text-stone-500;
+    @apply flex-shrink-0 text-sm font-semibold uppercase tracking-wide text-stone-500;
   }
 
   .std-event-item-meta {
     @apply mt-1 text-sm text-stone-500 truncate;
+  }
+
+  /* Neutral by default; dayColors (EventsList.tsx) overrides the background
+     inline once more than one date is visible in the list, matching the
+     map marker label's day badge (.std-map-marker-label-day) so a given
+     date reads as the same color in both views. */
+  .std-event-item-day {
+    @apply rounded px-1 font-semibold text-stone-700;
+    background-color: #e7e5e4;
   }
 
   .std-event-ended-section {
@@ -557,7 +578,7 @@
   }
 
   .std-event-ended-toggle {
-    @apply flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-stone-500 hover:text-stone-700 cursor-pointer select-none;
+    @apply flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-stone-500 hover:text-stone-700 cursor-pointer select-none;
   }
 
   .std-event-ended-toggle-caret {
@@ -638,7 +659,7 @@
   }
 
   .std-map-calendar-toggle {
-    @apply rounded-md border border-stone-300 bg-white/95 px-2.5 py-1 text-xs font-medium text-stone-700 shadow hover:bg-stone-50 cursor-pointer;
+    @apply rounded-md border border-stone-300 bg-white/95 px-2.5 py-1 text-sm font-medium text-stone-700 shadow hover:bg-stone-50 cursor-pointer;
   }
 
   .std-map-calendar-panel {
@@ -649,7 +670,7 @@
   }
 
   .std-map-sort-hint {
-    @apply px-1 pb-1.5 mb-0.5 border-b border-stone-200 text-xs text-stone-400;
+    @apply px-1 pb-1.5 mb-0.5 border-b border-stone-200 text-sm text-stone-400;
     max-width: 220px;
   }
 
@@ -711,7 +732,7 @@
   }
 
   .std-map-help-sources-totals {
-    @apply text-xs text-stone-400 !mt-0.5;
+    @apply text-2xl font-bold text-stone-700 !mt-1;
   }
 
   .std-map-help-sources {
@@ -739,7 +760,7 @@
   }
 
   .std-map-help-sources-events {
-    @apply px-3 py-1.5 pl-9 pb-2 space-y-1 text-stone-500 text-xs bg-stone-50;
+    @apply px-3 py-1.5 pl-9 pb-2 space-y-1 text-stone-500 text-sm bg-stone-50;
   }
 
   .std-map-help-sources-event {
@@ -772,7 +793,7 @@
   }
 
   .std-map-count {
-    @apply text-lg font-medium text-stone-600 mb-3;
+    @apply text-lg font-medium text-stone-600 mb-0;
   }
 
   .std-map-count-badge {
@@ -787,6 +808,27 @@
   .std-map-sentence-time-input {
     @apply flex-none rounded-lg border border-stone-200 bg-stone-50 px-2 py-1 text-base md:text-2xl text-stone-700 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent transition;
     width: auto;
+  }
+
+  .std-map-hour-stepper {
+    @apply relative inline-flex flex-none items-center justify-center rounded-lg border border-stone-200 bg-stone-50 px-4 py-1 text-base md:text-2xl text-stone-700;
+    min-width: 5rem;
+  }
+
+  .std-map-hour-stepper-label {
+    @apply pointer-events-none select-none;
+  }
+
+  .std-map-hour-stepper-zone {
+    @apply absolute inset-y-0 flex w-1/2 cursor-pointer items-center text-stone-500 opacity-0 transition-opacity duration-150 hover:opacity-40 focus-visible:opacity-40 focus:outline-none;
+  }
+
+  .std-map-hour-stepper-zone-left {
+    @apply left-0 justify-start rounded-l-lg pl-1.5;
+  }
+
+  .std-map-hour-stepper-zone-right {
+    @apply right-0 justify-end rounded-r-lg pr-1.5;
   }
 
   .std-map-sentence-remove {
@@ -813,6 +855,10 @@
 
   .stories-card {
     @apply rounded-2xl px-4 py-3 text-base leading-relaxed text-stone-800 shadow-sm whitespace-pre-wrap;
+  }
+
+  .stories-card-timestamp {
+    @apply mt-2 text-sm italic text-stone-600;
   }
 
   /* The always-visible title preview below each marker. No hover state —
@@ -954,7 +1000,7 @@
   }
 
   .std-map-popup-pager {
-    @apply flex items-center justify-between gap-2 mb-2 pb-2 border-b border-stone-200 text-xs text-stone-600;
+    @apply flex items-center justify-between gap-2 mb-2 pb-2 border-b border-stone-200 text-sm text-stone-600;
   }
 
   .std-map-popup-pager button {
@@ -962,7 +1008,7 @@
   }
 
   .std-map-gcal-link {
-    @apply mt-2 inline-block rounded-full bg-emerald-100 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-800 no-underline hover:bg-emerald-200 transition-colors;
+    @apply mt-2 inline-block rounded-full bg-emerald-100 border border-emerald-200 px-3 py-1.5 text-sm font-medium text-emerald-800 no-underline hover:bg-emerald-200 transition-colors;
   }
 
   /* Shared by the map marker popup and the event-tile popup below the map,
@@ -980,7 +1026,7 @@
   }
 
   .std-map-popup-ended-badge {
-    @apply mr-1 text-[10px] font-semibold uppercase tracking-wide text-stone-500;
+    @apply mr-1 text-sm font-semibold uppercase tracking-wide text-stone-500;
   }
 
   .std-map-popup-meta {
@@ -994,7 +1040,7 @@
   }
 
   .std-map-popup-relative {
-    @apply rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none;
+    @apply rounded px-1.5 py-0.5 text-sm font-semibold leading-none;
     background-color: #fed7aa;
     color: #9a3412;
   }
@@ -1018,7 +1064,7 @@
   }
 
   .std-map-location-info-popup {
-    @apply relative mt-2 rounded-lg border border-stone-200 bg-stone-50 px-3 pt-5 pb-3 text-xs leading-relaxed text-stone-600 space-y-2;
+    @apply relative mt-2 rounded-lg border border-stone-200 bg-stone-50 px-3 pt-5 pb-3 text-sm leading-relaxed text-stone-600 space-y-2;
   }
 
   .std-map-location-info-close {
@@ -1067,7 +1113,7 @@
      than inline text links. Each sits on its own line since a description
      can carry more than one. */
   .std-map-popup-desc .std-map-desc-link {
-    @apply mt-2 inline-block rounded-full border px-3 py-1.5 text-xs font-medium no-underline transition-colors;
+    @apply mt-2 inline-block rounded-full border px-3 py-1.5 text-sm font-medium no-underline transition-colors;
     @apply bg-violet-100 border-violet-200 text-violet-800 hover:bg-violet-200;
   }
 

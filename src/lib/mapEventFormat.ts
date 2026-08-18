@@ -37,6 +37,14 @@ const shortMonthDayFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
 })
 
+const monthDayTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Los_Angeles',
+  month: 'short',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+})
+
 // "Mon" + "5:30 PM" / "Sat" + "10 AM" — used for the map marker labels,
 // which are too small for the fuller `dateTimeFormatter` output. Split so
 // the weekday can be styled separately (e.g. color-coded per day).
@@ -44,6 +52,14 @@ export function shortEventDateParts(iso: string): { weekday: string; time: strin
   const date = new Date(iso)
   const time = shortTimeFormatter.format(date).replace(':00 ', ' ')
   return { weekday: shortWeekdayFormatter.format(date), time }
+}
+
+// "Mon" + "Aug 17, 5:30 PM" — the list view's per-event date line, split so
+// the weekday can carry the same per-day background color as the map
+// marker badge for that date (see DAY_BADGE_COLORS/buildDayColorMap).
+export function eventListDateParts(iso: string): { weekday: string; rest: string } {
+  const date = new Date(iso)
+  return { weekday: shortWeekdayFormatter.format(date), rest: monthDayTimeFormatter.format(date) }
 }
 
 // "Monday, August 9, 10:00 AM – 12:00 PM" — used in the map marker popup,
@@ -156,6 +172,24 @@ export function sfDateKey(iso: string): string {
     month: '2-digit',
     day: '2-digit',
   }).format(new Date(iso))
+}
+
+// Distinct pastel backgrounds for the weekday badge on map marker labels and
+// list-view date text, so events on different days are visually
+// distinguishable at a glance in both views. Shared here (rather than owned
+// by either view) so the same date always maps to the same color regardless
+// of which view renders it.
+export const DAY_BADGE_COLORS = ['#fde68a', '#bfdbfe', '#bbf7d0', '#fbcfe8', '#ddd6fe', '#fed7aa', '#a5f3fc', '#fecaca']
+
+// Only assigns colors when more than one date is present among the given
+// events — a single-day view has nothing to distinguish, so callers should
+// leave the badge neutral when this returns an empty map.
+export function buildDayColorMap(events: { start: string }[]): Map<string, string> {
+  const keys = Array.from(new Set(events.map((e) => sfDateKey(e.start)))).sort()
+  const map = new Map<string, string>()
+  if (keys.length <= 1) return map
+  keys.forEach((key, i) => map.set(key, DAY_BADGE_COLORS[i % DAY_BADGE_COLORS.length]))
+  return map
 }
 
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening'

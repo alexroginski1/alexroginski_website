@@ -7,7 +7,14 @@ import { MapContainer, TileLayer, CircleMarker, Circle, Marker, Tooltip, useMap 
 import type { ApiEvent } from '@/lib/mapTypes'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import { getCalendarStyle, RADIUS_HIGHLIGHT_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
-import { isEventEnded, nowTillLabel, relativeTimeLabel, sfDateKey, shortEventDateParts } from '@/lib/mapEventFormat'
+import {
+  buildDayColorMap,
+  isEventEnded,
+  nowTillLabel,
+  relativeTimeLabel,
+  sfDateKey,
+  shortEventDateParts,
+} from '@/lib/mapEventFormat'
 import MapEventSidebar from './MapEventSidebar'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
@@ -16,20 +23,6 @@ const OUTSIDE_RADIUS_OPACITY = 0.25
 const MARKER_LABEL_MAX_CHARS = 30
 type ZoomBucket = 'sm' | 'md' | 'lg'
 const MARKER_SIZE = 28
-
-// Distinct pastel backgrounds for the weekday badge on marker labels, so
-// events on different days are visually distinguishable at a glance. Only
-// assigned when more than one date is present among the visible events —
-// a single-day view has nothing to distinguish, so the badge stays neutral.
-const DAY_BADGE_COLORS = ['#fde68a', '#bfdbfe', '#bbf7d0', '#fbcfe8', '#ddd6fe', '#fed7aa', '#a5f3fc', '#fecaca']
-
-function buildDayColorMap(events: ApiEvent[]): Map<string, string> {
-  const keys = Array.from(new Set(events.map((e) => sfDateKey(e.start)))).sort()
-  const map = new Map<string, string>()
-  if (keys.length <= 1) return map
-  keys.forEach((key, i) => map.set(key, DAY_BADGE_COLORS[i % DAY_BADGE_COLORS.length]))
-  return map
-}
 
 // Remembers the visitor's last map position/zoom across reloads, so they
 // don't have to re-navigate to where they left off every visit.
