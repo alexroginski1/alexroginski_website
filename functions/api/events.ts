@@ -126,7 +126,24 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
           const key = missingKeys[i]
           const raw = locationKeyToRaw.get(key)!
           const query = /san francisco|,\s*ca\b/i.test(raw) ? raw : `${raw}, San Francisco, CA`
-          const result = await geocodeAddress(query, contactEmail)
+          let result = await geocodeAddress(query, contactEmail)
+
+          // Some Google Calendar locations mash a POI name together with an
+          // unrelated cross-street (e.g. "Duboce Park, Scott St, San
+          // Francisco, CA") — not a real structured address, so Nominatim's
+          // free-text search can't resolve it. Retrying with just the venue-
+          // name portion before the first comma usually succeeds.
+          if (!result) {
+            const firstSegment = raw.split(',')[0]?.trim()
+            if (firstSegment && firstSegment !== raw.trim()) {
+              await sleep(GEOCODE_THROTTLE_MS)
+              const fallbackQuery = /san francisco|,\s*ca\b/i.test(firstSegment)
+                ? firstSegment
+                : `${firstSegment}, San Francisco, CA`
+              result = await geocodeAddress(fallbackQuery, contactEmail)
+            }
+          }
+
           if (result) {
             await upsertGeocode(env.DB, key, raw, result.lat, result.lng, result.displayName)
           }
@@ -137,14 +154,19 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
 
   // Rows whose cleaned location we couldn't geocode within this request's
-  // budget are simply dropped from the map for now — as the D1 geocode
-  // cache fills up over repeated requests, fewer rows fall into this
-  // bucket. Rows with no cleaned location at all are never geocoded; they
-  // surface separately as unknownLocationEvents instead.
+  // budget (or ever — some locations are simply unresolvable, see the
+  // fallback above) fall into the unknownLocationEvents bucket alongside
+  // rows with no location at all, rather than being dropped: as the D1
+  // geocode cache fills up over repeated requests, resolvable rows migrate
+  // out of this bucket and onto the map.
   const events: ApiEvent[] = []
+  const geocodeFailedRows: typeof knownLocationRows = []
   for (const row of knownLocationRows) {
     const coords = geocodes.get(normalizeLocationKey(row.cleanedLocation))
-    if (!coords) continue
+    if (!coords) {
+      geocodeFailedRows.push(row)
+      continue
+    }
     events.push({
       id: row.id,
       calendar: row.calendar,
@@ -178,7 +200,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     })
   }
 
-  const unknownLocationEvents: UnknownLocationEvent[] = unknownLocationRows.map((row) => ({
+  const unknownLocationEvents: UnknownLocationEvent[] = [...unknownLocationRows, ...geocodeFailedRows].map((row) => ({
     id: row.id,
     calendar: row.calendar,
     title: row.title,

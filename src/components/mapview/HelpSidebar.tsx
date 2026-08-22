@@ -2,10 +2,55 @@
 
 import { useEffect, useRef, useState } from 'react'
 import CalendarLink from '@/components/CalendarLink'
-import { EVENT_SOURCE_LINKS } from '@/lib/eventSourceLinks'
+import { ALL_EVENT_SOURCES, EVENT_SOURCE_LINKS, type EventSourceInfo } from '@/lib/eventSourceLinks'
 import { CALENDARS } from '@/lib/googleCalendars'
 import { shortMonthDayTime } from '@/lib/mapEventFormat'
 import type { EventSourceBreakdown, EventSourcesResponse } from '@/lib/mapTypes'
+
+// Fills in every known source (from ALL_EVENT_SOURCES) that the stats API
+// didn't return — i.e. sources with zero events right now — so the sidebar
+// lists every venue we pull from, not just the ones currently firing. Known
+// sources with events keep their live counts; anything left over from
+// ALL_EVENT_SOURCES for that calendar is appended with a count of 0.
+function withZeroCountSources(calendars: EventSourceBreakdown[]): EventSourceBreakdown[] {
+  const byCalendar = new Map<string, EventSourceInfo[]>()
+  for (const source of ALL_EVENT_SOURCES) {
+    let list = byCalendar.get(source.calendar)
+    if (!list) {
+      list = []
+      byCalendar.set(source.calendar, list)
+    }
+    list.push(source)
+  }
+
+  const seenCalendars = new Set(calendars.map((cal) => cal.key))
+
+  const filledExisting = calendars.map((cal) => {
+    const known = byCalendar.get(cal.key) ?? []
+    const seenLabels = new Set(cal.eventSources.map((s) => s.label))
+    const missing = known
+      .filter((source) => !seenLabels.has(source.label))
+      .map((source) => ({ label: source.label, count: 0, events: [] }))
+    if (missing.length === 0) return cal
+    const eventSources = [...cal.eventSources, ...missing].sort(
+      (a, b) => b.count - a.count || a.label.localeCompare(b.label)
+    )
+    return { ...cal, eventSources }
+  })
+
+  const emptyCalendars: EventSourceBreakdown[] = [...byCalendar.entries()]
+    .filter(([key]) => !seenCalendars.has(key))
+    .map(([key, sources]) => ({
+      key,
+      label: key,
+      count: 0,
+      eventSources: sources
+        .map((source) => ({ label: source.label, count: 0, events: [] }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    }))
+
+  return [...filledExisting, ...emptyCalendars]
+}
 
 // The "?" popup — background on the project and links to add each source
 // calendar directly, without leaving the map. Anchored to the right edge so
@@ -27,7 +72,7 @@ export default function HelpSidebar({ onClose }: { onClose: () => void }) {
     fetch('/api/event-sources')
       .then((res) => res.json())
       .then((data: EventSourcesResponse) => {
-        if (Array.isArray(data?.calendars)) setCalendars(data.calendars)
+        if (Array.isArray(data?.calendars)) setCalendars(withZeroCountSources(data.calendars))
         if (typeof data?.totalCount === 'number' && typeof data?.totalSourceCount === 'number') {
           setTotals({ count: data.totalCount, sourceCount: data.totalSourceCount })
         }
@@ -49,7 +94,7 @@ export default function HelpSidebar({ onClose }: { onClose: () => void }) {
           Calendars (which get put on a map shown below), so you can discover what&apos;s going on
           without searching several websites.
         </p>
-        <p>Everything is free. This is for you and your friends.</p>
+        <p>Everything is free and will stay free forever. This is for you and your friends.</p>
         <p>I really hope this helps you.</p>
 
         <p>

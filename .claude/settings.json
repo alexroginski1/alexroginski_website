@@ -5,7 +5,9 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/api/events\")",
       "Bash(/usr/bin/curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/events.json\")",
       "Bash(/usr/bin/curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/?format=json\" -o /dev/null -w \"%{http_code}\\\\n\")",
-      "Bash(/usr/bin/curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/\")"
+      "Bash(/usr/bin/curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/\")",
+      "Bash(gh api *)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/alexroginski1/stuff_to_do/main/config/settings.py\")"
     ]
   }
 }
