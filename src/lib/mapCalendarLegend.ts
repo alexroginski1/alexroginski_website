@@ -29,6 +29,8 @@ const KNOWN_CALENDAR_STYLES: Record<string, CalendarStyle> = {
   Bars: { color: '#8E24AA', emoji: '🍸' },
   Dancing: { color: '#E67C73', emoji: '💃' },
   Exercise: { color: '#F6BF26', emoji: '🏃' },
+  Mindfulness: { color: '#26A69A', emoji: '🧘' },
+  Shows: { color: '#AB47BC', emoji: '🎟️' },
 }
 
 const FALLBACK_COLORS = ['#78716c', '#0d9488', '#c2410c', '#4338ca', '#be123c', '#0891b2']

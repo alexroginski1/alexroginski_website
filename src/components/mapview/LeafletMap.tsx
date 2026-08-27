@@ -18,6 +18,17 @@ import {
 import MapEventSidebar from './MapEventSidebar'
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
+// Public CARTO basemap key (client-embeddable, not a secret) — required by
+// CARTO's tile service or tiles render with an "API KEY REQUIRED" watermark.
+const CARTO_API_KEY = 'cb1_29ac_1_2fa457e4c8b5d26cdde7682e'
+// Keeps panning/zooming within the Bay Area (Marin down through the South
+// Bay, coast to the inner East Bay) — the site only covers events here, so
+// there's no reason to let the map wander off to elsewhere in the world.
+const BAY_AREA_BOUNDS: L.LatLngBoundsExpression = [
+  [36.85, -123.05],
+  [38.55, -121.55],
+]
+const BAY_AREA_MIN_ZOOM = 9
 const MILES_TO_METERS = 1609.34
 const OUTSIDE_RADIUS_OPACITY = 0.25
 const MARKER_LABEL_MAX_CHARS = 30
@@ -469,11 +480,14 @@ export default function LeafletMap({
         scrollWheelZoom
         zoomControl={false}
         className="std-map-container"
+        maxBounds={BAY_AREA_BOUNDS}
+        maxBoundsViscosity={1.0}
+        minZoom={BAY_AREA_MIN_ZOOM}
       >
         {onMapReady && <MapReadyNotifier onReady={onMapReady} />}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          url={`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?api_key=${CARTO_API_KEY}`}
           subdomains="abcd"
           maxZoom={19}
         />

@@ -9,7 +9,6 @@ import {
   nowTillLabel,
   relativeTimeLabel,
   sfDateKey,
-  shortLocationLabel,
   type EventListItem,
 } from '@/lib/mapEventFormat'
 import { groupEvents, type EventGroupNode, type ListCriterion } from '@/lib/mapListGrouping'
@@ -69,9 +68,6 @@ export default function EventsList({
   }, [events, highlightedEventIds])
 
   const showSectionHeaders = !!highlightedEventIds && within.length > 0 && outside.length > 0
-  // A "source" section header already names the calendar — repeating it on
-  // every tile inside that section is redundant.
-  const hideSourceLabel = sortGroupOrder.includes('source')
 
   // The "within region" split (above) is always the outermost partition when
   // active; the user's own sort/group picks are layered inside each side of
@@ -149,7 +145,7 @@ export default function EventsList({
             <span
               className={`std-event-item-title${highlighted && !ended ? ' font-bold' : ''}${ended ? ' std-event-item-title-ended' : ''}`}
             >
-              {!hideSourceLabel && <span className="std-event-item-source">{legend.label}: </span>}
+              <span className="std-event-item-source">{legend.label}: </span>
               {event.title}
             </span>
           </div>
@@ -170,10 +166,10 @@ export default function EventsList({
                 <span className="std-event-item-ended-badge">Event Ended</span>
               </>
             )}
-            {event.location && (
+            {(event.rawLocation || event.location) && (
               <>
                 <br />
-                {shortLocationLabel(event.location)}
+                {event.rawLocation || event.location}
               </>
             )}
           </div>

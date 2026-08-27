@@ -498,22 +498,22 @@
   }
 
   .std-event-groups {
-    @apply flex flex-col gap-4 mt-4;
+    @apply flex flex-col gap-1.5 mt-2;
   }
 
   .std-event-group {
-    @apply flex flex-col gap-2;
+    @apply flex flex-col gap-0.5;
   }
 
   .std-event-list {
-    @apply flex flex-col gap-2;
+    @apply flex flex-col gap-0.5;
     /* No cap here — the list view takes up the whole screen, so scrolling
        is handled by .std-map-overlay-list (the full-height page region)
        rather than truncating to a handful of tiles in their own scrollbox. */
   }
 
   .std-event-item {
-    @apply flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3;
+    @apply flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white px-3 py-1;
   }
 
   .std-event-group-header {
@@ -561,7 +561,7 @@
   }
 
   .std-event-item-meta {
-    @apply mt-1 text-sm text-stone-500 truncate;
+    @apply mt-0.5 text-xs text-stone-500 truncate;
   }
 
   /* Neutral by default; dayColors (EventsList.tsx) overrides the background
@@ -574,7 +574,7 @@
   }
 
   .std-event-ended-section {
-    @apply mt-4 border-t border-stone-200 pt-3;
+    @apply mt-3 border-t border-stone-200 pt-2;
   }
 
   .std-event-ended-toggle {
