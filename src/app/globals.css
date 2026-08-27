@@ -552,8 +552,8 @@
     @apply line-through text-stone-500;
   }
 
-  .std-event-item-source {
-    @apply font-normal text-stone-500;
+  .std-event-item-venue {
+    @apply text-orange-600 hover:text-orange-700 hover:underline;
   }
 
   .std-event-item-ended-badge {

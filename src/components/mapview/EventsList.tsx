@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { EVENT_ENDED_BACKGROUND_COLOR, getCalendarStyle, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import {
+  addressWithoutCityStateZip,
   buildDayColorMap,
   eventListDateParts,
   isEventEnded,
@@ -137,15 +138,31 @@ export default function EventsList({
     const tileBackground = ended ? EVENT_ENDED_BACKGROUND_COLOR : highlighted ? RADIUS_HIGHLIGHT_FILL_COLOR : undefined
     const dayColor = dayColors.get(sfDateKey(event.start))
     const { weekday, rest } = eventListDateParts(event.start)
+    const rawVenue = event.rawLocation || event.location
+    const venue = rawVenue ? addressWithoutCityStateZip(rawVenue) : undefined
+    const openSidebar = () => setSelected(event)
     return (
       <li key={event.id} className="std-event-item" style={tileBackground ? { backgroundColor: tileBackground } : undefined}>
-        <button type="button" className="std-event-item-main" onClick={() => setSelected(event)}>
+        {/* A `div` (not `button`) so the venue link below can nest inside it —
+            an `<a>` inside a `<button>` is invalid HTML and behaves
+            unpredictably for keyboard/screen-reader users. */}
+        <div
+          className="std-event-item-main"
+          role="button"
+          tabIndex={0}
+          onClick={openSidebar}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              openSidebar()
+            }
+          }}
+        >
           <div className="std-event-item-title-row">
             <span className="std-event-item-dot" style={{ backgroundColor: legend.color }} />
             <span
               className={`std-event-item-title${highlighted && !ended ? ' font-bold' : ''}${ended ? ' std-event-item-title-ended' : ''}`}
             >
-              <span className="std-event-item-source">{legend.label}: </span>
               {event.title}
             </span>
           </div>
@@ -160,20 +177,32 @@ export default function EventsList({
                 {rest}
               </>
             )}
+            {venue && (
+              <>
+                {' · '}
+                {event.calendarLink ? (
+                  <a
+                    href={event.calendarLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="std-event-item-venue"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {venue}
+                  </a>
+                ) : (
+                  <span className="std-event-item-venue">{venue}</span>
+                )}
+              </>
+            )}
             {ended && (
               <>
                 <br />
                 <span className="std-event-item-ended-badge">Event Ended</span>
               </>
             )}
-            {(event.rawLocation || event.location) && (
-              <>
-                <br />
-                {event.rawLocation || event.location}
-              </>
-            )}
           </div>
-        </button>
+        </div>
       </li>
     )
   }
