@@ -252,16 +252,48 @@ export default function EventsMapSection() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/events')
-      .then((res) => res.json())
-      .then((data: EventsResponse) => {
-        // Defensive against a stale edge-cached response from a previous
-        // deploy whose shape doesn't match this build's expectations.
-        if (Array.isArray(data?.events)) setEvents(data.events)
-        if (Array.isArray(data?.unknownLocationEvents)) setUnknownLocationEvents(data.unknownLocationEvents)
-      })
-      .catch(() => setLoadError(true))
-      .finally(() => setEventsLoading(false))
+    let cancelled = false
+
+    function loadEvents() {
+      fetch('/api/events')
+        .then((res) => res.json())
+        .then((data: EventsResponse) => {
+          if (cancelled) return
+          // Defensive against a stale edge-cached response from a previous
+          // deploy whose shape doesn't match this build's expectations.
+          if (Array.isArray(data?.events)) setEvents(data.events)
+          if (Array.isArray(data?.unknownLocationEvents)) setUnknownLocationEvents(data.unknownLocationEvents)
+          setLoadError(false)
+        })
+        .catch(() => {
+          if (!cancelled) setLoadError(true)
+        })
+        .finally(() => {
+          if (!cancelled) setEventsLoading(false)
+        })
+    }
+
+    loadEvents()
+
+    // The API response is edge-cached for 5 minutes (CACHE_TTL_SECONDS in
+    // functions/api/events.ts) and the underlying stats-API/geocode data
+    // keeps changing behind it. Without a refetch, a tab left open just
+    // keeps showing the snapshot from whenever it first loaded — drifting
+    // further from the live event count the longer it sits, with nothing
+    // telling the visitor it's gone stale.
+    const REFRESH_INTERVAL_MS = 5 * 60 * 1000
+    const interval = setInterval(loadEvents, REFRESH_INTERVAL_MS)
+
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') loadEvents()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [])
 
   // The set of calendars is whatever's actually present in the fetched
