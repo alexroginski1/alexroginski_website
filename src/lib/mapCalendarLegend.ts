@@ -13,6 +13,12 @@ export const RADIUS_HIGHLIGHT_FILL_COLOR = '#e0f2fe'
 // time has passed, so past events read as inactive everywhere they appear.
 export const EVENT_ENDED_BACKGROUND_COLOR = '#e7e5e4'
 
+// Shown on list-view tiles for events whose location couldn't be placed on
+// the map, so they read as inline-but-distinct rather than needing a
+// separate section. A shade lighter than EVENT_ENDED_BACKGROUND_COLOR so the
+// two states (past vs. unplaceable) stay visually distinguishable.
+export const UNKNOWN_LOCATION_BACKGROUND_COLOR = '#f3f4f6'
+
 type CalendarStyle = { color: string; emoji: string }
 
 // Calendar keys themselves come from the stats API at runtime (see

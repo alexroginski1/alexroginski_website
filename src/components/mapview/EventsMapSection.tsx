@@ -878,6 +878,15 @@ export default function EventsMapSection() {
     excludedEventSources,
   ])
 
+  // List view shows events with an unplaceable location inline alongside
+  // everything else (styled distinctly, see EventsList) rather than in a
+  // separate section — the map view still excludes them since they have no
+  // lat/lng to plot.
+  const listEvents = useMemo(
+    () => [...visibleEvents, ...visibleUnknownLocationEvents],
+    [visibleEvents, visibleUnknownLocationEvents],
+  )
+
   // Events within the active travel radius — highlighted on the map and
   // pinned to the top of the list below. Null (not an empty set) when the
   // radius filter isn't active, so map/list rendering can tell "no radius"
@@ -1268,21 +1277,15 @@ export default function EventsMapSection() {
                 distanceAvailable={!!activeSearchOrigin}
               />
             </div>
-            {visibleEvents.length > 0 ? (
+            {visibleEvents.length + visibleUnknownLocationEvents.length > 0 ? (
               <EventsList
-                events={visibleEvents}
+                events={listEvents}
                 highlightedEventIds={highlightedEventIds}
                 sortGroupOrder={sortGroupOrder}
                 distanceOrigin={activeSearchOrigin}
               />
             ) : (
               <p className="std-map-empty">No events match your filters.</p>
-            )}
-            {visibleUnknownLocationEvents.length > 0 && (
-              <>
-                <h3 className="std-map-unknown-location-heading">Events with unknown locations</h3>
-                <EventsList events={visibleUnknownLocationEvents} sortGroupOrder={sortGroupOrder} />
-              </>
             )}
           </div>
         )}

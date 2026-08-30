@@ -2,6 +2,22 @@ export function normalizeLocationKey(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+// Some scrapers pin an event to an exact known point (e.g. a specific piano
+// in a park) rather than a real street address — "lat,lng" in the cleaned
+// location plots directly instead of being sent to Nominatim, whose
+// free-text `/search` endpoint can't resolve a bare coordinate pair.
+const COORDINATE_LOCATION_RE = /^(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/
+
+export function parseCoordinateLocation(text: string): { lat: number; lng: number } | null {
+  const match = COORDINATE_LOCATION_RE.exec(text.trim())
+  if (!match) return null
+  const lat = parseFloat(match[1])
+  const lng = parseFloat(match[2])
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
+  return { lat, lng }
+}
+
 // D1 caps the number of bound parameters per query well below SQLite's own
 // default limit, so a whole week's worth of unique locations (can be 100+)
 // has to be looked up in batches rather than one IN (...) with every key.

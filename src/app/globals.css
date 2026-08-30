@@ -556,6 +556,10 @@
     @apply flex-shrink-0 text-sm font-semibold uppercase tracking-wide text-stone-500;
   }
 
+  .std-event-item-unknown-location-badge {
+    @apply flex-shrink-0 text-sm font-semibold text-stone-500;
+  }
+
   .std-event-item-meta {
     @apply mt-0.5 text-xs text-stone-500 truncate;
   }
@@ -846,10 +850,6 @@
 
   .std-map-sentence-remove {
     @apply text-stone-400 hover:text-stone-600 text-base md:text-2xl leading-none px-1 cursor-pointer;
-  }
-
-  .std-map-unknown-location-heading {
-    @apply mt-6 mb-1 text-sm font-semibold text-stone-600;
   }
 
   /* "Our Stories" — a docked sidebar (see HelpSidebar/SurveySidebar)

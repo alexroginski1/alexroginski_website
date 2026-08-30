@@ -32,12 +32,20 @@ function distanceBandLabel(miles: number): string {
 
 // Ended events sink to the bottom of every time-sorted grouping — otherwise
 // interleaved with everything still upcoming, which is what someone
-// glancing down a group actually cares about.
-function sortByTime(items: EventListItem[]): EventListItem[] {
+// glancing down a group actually cares about. When a radius filter is
+// active, events within the region sink to the top of their leaf list ahead
+// of events outside it — a single list per group rather than a separate
+// "within/not within region" section.
+function sortByTime(items: EventListItem[], highlightedEventIds?: Set<string> | null): EventListItem[] {
   return [...items].sort((a, b) => {
     const aEnded = isEventEnded(a.end)
     const bEnded = isEventEnded(b.end)
     if (aEnded !== bEnded) return aEnded ? 1 : -1
+    if (highlightedEventIds) {
+      const aWithin = highlightedEventIds.has(a.id)
+      const bWithin = highlightedEventIds.has(b.id)
+      if (aWithin !== bWithin) return aWithin ? -1 : 1
+    }
     return new Date(a.start).getTime() - new Date(b.start).getTime()
   })
 }
@@ -51,18 +59,23 @@ export type EventGroupNode =
 // there's no origin to measure from, and events missing lat/lng (e.g.
 // unknown-location events) fall back to a single "Unknown distance" bucket
 // rather than being dropped.
-function buildNode(items: EventListItem[], criteria: ListCriterion[], origin: LatLng | null): EventGroupNode {
-  if (criteria.length === 0) return { items: sortByTime(items) }
+function buildNode(
+  items: EventListItem[],
+  criteria: ListCriterion[],
+  origin: LatLng | null,
+  highlightedEventIds?: Set<string> | null,
+): EventGroupNode {
+  if (criteria.length === 0) return { items: sortByTime(items, highlightedEventIds) }
 
   const [criterion, ...rest] = criteria
 
   if (criterion === 'time') {
-    const sorted = sortByTime(items)
-    return rest.length === 0 ? { items: sorted } : buildNode(sorted, rest, origin)
+    const sorted = sortByTime(items, highlightedEventIds)
+    return rest.length === 0 ? { items: sorted } : buildNode(sorted, rest, origin, highlightedEventIds)
   }
 
   if (criterion === 'distance' && !origin) {
-    return buildNode(items, rest, origin)
+    return buildNode(items, rest, origin, highlightedEventIds)
   }
 
   const buckets = new Map<string, EventListItem[]>()
@@ -88,10 +101,18 @@ function buildNode(items: EventListItem[], criteria: ListCriterion[], origin: La
   })
 
   return {
-    children: labels.map((label) => ({ label, node: buildNode(buckets.get(label)!, rest, origin) })),
+    children: labels.map((label) => ({
+      label,
+      node: buildNode(buckets.get(label)!, rest, origin, highlightedEventIds),
+    })),
   }
 }
 
-export function groupEvents(events: EventListItem[], order: ListCriterion[], origin: LatLng | null): EventGroupNode {
-  return buildNode(events, order.length > 0 ? order : ['time'], origin)
+export function groupEvents(
+  events: EventListItem[],
+  order: ListCriterion[],
+  origin: LatLng | null,
+  highlightedEventIds?: Set<string> | null,
+): EventGroupNode {
+  return buildNode(events, order.length > 0 ? order : ['time'], origin, highlightedEventIds)
 }

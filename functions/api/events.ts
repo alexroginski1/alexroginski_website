@@ -1,5 +1,5 @@
 import type { MapCalendarKey } from '../../src/lib/calendarIds'
-import { getCachedGeocodes, upsertGeocode, normalizeLocationKey } from '../_shared/geocodeCache'
+import { getCachedGeocodes, upsertGeocode, normalizeLocationKey, parseCoordinateLocation } from '../_shared/geocodeCache'
 import { geocodeAddress } from '../_shared/nominatim'
 import { fetchStatsApiEvents } from '../_shared/statsApi'
 
@@ -111,6 +111,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   const locationKeyToRaw = new Map<string, string>()
   for (const row of byStartAscending) {
+    // Already a "lat,lng" pin — plots directly below, no geocode needed.
+    if (parseCoordinateLocation(row.cleanedLocation)) continue
     const key = normalizeLocationKey(row.cleanedLocation)
     if (!locationKeyToRaw.has(key)) locationKeyToRaw.set(key, row.cleanedLocation)
   }
@@ -171,7 +173,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const events: ApiEvent[] = []
   const geocodeFailedRows: typeof knownLocationRows = []
   for (const row of knownLocationRows) {
-    const coords = geocodes.get(normalizeLocationKey(row.cleanedLocation))
+    const coords = parseCoordinateLocation(row.cleanedLocation) ?? geocodes.get(normalizeLocationKey(row.cleanedLocation))
     if (!coords) {
       geocodeFailedRows.push(row)
       continue

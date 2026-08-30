@@ -1,7 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { EVENT_ENDED_BACKGROUND_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
+import {
+  EVENT_ENDED_BACKGROUND_COLOR,
+  RADIUS_HIGHLIGHT_FILL_COLOR,
+  UNKNOWN_LOCATION_BACKGROUND_COLOR,
+} from '@/lib/mapCalendarLegend'
 import {
   addressWithoutCityStateZip,
   buildDayColorMap,
@@ -38,9 +42,8 @@ export default function EventsList({
   // Collapsed by default — ended events are stashed out of the way so
   // scrolling the list only surfaces things still relevant to the user.
   const [endedExpanded, setEndedExpanded] = useState(false)
-  // Every other section (source/time/distance groups, plus the "within
-  // region" split) is open by default and collapsed individually by key —
-  // absence from this set means expanded.
+  // Every other section (source/time/distance groups) is open by default
+  // and collapsed individually by key — absence from this set means expanded.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   function toggleGroup(key: string) {
@@ -57,23 +60,14 @@ export default function EventsList({
   // color whether the user is looking at the map or the list.
   const dayColors = useMemo(() => buildDayColorMap(events), [events])
 
-  const { within, outside, ended } = useMemo(() => {
+  const { active, ended } = useMemo(() => {
     const byStart = [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
-    const active = byStart.filter((event) => !isEventEnded(event.end))
-    const ended = byStart.filter((event) => isEventEnded(event.end))
-    if (!highlightedEventIds) return { within: active, outside: [] as EventListItem[], ended }
     return {
-      within: active.filter((event) => highlightedEventIds.has(event.id)),
-      outside: active.filter((event) => !highlightedEventIds.has(event.id)),
-      ended,
+      active: byStart.filter((event) => !isEventEnded(event.end)),
+      ended: byStart.filter((event) => isEventEnded(event.end)),
     }
-  }, [events, highlightedEventIds])
+  }, [events])
 
-  const showSectionHeaders = !!highlightedEventIds && within.length > 0 && outside.length > 0
-
-  // The "within region" split (above) is always the outermost partition when
-  // active; the user's own sort/group picks are layered inside each side of
-  // it, rather than replacing it, so the radius highlight never disappears.
   function renderNode(node: EventGroupNode, keyPrefix: string, level: number) {
     if (node.items) {
       if (node.items.length === 0) return null
@@ -108,7 +102,7 @@ export default function EventsList({
 
   function renderGroup(items: EventListItem[], header: string | null) {
     if (items.length === 0) return null
-    const tree = groupEvents(items, sortGroupOrder, distanceOrigin)
+    const tree = groupEvents(items, sortGroupOrder, distanceOrigin, highlightedEventIds)
     const key = header ?? 'root'
     const collapsed = header ? collapsedGroups.has(key) : false
     return (
@@ -135,7 +129,17 @@ export default function EventsList({
     // a past event reads as inactive regardless of where it was.
     const ended = isEventEnded(event.end)
     const ongoingNow = !ended && relativeTimeLabel(event.start, event.end) === 'now'
-    const tileBackground = ended ? EVENT_ENDED_BACKGROUND_COLOR : highlighted ? RADIUS_HIGHLIGHT_FILL_COLOR : undefined
+    // Events whose location couldn't be geocoded arrive with no lat/lng at
+    // all (see UnknownLocationEvent) — real events always have both, so
+    // this is a reliable signal without needing a separate flag.
+    const locationUnknown = event.lat === undefined || event.lng === undefined
+    const tileBackground = ended
+      ? EVENT_ENDED_BACKGROUND_COLOR
+      : locationUnknown
+        ? UNKNOWN_LOCATION_BACKGROUND_COLOR
+        : highlighted
+          ? RADIUS_HIGHLIGHT_FILL_COLOR
+          : undefined
     const dayColor = dayColors.get(sfDateKey(event.start))
     const { weekday, rest } = eventListDateParts(event.start)
     const rawVenue = event.rawLocation || event.location
@@ -227,20 +231,23 @@ export default function EventsList({
                 <span className="std-event-item-ended-badge">Event Ended</span>
               </>
             )}
+            {locationUnknown && (
+              <>
+                <br />
+                <span className="std-event-item-unknown-location-badge">! Could not place on map</span>
+              </>
+            )}
           </div>
         </div>
       </li>
     )
   }
 
-  if (within.length === 0 && outside.length === 0 && ended.length === 0) return null
+  if (active.length === 0 && ended.length === 0) return null
 
   return (
     <>
-      <div className="std-event-groups">
-        {renderGroup(within, showSectionHeaders ? 'Events within region' : null)}
-        {renderGroup(outside, showSectionHeaders ? 'Events not in region' : null)}
-      </div>
+      <div className="std-event-groups">{renderGroup(active, null)}</div>
       {ended.length > 0 && (
         <div className="std-event-ended-section">
           <button
