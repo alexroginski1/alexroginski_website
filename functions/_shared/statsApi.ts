@@ -17,6 +17,14 @@ export type StatsApiRow = {
   end: Date
   calendarLink?: string
   eventSource: string
+  // "Hayes Valley", "Mission", etc. — the source's own neighborhood label,
+  // shown alongside the geocoded address since the two occasionally
+  // disagree (a neighborhood name is coarser but more human-recognizable).
+  neighborhood?: string
+  // The original event listing (Eventbrite/Luma/Meetup/etc.), pulled out of
+  // the description's own "Event Link" anchor — distinct from calendarLink,
+  // which only ever points at the "+ Add to Google Calendar" page.
+  eventLink?: string
 }
 
 const STATS_API_URL = 'https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/'
@@ -63,6 +71,15 @@ function stripBarsTitlePrefix(title: string): string {
 // other cells, what we need is the href, not the visible text.
 function extractHref(cellHtml: string): string | undefined {
   const match = cellHtml.match(/<a[^>]*\shref="([^"]*)"/i)
+  return match ? decodeEntities(match[1]) : undefined
+}
+
+// The description HTML usually embeds a link back to the original listing
+// as `<a href="...">Event Link</a>` (alongside other links, e.g. to the
+// source calendar's homepage) — pull out that specific one by its visible
+// text rather than just grabbing the first href in the cell.
+function extractEventLink(descriptionHtml: string): string | undefined {
+  const match = descriptionHtml.match(/<a[^>]*\shref="([^"]*)"[^>]*>\s*Event Link\s*<\/a>/i)
   return match ? decodeEntities(match[1]) : undefined
 }
 
@@ -162,6 +179,7 @@ const REQUIRED_COLUMNS = [
   'Raw Location',
   'Cleaned Location',
   'Location Type',
+  'Neighborhood',
   'Source Google Calendar',
   'Event Source',
 ] as const
@@ -205,6 +223,8 @@ function parseRow(cells: string[], columnIndex: Record<string, number>, now: Dat
   const description = cell('Event Description').trim() || undefined
   const calendarLink = extractHref(cell('Calendar Link'))
   const eventSource = decodeText(cell('Event Source')) || 'Unknown'
+  const neighborhood = decodeText(cell('Neighborhood')) || undefined
+  const eventLink = description ? extractEventLink(description) : undefined
 
   const id = `${calendar}:${hashString(`${title}|${start.toISOString()}|${rawLocation ?? ''}`)}`
 
@@ -221,6 +241,8 @@ function parseRow(cells: string[], columnIndex: Record<string, number>, now: Dat
     end,
     calendarLink,
     eventSource,
+    neighborhood,
+    eventLink,
   }
 }
 

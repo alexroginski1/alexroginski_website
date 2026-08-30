@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { EVENT_ENDED_BACKGROUND_COLOR, getCalendarStyle, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
+import { EVENT_ENDED_BACKGROUND_COLOR, RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import {
   addressWithoutCityStateZip,
   buildDayColorMap,
   eventListDateParts,
+  googleMapsUrl,
   isEventEnded,
   nowTillLabel,
   relativeTimeLabel,
@@ -129,7 +130,6 @@ export default function EventsList({
   }
 
   function renderTile(event: EventListItem) {
-    const legend = getCalendarStyle(event.calendar)
     const highlighted = highlightedEventIds?.has(event.id) ?? false
     // Ended styling takes priority over the "within region" highlight —
     // a past event reads as inactive regardless of where it was.
@@ -140,6 +140,7 @@ export default function EventsList({
     const { weekday, rest } = eventListDateParts(event.start)
     const rawVenue = event.rawLocation || event.location
     const venue = rawVenue ? addressWithoutCityStateZip(rawVenue) : undefined
+    const mapsQuery = event.location || rawVenue
     const openSidebar = () => setSelected(event)
     return (
       <li key={event.id} className="std-event-item" style={tileBackground ? { backgroundColor: tileBackground } : undefined}>
@@ -159,7 +160,6 @@ export default function EventsList({
           }}
         >
           <div className="std-event-item-title-row">
-            <span className="std-event-item-dot" style={{ backgroundColor: legend.color }} />
             <span
               className={`std-event-item-title${highlighted && !ended ? ' font-bold' : ''}${ended ? ' std-event-item-title-ended' : ''}`}
             >
@@ -180,19 +180,45 @@ export default function EventsList({
             {venue && (
               <>
                 {' · '}
-                {event.calendarLink ? (
-                  <a
-                    href={event.calendarLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="std-event-item-venue"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {venue}
-                  </a>
-                ) : (
-                  <span className="std-event-item-venue">{venue}</span>
-                )}
+                {event.neighborhood && `${event.neighborhood} `}(
+                <a
+                  href={googleMapsUrl(mapsQuery || venue)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="std-event-item-venue"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {venue}
+                </a>
+                )
+              </>
+            )}
+            {event.eventLink && (
+              <>
+                {' · '}
+                <a
+                  href={event.eventLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="std-event-item-venue"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Event Link
+                </a>
+              </>
+            )}
+            {event.calendarLink && (
+              <>
+                {' · '}
+                <a
+                  href={event.calendarLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="std-event-item-venue"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Calendar
+                </a>
               </>
             )}
             {ended && (

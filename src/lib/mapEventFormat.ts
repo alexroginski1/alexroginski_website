@@ -260,4 +260,6 @@ export type EventListItem = Pick<
   | 'approximateLocation'
   | 'description'
   | 'calendarLink'
+  | 'neighborhood'
+  | 'eventLink'
 > & { lat?: number; lng?: number }

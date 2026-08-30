@@ -19,11 +19,26 @@ export type ApiEvent = {
   lat: number
   lng: number
   calendarLink?: string
+  // The source's own neighborhood label (e.g. "Hayes Valley") — coarser
+  // than the geocoded address but often more recognizable.
+  neighborhood?: string
+  // The original event listing (Eventbrite/Luma/Meetup/etc.), separate from
+  // calendarLink which only ever points at "+ Add to Google Calendar".
+  eventLink?: string
 }
 
 export type UnknownLocationEvent = Pick<
   ApiEvent,
-  'id' | 'calendar' | 'title' | 'description' | 'rawLocation' | 'start' | 'end' | 'calendarLink'
+  | 'id'
+  | 'calendar'
+  | 'title'
+  | 'description'
+  | 'rawLocation'
+  | 'start'
+  | 'end'
+  | 'calendarLink'
+  | 'neighborhood'
+  | 'eventLink'
 >
 
 export type EventsResponse = {

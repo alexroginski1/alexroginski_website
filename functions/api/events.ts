@@ -25,6 +25,8 @@ export type ApiEvent = {
   lat: number
   lng: number
   calendarLink?: string
+  neighborhood?: string
+  eventLink?: string
 }
 
 export type UnknownLocationEvent = {
@@ -36,6 +38,8 @@ export type UnknownLocationEvent = {
   start: string
   end: string
   calendarLink?: string
+  neighborhood?: string
+  eventLink?: string
 }
 
 type EventsResponse = {
@@ -57,7 +61,7 @@ const GEOCODE_THROTTLE_MS = 1100
 // cache key, a stale pre-deploy response can still be served for up to
 // CACHE_TTL_SECONDS after a shape change ships — which crashes any client
 // expecting the new shape.
-const RESPONSE_SHAPE_VERSION = 'v6'
+const RESPONSE_SHAPE_VERSION = 'v7'
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -180,6 +184,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       lat: coords.lat,
       lng: coords.lng,
       calendarLink: row.calendarLink,
+      neighborhood: row.neighborhood,
+      eventLink: row.eventLink,
     })
   }
 
@@ -197,6 +203,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       lat: PRESIDIO_CENTER.lat,
       lng: PRESIDIO_CENTER.lng,
       calendarLink: row.calendarLink,
+      neighborhood: row.neighborhood,
+      eventLink: row.eventLink,
     })
   }
 
@@ -209,6 +217,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     start: row.start.toISOString(),
     end: row.end.toISOString(),
     calendarLink: row.calendarLink,
+    neighborhood: row.neighborhood,
+    eventLink: row.eventLink,
   }))
 
   const body: EventsResponse = {

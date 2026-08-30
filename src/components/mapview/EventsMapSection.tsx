@@ -9,6 +9,7 @@ import SortGroupControl from './SortGroupControl'
 import HelpSidebar from './HelpSidebar'
 import SurveySidebar from './SurveySidebar'
 import StoriesView from './StoriesView'
+import LatestUpdateSidebar from './LatestUpdateSidebar'
 import { RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
@@ -211,6 +212,7 @@ export default function EventsMapSection() {
   const [surveyOpen, setSurveyOpen] = useState(false)
   const [surveyNudgeVisible, setSurveyNudgeVisible] = useState(false)
   const [storiesOpen, setStoriesOpen] = useState(false)
+  const [latestUpdateOpen, setLatestUpdateOpen] = useState(false)
 
   function toggleSortGroupCriterion(criterion: ListCriterion) {
     setSortGroupOrder((prev) => (prev.includes(criterion) ? prev.filter((c) => c !== criterion) : [...prev, criterion]))
@@ -731,10 +733,26 @@ export default function EventsMapSection() {
             setHelpOpen((v) => !v)
             setSurveyOpen(false)
             setStoriesOpen(false)
+            setLatestUpdateOpen(false)
           }}
           aria-label={helpOpen ? 'Close about this project' : 'About this project'}
         >
           ?
+        </button>
+
+        <button
+          type="button"
+          className={`std-map-stack-btn${latestUpdateOpen ? ' std-map-stack-btn-active' : ''}`}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => {
+            setLatestUpdateOpen((v) => !v)
+            setHelpOpen(false)
+            setSurveyOpen(false)
+            setStoriesOpen(false)
+          }}
+          aria-label={latestUpdateOpen ? 'Close latest update' : 'Latest update'}
+        >
+          !
         </button>
 
         <div className="std-map-survey-btn-wrap">
@@ -747,6 +765,7 @@ export default function EventsMapSection() {
               setHelpOpen(false)
               setSurveyNudgeVisible(false)
               setStoriesOpen(false)
+              setLatestUpdateOpen(false)
             }}
             aria-label={surveyOpen ? 'Close survey' : 'Quick survey'}
           >
@@ -776,6 +795,7 @@ export default function EventsMapSection() {
             setHelpOpen(false)
             setSurveyOpen(false)
             setSurveyNudgeVisible(false)
+            setLatestUpdateOpen(false)
           }}
           aria-label={storiesOpen ? 'Close Our Stories' : 'Our Stories'}
         >
@@ -1040,6 +1060,7 @@ export default function EventsMapSection() {
         {helpOpen && <HelpSidebar onClose={() => setHelpOpen(false)} />}
         {surveyOpen && <SurveySidebar onClose={() => setSurveyOpen(false)} />}
         {storiesOpen && <StoriesView onClose={() => setStoriesOpen(false)} />}
+        {latestUpdateOpen && <LatestUpdateSidebar onClose={() => setLatestUpdateOpen(false)} />}
       </div>
 
       <div className="std-map-view-toggle">
