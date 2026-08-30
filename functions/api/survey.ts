@@ -19,8 +19,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return Response.json({ ok: false, error: 'Invalid JSON' }, { status: 400 })
   }
 
-  if (!body.visitorId) {
+  if (!body.visitorId || typeof body.visitorId !== 'string') {
     return Response.json({ ok: false, error: 'Missing visitorId' }, { status: 400 })
+  }
+
+  const MAX_ID_LENGTH = 100
+  const MAX_FIELD_LENGTH = 5000
+  if (
+    body.visitorId.length > MAX_ID_LENGTH ||
+    (body.useful !== undefined && (typeof body.useful !== 'string' || body.useful.length > MAX_FIELD_LENGTH)) ||
+    (body.events !== undefined && (typeof body.events !== 'string' || body.events.length > MAX_FIELD_LENGTH)) ||
+    (body.other !== undefined && (typeof body.other !== 'string' || body.other.length > MAX_FIELD_LENGTH))
+  ) {
+    return Response.json({ ok: false, error: 'Invalid field' }, { status: 400 })
   }
 
   try {

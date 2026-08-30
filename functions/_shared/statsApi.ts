@@ -67,11 +67,20 @@ function stripBarsTitlePrefix(title: string): string {
   return title.replace(BARS_TITLE_PREFIX_RE, '')
 }
 
+// Rows are scraped from many uncontrolled third-party calendars/listings, so
+// an extracted href can't be trusted as-is — only http(s) URLs are safe to
+// hand to the client, which renders these directly as `<a href>`. Without
+// this check, a listing could set its link to a `javascript:` URI and run
+// script in a visitor's browser when they click it.
+function safeHref(href: string): string | undefined {
+  return /^https?:\/\//i.test(href) ? href : undefined
+}
+
 // The "Calendar Link" cell holds an <a href="...">Open</a> tag — unlike the
 // other cells, what we need is the href, not the visible text.
 function extractHref(cellHtml: string): string | undefined {
   const match = cellHtml.match(/<a[^>]*\shref="([^"]*)"/i)
-  return match ? decodeEntities(match[1]) : undefined
+  return match ? safeHref(decodeEntities(match[1])) : undefined
 }
 
 // The description HTML usually embeds a link back to the original listing
@@ -80,7 +89,7 @@ function extractHref(cellHtml: string): string | undefined {
 // text rather than just grabbing the first href in the cell.
 function extractEventLink(descriptionHtml: string): string | undefined {
   const match = descriptionHtml.match(/<a[^>]*\shref="([^"]*)"[^>]*>\s*Event Link\s*<\/a>/i)
-  return match ? decodeEntities(match[1]) : undefined
+  return match ? safeHref(decodeEntities(match[1])) : undefined
 }
 
 function hashString(s: string): string {

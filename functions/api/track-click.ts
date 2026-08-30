@@ -17,7 +17,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return Response.json({ ok: false, error: 'Invalid JSON' }, { status: 400 })
   }
 
-  if (!body.calendar || !body.visitorId) {
+  if (
+    !body.calendar ||
+    !body.visitorId ||
+    typeof body.calendar !== 'string' ||
+    typeof body.visitorId !== 'string' ||
+    body.calendar.length > 100 ||
+    body.visitorId.length > 100
+  ) {
     return Response.json({ ok: false, error: 'Missing fields' }, { status: 400 })
   }
 

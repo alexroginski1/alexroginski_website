@@ -18,7 +18,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { request, env } = context
   const address = new URL(request.url).searchParams.get('address')?.trim()
 
-  if (!address) {
+  if (!address || address.length > 200) {
     return json({ ok: false, error: 'bad_request' }, 400)
   }
 
