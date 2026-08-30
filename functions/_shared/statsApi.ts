@@ -42,7 +42,7 @@ function calendarKeyFromSourceLabel(label: string): MapCalendarKey {
   return label.replace(SF_PREFIX_RE, '')
 }
 
-function decodeEntities(text: string): string {
+function decodeEntitiesOnce(text: string): string {
   return text
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
@@ -52,6 +52,23 @@ function decodeEntities(text: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
+}
+
+// Some upstream sources double-escape entities (e.g. a WordPress feed encodes
+// "&" as "&#038;", which then gets HTML-escaped again into "&amp;#038;" by
+// the time it reaches this table) — a single pass only unescapes the outer
+// "&amp;", leaving a literal "&#038;" behind since the numeric-entity step
+// already ran earlier in that same pass. Repeat until a pass makes no
+// further change (capped, in case some input pathologically keeps producing
+// new-looking entities forever).
+function decodeEntities(text: string): string {
+  let current = text
+  for (let i = 0; i < 5; i++) {
+    const next = decodeEntitiesOnce(current)
+    if (next === current) break
+    current = next
+  }
+  return current
 }
 
 function decodeText(cellHtml: string): string {

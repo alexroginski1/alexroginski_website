@@ -136,23 +136,32 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         for (let i = 0; i < missingKeys.length; i++) {
           const key = missingKeys[i]
           const raw = locationKeyToRaw.get(key)!
-          const query = /san francisco|,\s*ca\b/i.test(raw) ? raw : `${raw}, San Francisco, CA`
-          let result = await geocodeAddress(query, contactEmail)
 
-          // Some Google Calendar locations mash a POI name together with an
-          // unrelated cross-street (e.g. "Duboce Park, Scott St, San
-          // Francisco, CA") — not a real structured address, so Nominatim's
-          // free-text search can't resolve it. Retrying with just the venue-
-          // name portion before the first comma usually succeeds.
-          if (!result) {
-            const firstSegment = raw.split(',')[0]?.trim()
-            if (firstSegment && firstSegment !== raw.trim()) {
-              await sleep(GEOCODE_THROTTLE_MS)
-              const fallbackQuery = /san francisco|,\s*ca\b/i.test(firstSegment)
-                ? firstSegment
-                : `${firstSegment}, San Francisco, CA`
-              result = await geocodeAddress(fallbackQuery, contactEmail)
-            }
+          // A combined "name + address" free-text query can fail on Nominatim
+          // even when either half would succeed alone, and the useful half
+          // differs by source shape — a Google Calendar entry mashing a POI
+          // name into an unrelated cross-street (e.g. "Duboce Park, Scott
+          // St") needs the name kept and the tail dropped, while a "Venue
+          // Name, Street Address" entry (e.g. the Bars calendar's "Choquet's,
+          // 2500 Washington St") needs the opposite: the address is what
+          // Nominatim can actually resolve, and the venue name is what's
+          // confusing it. Try the full string first, then both halves split
+          // on the first comma, stopping at the first one that resolves.
+          const candidates = [raw]
+          const firstComma = raw.indexOf(',')
+          if (firstComma !== -1) {
+            const leadingSegment = raw.slice(0, firstComma).trim()
+            const trailingSegment = raw.slice(firstComma + 1).trim()
+            if (leadingSegment && !candidates.includes(leadingSegment)) candidates.push(leadingSegment)
+            if (trailingSegment && !candidates.includes(trailingSegment)) candidates.push(trailingSegment)
+          }
+
+          let result: Awaited<ReturnType<typeof geocodeAddress>> = null
+          for (let c = 0; c < candidates.length && !result; c++) {
+            if (c > 0) await sleep(GEOCODE_THROTTLE_MS)
+            const candidate = candidates[c]
+            const query = /san francisco|,\s*ca\b/i.test(candidate) ? candidate : `${candidate}, San Francisco, CA`
+            result = await geocodeAddress(query, contactEmail)
           }
 
           if (result) {

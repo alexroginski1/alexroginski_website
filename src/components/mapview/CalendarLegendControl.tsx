@@ -106,7 +106,11 @@ export default function CalendarLegendControl({
                     <span className="std-map-legend-label">{label}</span>
                     <span className="std-map-legend-count">{eventCounts[key] ?? 0}</span>
                   </label>
-                  {hasSubfilter && (
+                  {/* Always reserve this slot's width, even when there's no subfilter to
+                      expand — otherwise a row without the button renders its count column
+                      ~28px further right than rows that have one, breaking the vertical
+                      alignment of counts across the whole legend. */}
+                  {hasSubfilter ? (
                     <button
                       type="button"
                       className="std-map-legend-expand"
@@ -116,6 +120,8 @@ export default function CalendarLegendControl({
                     >
                       {isExpanded ? '▾' : '▸'}
                     </button>
+                  ) : (
+                    <span className="std-map-legend-expand-spacer" aria-hidden="true" />
                   )}
                 </div>
                 {hasSubfilter && isExpanded && (

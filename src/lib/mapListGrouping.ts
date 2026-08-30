@@ -35,12 +35,18 @@ function distanceBandLabel(miles: number): string {
 // glancing down a group actually cares about. When a radius filter is
 // active, events within the region sink to the top of their leaf list ahead
 // of events outside it — a single list per group rather than a separate
-// "within/not within region" section.
+// "within/not within region" section. Events with no lat/lng (couldn't be
+// placed on the map) sink below those too, ahead only of ended events — they
+// belong in their source's section, just not mixed in with events someone
+// could actually navigate to.
 function sortByTime(items: EventListItem[], highlightedEventIds?: Set<string> | null): EventListItem[] {
   return [...items].sort((a, b) => {
     const aEnded = isEventEnded(a.end)
     const bEnded = isEventEnded(b.end)
     if (aEnded !== bEnded) return aEnded ? 1 : -1
+    const aLocationUnknown = a.lat === undefined || a.lng === undefined
+    const bLocationUnknown = b.lat === undefined || b.lng === undefined
+    if (aLocationUnknown !== bLocationUnknown) return aLocationUnknown ? 1 : -1
     if (highlightedEventIds) {
       const aWithin = highlightedEventIds.has(a.id)
       const bWithin = highlightedEventIds.has(b.id)

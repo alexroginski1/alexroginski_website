@@ -573,6 +573,10 @@
     background-color: #e7e5e4;
   }
 
+  .std-event-list-banner {
+    @apply rounded-lg px-3 py-1.5 text-sm font-medium text-stone-600;
+  }
+
   .std-event-ended-section {
     @apply mt-3 border-t border-stone-200 pt-2;
   }
@@ -676,6 +680,10 @@
 
   .std-map-legend-expand {
     @apply flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-600 active:bg-stone-200 cursor-pointer text-xs leading-none select-none;
+  }
+
+  .std-map-legend-expand-spacer {
+    @apply flex-shrink-0 w-7 h-7;
   }
 
   .std-map-legend-subpanel {

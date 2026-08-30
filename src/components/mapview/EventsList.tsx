@@ -60,6 +60,14 @@ export default function EventsList({
   // color whether the user is looking at the map or the list.
   const dayColors = useMemo(() => buildDayColorMap(events), [events])
 
+  // Same signal used per-tile below (see `locationUnknown` in renderTile) —
+  // events with no lat/lng never appear on the map, so this count tells the
+  // user the list has more in it than the map does.
+  const unknownLocationCount = useMemo(
+    () => events.filter((event) => event.lat === undefined || event.lng === undefined).length,
+    [events],
+  )
+
   const { active, ended } = useMemo(() => {
     const byStart = [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
     return {
@@ -247,6 +255,14 @@ export default function EventsList({
 
   return (
     <>
+      {unknownLocationCount > 0 && (
+        <div
+          className="std-event-list-banner"
+          style={{ backgroundColor: UNKNOWN_LOCATION_BACKGROUND_COLOR }}
+        >
+          Includes {unknownLocationCount} event{unknownLocationCount === 1 ? '' : 's'} not on the map
+        </div>
+      )}
       <div className="std-event-groups">{renderGroup(active, null)}</div>
       {ended.length > 0 && (
         <div className="std-event-ended-section">
