@@ -1,5 +1,7 @@
 import type { MapCalendarKey } from '../../src/lib/calendarIds'
 import { getCachedGeocodes, upsertGeocode, normalizeLocationKey, parseCoordinateLocation } from '../_shared/geocodeCache'
+import { buildGeocodeCandidates, withCityStateContext } from '../_shared/geocodeQuery'
+import { findManualGeocodeOverride } from '../_shared/manualGeocodeOverrides'
 import { geocodeAddress } from '../_shared/nominatim'
 import { fetchStatsApiEvents } from '../_shared/statsApi'
 
@@ -137,35 +139,27 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
           const key = missingKeys[i]
           const raw = locationKeyToRaw.get(key)!
 
-          // A combined "name + address" free-text query can fail on Nominatim
-          // even when either half would succeed alone, and the useful half
-          // differs by source shape — a Google Calendar entry mashing a POI
-          // name into an unrelated cross-street (e.g. "Duboce Park, Scott
-          // St") needs the name kept and the tail dropped, while a "Venue
-          // Name, Street Address" entry (e.g. the Bars calendar's "Choquet's,
-          // 2500 Washington St") needs the opposite: the address is what
-          // Nominatim can actually resolve, and the venue name is what's
-          // confusing it. Try the full string first, then both halves split
-          // on the first comma, stopping at the first one that resolves.
-          const candidates = [raw]
-          const firstComma = raw.indexOf(',')
-          if (firstComma !== -1) {
-            const leadingSegment = raw.slice(0, firstComma).trim()
-            const trailingSegment = raw.slice(firstComma + 1).trim()
-            if (leadingSegment && !candidates.includes(leadingSegment)) candidates.push(leadingSegment)
-            if (trailingSegment && !candidates.includes(trailingSegment)) candidates.push(trailingSegment)
-          }
+          // One bad candidate (a network hiccup, an unexpected response)
+          // must not take down the rest of this batch — without a per-key
+          // try/catch, a single throw here aborts the whole `waitUntil`
+          // loop, silently leaving every remaining key unresolved this
+          // cycle even though most of them would've succeeded fine.
+          try {
+            let result = findManualGeocodeOverride(raw)
 
-          let result: Awaited<ReturnType<typeof geocodeAddress>> = null
-          for (let c = 0; c < candidates.length && !result; c++) {
-            if (c > 0) await sleep(GEOCODE_THROTTLE_MS)
-            const candidate = candidates[c]
-            const query = /san francisco|,\s*ca\b/i.test(candidate) ? candidate : `${candidate}, San Francisco, CA`
-            result = await geocodeAddress(query, contactEmail)
-          }
+            if (!result) {
+              const candidates = buildGeocodeCandidates(raw)
+              for (let c = 0; c < candidates.length && !result; c++) {
+                if (c > 0) await sleep(GEOCODE_THROTTLE_MS)
+                result = await geocodeAddress(withCityStateContext(candidates[c]), contactEmail)
+              }
+            }
 
-          if (result) {
-            await upsertGeocode(env.DB, key, raw, result.lat, result.lng, result.displayName)
+            if (result) {
+              await upsertGeocode(env.DB, key, raw, result.lat, result.lng, result.displayName)
+            }
+          } catch (err) {
+            console.error(`Geocoding failed for ${JSON.stringify(raw)}:`, err)
           }
           if (i < missingKeys.length - 1) await sleep(GEOCODE_THROTTLE_MS)
         }

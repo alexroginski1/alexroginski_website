@@ -1,4 +1,6 @@
 import { getCachedGeocodes, upsertGeocode, normalizeLocationKey } from '../_shared/geocodeCache'
+import { buildGeocodeCandidates, withCityStateContext } from '../_shared/geocodeQuery'
+import { findManualGeocodeOverride } from '../_shared/manualGeocodeOverrides'
 import { geocodeAddress } from '../_shared/nominatim'
 
 interface Env {
@@ -13,6 +15,13 @@ type GeocodeResponse =
 function json(body: GeocodeResponse, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// Nominatim usage policy caps usage at ~1 request/second.
+const GEOCODE_THROTTLE_MS = 1100
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { request, env } = context
@@ -31,8 +40,17 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    const query = /san francisco|,\s*ca\b/i.test(address) ? address : `${address}, San Francisco, CA`
-    const result = await geocodeAddress(query, env.NOMINATIM_CONTACT_EMAIL ?? '')
+    let result = findManualGeocodeOverride(address)
+
+    if (!result) {
+      const candidates = buildGeocodeCandidates(address)
+      const contactEmail = env.NOMINATIM_CONTACT_EMAIL ?? ''
+      for (let c = 0; c < candidates.length && !result; c++) {
+        if (c > 0) await sleep(GEOCODE_THROTTLE_MS)
+        result = await geocodeAddress(withCityStateContext(candidates[c]), contactEmail)
+      }
+    }
+
     if (!result) {
       return json({ ok: false, error: 'not_found' }, 404)
     }
