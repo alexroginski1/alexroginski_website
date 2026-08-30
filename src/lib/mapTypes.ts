@@ -3,6 +3,10 @@ import type { MapCalendarKey } from './calendarIds'
 export type ApiEvent = {
   id: string
   calendar: MapCalendarKey
+  // The specific source within a calendar (e.g. a calendar's individual
+  // contributing Eventbrite/Luma page) — finer-grained than `calendar`,
+  // used to sub-filter within a calendar's checkbox in the UI.
+  eventSource: string
   title: string
   description?: string
   location?: string
@@ -31,6 +35,7 @@ export type UnknownLocationEvent = Pick<
   ApiEvent,
   | 'id'
   | 'calendar'
+  | 'eventSource'
   | 'title'
   | 'description'
   | 'rawLocation'

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { Map as LeafletMapInstance } from 'leaflet'
 import EventsList from './EventsList'
-import CalendarLegendControl from './CalendarLegendControl'
+import CalendarLegendControl, { eventSourceKey } from './CalendarLegendControl'
+import NeighborhoodFilterControl from './NeighborhoodFilterControl'
 import SortGroupControl from './SortGroupControl'
 import HelpSidebar from './HelpSidebar'
 import SurveySidebar from './SurveySidebar'
@@ -15,12 +16,7 @@ import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
 import { isEventEnded, matchesPreciseTime, matchesTimeOfDay, type TimeOfDay } from '@/lib/mapEventFormat'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
-import {
-  haversineMiles,
-  radiusMiles as computeRadiusMiles,
-  TRANSPORT_SPEEDS_MPH,
-  type TransportMode,
-} from '@/lib/geo'
+import { haversineMiles } from '@/lib/geo'
 
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
@@ -29,9 +25,13 @@ const LeafletMap = dynamic(() => import('./LeafletMap'), {
 
 type ViewMode = 'map' | 'list'
 
-const TRANSPORT_MODES = Object.keys(TRANSPORT_SPEEDS_MPH) as TransportMode[]
 const STORAGE_KEY = 'std_map_filters'
-const STORAGE_VERSION = 6
+const STORAGE_VERSION = 9
+
+// Bucket label for events whose source didn't supply a neighborhood — kept
+// selectable in the +neighborhood filter like any other value, rather than
+// always shown regardless of selection.
+const UNKNOWN_NEIGHBORHOOD = 'Unknown'
 
 // Nudges a returning visitor toward the survey button once they've been
 // here enough times to plausibly have an opinion — shown at most once ever,
@@ -51,23 +51,21 @@ type LastGeocode = { text: string; lat: number; lng: number }
 type PersistedMapFilters = {
   version: typeof STORAGE_VERSION
   locationText: string
-  transportMode: TransportMode
-  minutes: number
+  miles: number
   selectedTypes: MapCalendarKey[]
   lastGeocode: LastGeocode | null
   radiusEnabled: boolean
   keywordsEnabled: boolean
   keywordsText: string
+  neighborhoodEnabled?: boolean
+  selectedNeighborhoods?: string[]
   excludeEnded?: boolean
   timeOfDayEnabled?: boolean
   timeOfDay?: TimeOfDay
   preciseTimeEnabled?: boolean
   preciseTimeMin?: string
   preciseTimeMax?: string
-}
-
-function transportLabel(mode: TransportMode): string {
-  return mode.charAt(0).toUpperCase() + mode.slice(1)
+  excludedEventSources?: string[]
 }
 
 // Events are San Francisco events, so "today" and date filtering are always
@@ -100,8 +98,8 @@ function weekendRange(todayKey: string): { from: string; to: string } {
   return { from, to: addDays(from, 1) }
 }
 
-// Tap-to-cycle minutes control: 20 -> 30 -> 40 -> 50 -> 60 -> 10 -> 20 ...
-const MINUTES_CYCLE = [20, 30, 40, 50, 60, 10]
+// Tap-to-cycle distance control, in miles.
+const MILES_CYCLE = [1, 2, 5, 10, 25, 50]
 
 // Tap-to-cycle time-of-day control: morning -> afternoon -> evening -> morning ...
 const TIME_OF_DAY_CYCLE: TimeOfDay[] = ['morning', 'afternoon', 'evening']
@@ -178,11 +176,19 @@ export default function EventsMapSection() {
   // calendars (allCalendarKeys) is known from fetched event data.
   const [selectedTypes, setSelectedTypes] = useState<Set<MapCalendarKey>>(() => new Set())
   const selectedTypesInitializedRef = useRef(false)
+  // Composite `${calendar}::${eventSource}` keys the user has unchecked in a
+  // calendar's event-source sub-panel. Empty by default (every source
+  // included) rather than defaulting to "everything" once sources are known
+  // — unlike selectedTypes/selectedNeighborhoods, an empty exclusion set
+  // already means "no sub-filter applied", so there's no separate init step.
+  const [excludedEventSources, setExcludedEventSources] = useState<Set<string>>(() => new Set())
+  const [neighborhoodEnabled, setNeighborhoodEnabled] = useState(false)
+  const [selectedNeighborhoods, setSelectedNeighborhoods] = useState<Set<string>>(() => new Set())
+  const selectedNeighborhoodsInitializedRef = useRef(false)
   const [locationText, setLocationText] = useState(DEFAULT_LOCATION_TEXT)
   const [editingLocation, setEditingLocation] = useState(false)
   const [locationDraft, setLocationDraft] = useState('')
-  const [transportMode, setTransportMode] = useState<TransportMode>('walk')
-  const [minutes, setMinutes] = useState(20)
+  const [miles, setMiles] = useState(5)
   const [dateFrom, setDateFrom] = useState(() => sfDateKey(new Date()))
   const [dateTo, setDateTo] = useState(() => sfDateKey(new Date()))
   const [allDates, setAllDates] = useState(false)
@@ -277,6 +283,24 @@ export default function EventsMapSection() {
     selectedTypesInitializedRef.current = true
   }, [hydrated, allCalendarKeys])
 
+  // Same "derived from whatever's actually in the data" approach as
+  // allCalendarKeys above — events missing a neighborhood land in a single
+  // "Unknown" bucket rather than being left out of the filter entirely.
+  const allNeighborhoods = useMemo(() => {
+    const keys = new Set<string>()
+    for (const event of events) keys.add(event.neighborhood || UNKNOWN_NEIGHBORHOOD)
+    for (const event of unknownLocationEvents) keys.add(event.neighborhood || UNKNOWN_NEIGHBORHOOD)
+    return [...keys].sort((a, b) => a.localeCompare(b))
+  }, [events, unknownLocationEvents])
+
+  // Defaults selectedNeighborhoods to "everything" once the real neighborhood
+  // list is known, mirroring the selectedTypes default above.
+  useEffect(() => {
+    if (!hydrated || selectedNeighborhoodsInitializedRef.current || allNeighborhoods.length === 0) return
+    setSelectedNeighborhoods(new Set(allNeighborhoods))
+    selectedNeighborhoodsInitializedRef.current = true
+  }, [hydrated, allNeighborhoods])
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
@@ -285,8 +309,7 @@ export default function EventsMapSection() {
         if (parsed && parsed.version === STORAGE_VERSION) {
           const text = parsed.locationText || DEFAULT_LOCATION_TEXT
           setLocationText(text)
-          setTransportMode(TRANSPORT_MODES.includes(parsed.transportMode) ? parsed.transportMode : 'walk')
-          setMinutes(MINUTES_CYCLE.includes(parsed.minutes) ? parsed.minutes : 20)
+          setMiles(MILES_CYCLE.includes(parsed.miles) ? parsed.miles : 5)
           if (Array.isArray(parsed.selectedTypes)) {
             setSelectedTypes(new Set(parsed.selectedTypes))
             selectedTypesInitializedRef.current = true
@@ -302,6 +325,11 @@ export default function EventsMapSection() {
             setKeywordsEnabled(true)
             setKeywordsText(parsed.keywordsText)
           }
+          if (parsed.neighborhoodEnabled) setNeighborhoodEnabled(true)
+          if (Array.isArray(parsed.selectedNeighborhoods)) {
+            setSelectedNeighborhoods(new Set(parsed.selectedNeighborhoods))
+            selectedNeighborhoodsInitializedRef.current = true
+          }
           if (parsed.excludeEnded) setExcludeEnded(true)
           if (parsed.timeOfDayEnabled && TIME_OF_DAY_CYCLE.includes(parsed.timeOfDay as TimeOfDay)) {
             setTimeOfDayEnabled(true)
@@ -311,6 +339,9 @@ export default function EventsMapSection() {
             setPreciseTimeEnabled(true)
             if (parsed.preciseTimeMin) setPreciseTimeMin(parsed.preciseTimeMin)
             if (parsed.preciseTimeMax) setPreciseTimeMax(parsed.preciseTimeMax)
+          }
+          if (Array.isArray(parsed.excludedEventSources)) {
+            setExcludedEventSources(new Set(parsed.excludedEventSources))
           }
         }
       }
@@ -327,19 +358,21 @@ export default function EventsMapSection() {
       const payload: PersistedMapFilters = {
         version: STORAGE_VERSION,
         locationText,
-        transportMode,
-        minutes,
+        miles,
         selectedTypes: Array.from(selectedTypes),
         lastGeocode,
         radiusEnabled,
         keywordsEnabled,
         keywordsText,
+        neighborhoodEnabled,
+        selectedNeighborhoods: Array.from(selectedNeighborhoods),
         excludeEnded,
         timeOfDayEnabled,
         timeOfDay,
         preciseTimeEnabled,
         preciseTimeMin,
         preciseTimeMax,
+        excludedEventSources: Array.from(excludedEventSources),
       }
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
@@ -351,19 +384,21 @@ export default function EventsMapSection() {
   }, [
     hydrated,
     locationText,
-    transportMode,
-    minutes,
+    miles,
     selectedTypes,
     lastGeocode,
     radiusEnabled,
     keywordsEnabled,
     keywordsText,
+    neighborhoodEnabled,
+    selectedNeighborhoods,
     excludeEnded,
     timeOfDayEnabled,
     timeOfDay,
     preciseTimeEnabled,
     preciseTimeMin,
     preciseTimeMax,
+    excludedEventSources,
   ])
 
   function toggleCalendarType(key: MapCalendarKey) {
@@ -378,15 +413,23 @@ export default function EventsMapSection() {
     })
   }
 
-  function cycleTransportMode() {
-    const next = TRANSPORT_MODES[(TRANSPORT_MODES.indexOf(transportMode) + 1) % TRANSPORT_MODES.length]
-    setTransportMode(next)
+  function toggleEventSource(calendar: MapCalendarKey, source: string) {
+    const key = eventSourceKey(calendar, source)
+    setExcludedEventSources((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
   }
 
-  function cycleMinutes() {
-    setMinutes((m) => {
-      const idx = MINUTES_CYCLE.indexOf(m)
-      return MINUTES_CYCLE[(idx + 1) % MINUTES_CYCLE.length]
+  function cycleMiles() {
+    setMiles((m) => {
+      const idx = MILES_CYCLE.indexOf(m)
+      return MILES_CYCLE[(idx + 1) % MILES_CYCLE.length]
     })
   }
 
@@ -526,6 +569,26 @@ export default function EventsMapSection() {
     if (!text) setKeywordsEnabled(false)
   }
 
+  function toggleNeighborhood(key: string) {
+    setSelectedNeighborhoods((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
+
+  function enableNeighborhoodFilter() {
+    setNeighborhoodEnabled(true)
+  }
+
+  function disableNeighborhoodFilter() {
+    setNeighborhoodEnabled(false)
+  }
+
   function toggleExcludeEnded() {
     setExcludeEnded((v) => !v)
   }
@@ -554,7 +617,7 @@ export default function EventsMapSection() {
   // Gated on radiusEnabled (rather than clearing searchOrigin outright) so
   // the last-searched location stays cached for instant reuse on reopen.
   const activeSearchOrigin = radiusEnabled ? searchOrigin : null
-  const activeRadiusMiles = activeSearchOrigin ? computeRadiusMiles(transportMode, minutes) : null
+  const activeRadiusMiles = activeSearchOrigin ? miles : null
 
   // Case-insensitive substring match against title/description — the "where
   // event contains" clause. Null (rather than empty string) when the filter
@@ -569,12 +632,107 @@ export default function EventsMapSection() {
   // mirrors activeTimeOfDay above.
   const activePreciseTime = preciseTimeEnabled ? { min: preciseTimeMin, max: preciseTimeMax } : null
 
+  // Null when the filter is off, so callers can skip the check entirely —
+  // mirrors activeTimeOfDay above.
+  const activeNeighborhoods = neighborhoodEnabled ? selectedNeighborhoods : null
+
   // Counts events matching the current date/keyword filters per calendar,
   // independent of which calendars are checked, so the legend shows what's
-  // available for a source even while it's unchecked.
+  // available for a source even while it's unchecked. Event-source exclusions
+  // are applied here (unlike calendar selection) since they're a real filter
+  // the user has set, not just a preview toggle.
   const eventCountsByCalendar = useMemo(() => {
     const counts = Object.fromEntries(allCalendarKeys.map((key) => [key, 0])) as Record<MapCalendarKey, number>
     for (const event of events ?? []) {
+      if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) continue
+      if (!allDates) {
+        const eventDateKey = sfDateKey(new Date(event.start))
+        if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
+      }
+      if (
+        activeKeywords &&
+        !event.title.toLowerCase().includes(activeKeywords) &&
+        !(event.description ?? '').toLowerCase().includes(activeKeywords)
+      ) {
+        continue
+      }
+      if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) continue
+      if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) continue
+      if (activeNeighborhoods && !activeNeighborhoods.has(event.neighborhood || UNKNOWN_NEIGHBORHOOD)) continue
+      if (excludeEnded && isEventEnded(event.end)) continue
+      counts[event.calendar] = (counts[event.calendar] ?? 0) + 1
+    }
+    return counts
+  }, [
+    events,
+    allCalendarKeys,
+    allDates,
+    dateFrom,
+    dateTo,
+    activeKeywords,
+    activeTimeOfDay,
+    activePreciseTime,
+    activeNeighborhoods,
+    excludeEnded,
+    excludedEventSources,
+  ])
+
+  // Which event sources exist per calendar, and how many events they
+  // currently match — same "independent of the checkbox itself" pattern as
+  // eventCountsByCalendar, but scoped to one calendar's own sub-panel so it
+  // stays correct while that panel is the thing being edited. A source with
+  // zero matches is left out of eventSourcesByCalendar entirely, per the
+  // "don't show empty sources" requirement.
+  const { eventSourcesByCalendar, eventSourceCounts } = useMemo(() => {
+    const counts: Record<string, number> = {}
+    const sourcesByCalendar: Record<MapCalendarKey, Set<string>> = {}
+    for (const event of events ?? []) {
+      if (!allDates) {
+        const eventDateKey = sfDateKey(new Date(event.start))
+        if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
+      }
+      if (
+        activeKeywords &&
+        !event.title.toLowerCase().includes(activeKeywords) &&
+        !(event.description ?? '').toLowerCase().includes(activeKeywords)
+      ) {
+        continue
+      }
+      if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) continue
+      if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) continue
+      if (activeNeighborhoods && !activeNeighborhoods.has(event.neighborhood || UNKNOWN_NEIGHBORHOOD)) continue
+      if (excludeEnded && isEventEnded(event.end)) continue
+      const key = eventSourceKey(event.calendar, event.eventSource)
+      counts[key] = (counts[key] ?? 0) + 1
+      if (!sourcesByCalendar[event.calendar]) sourcesByCalendar[event.calendar] = new Set()
+      sourcesByCalendar[event.calendar].add(event.eventSource)
+    }
+    const sourcesOut: Record<MapCalendarKey, string[]> = {}
+    for (const [calendar, sources] of Object.entries(sourcesByCalendar)) {
+      sourcesOut[calendar] = [...sources].sort((a, b) => a.localeCompare(b))
+    }
+    return { eventSourcesByCalendar: sourcesOut, eventSourceCounts: counts }
+  }, [
+    events,
+    allDates,
+    dateFrom,
+    dateTo,
+    activeKeywords,
+    activeTimeOfDay,
+    activePreciseTime,
+    activeNeighborhoods,
+    excludeEnded,
+  ])
+
+  // Counts events matching the current date/keyword/calendar filters per
+  // neighborhood, independent of which neighborhoods are checked, so the
+  // panel shows what's available even while it's unchecked — mirrors
+  // eventCountsByCalendar above.
+  const eventCountsByNeighborhood = useMemo(() => {
+    const counts = Object.fromEntries(allNeighborhoods.map((key) => [key, 0])) as Record<string, number>
+    for (const event of events ?? []) {
+      if (!selectedTypes.has(event.calendar)) continue
+      if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) continue
       if (!allDates) {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
@@ -589,10 +747,23 @@ export default function EventsMapSection() {
       if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) continue
       if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) continue
       if (excludeEnded && isEventEnded(event.end)) continue
-      counts[event.calendar] = (counts[event.calendar] ?? 0) + 1
+      const key = event.neighborhood || UNKNOWN_NEIGHBORHOOD
+      counts[key] = (counts[key] ?? 0) + 1
     }
     return counts
-  }, [events, allCalendarKeys, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, activePreciseTime, excludeEnded])
+  }, [
+    events,
+    allNeighborhoods,
+    selectedTypes,
+    allDates,
+    dateFrom,
+    dateTo,
+    activeKeywords,
+    activeTimeOfDay,
+    activePreciseTime,
+    excludeEnded,
+    excludedEventSources,
+  ])
 
   // Whether any event matching the other active filters has already ended —
   // gates whether the "+ not ended" clause is offered at all, so it's not
@@ -602,6 +773,7 @@ export default function EventsMapSection() {
   const hasEndedEvents = useMemo(() => {
     for (const event of events ?? []) {
       if (!selectedTypes.has(event.calendar)) continue
+      if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) continue
       if (!allDates) {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
@@ -615,14 +787,27 @@ export default function EventsMapSection() {
       }
       if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) continue
       if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) continue
+      if (activeNeighborhoods && !activeNeighborhoods.has(event.neighborhood || UNKNOWN_NEIGHBORHOOD)) continue
       if (isEventEnded(event.end)) return true
     }
     return false
-  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, activePreciseTime])
+  }, [
+    events,
+    selectedTypes,
+    allDates,
+    dateFrom,
+    dateTo,
+    activeKeywords,
+    activeTimeOfDay,
+    activePreciseTime,
+    activeNeighborhoods,
+    excludedEventSources,
+  ])
 
   const visibleEvents = useMemo(() => {
     return (events ?? []).filter((event) => {
       if (!selectedTypes.has(event.calendar)) return false
+      if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) return false
       if (!allDates) {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
@@ -636,18 +821,32 @@ export default function EventsMapSection() {
       }
       if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) return false
       if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) return false
+      if (activeNeighborhoods && !activeNeighborhoods.has(event.neighborhood || UNKNOWN_NEIGHBORHOOD)) return false
       if (excludeEnded && isEventEnded(event.end)) return false
       // Events outside the travel radius stay visible (dimmed in LeafletMap)
       // rather than being dropped — the radius is a highlight, not a filter.
       return true
     })
-  }, [events, selectedTypes, allDates, dateFrom, dateTo, activeKeywords, activeTimeOfDay, activePreciseTime, excludeEnded])
+  }, [
+    events,
+    selectedTypes,
+    allDates,
+    dateFrom,
+    dateTo,
+    activeKeywords,
+    activeTimeOfDay,
+    activePreciseTime,
+    activeNeighborhoods,
+    excludeEnded,
+    excludedEventSources,
+  ])
 
   // Same calendar/date/keyword filters as visibleEvents, applied to events
   // whose location couldn't be placed on the map at all.
   const visibleUnknownLocationEvents = useMemo(() => {
     return unknownLocationEvents.filter((event) => {
       if (!selectedTypes.has(event.calendar)) return false
+      if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) return false
       if (!allDates) {
         const eventDateKey = sfDateKey(new Date(event.start))
         if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
@@ -661,6 +860,7 @@ export default function EventsMapSection() {
       }
       if (activeTimeOfDay && !matchesTimeOfDay(event.start, activeTimeOfDay)) return false
       if (activePreciseTime && !matchesPreciseTime(event.start, activePreciseTime.min, activePreciseTime.max)) return false
+      if (activeNeighborhoods && !activeNeighborhoods.has(event.neighborhood || UNKNOWN_NEIGHBORHOOD)) return false
       if (excludeEnded && isEventEnded(event.end)) return false
       return true
     })
@@ -673,7 +873,9 @@ export default function EventsMapSection() {
     activeKeywords,
     activeTimeOfDay,
     activePreciseTime,
+    activeNeighborhoods,
     excludeEnded,
+    excludedEventSources,
   ])
 
   // Events within the active travel radius — highlighted on the map and
@@ -814,6 +1016,10 @@ export default function EventsMapSection() {
           onToggle={toggleCalendarType}
           onSelectAll={() => setSelectedTypes(new Set(allCalendarKeys))}
           onClear={() => setSelectedTypes(new Set())}
+          eventSourcesByCalendar={eventSourcesByCalendar}
+          eventSourceCounts={eventSourceCounts}
+          excludedEventSources={excludedEventSources}
+          onToggleEventSource={toggleEventSource}
           toggleClassName="std-map-sentence-toggle"
         />
         <span>events for </span>
@@ -857,11 +1063,11 @@ export default function EventsMapSection() {
 
         {radiusEnabled && (
           <>
-            <span>within </span>
-            <button type="button" className="std-map-sentence-toggle" onClick={cycleMinutes}>
-              {minutes} min
+            <span>and is </span>
+            <button type="button" className="std-map-sentence-toggle" onClick={cycleMiles}>
+              {miles} mi
             </button>
-            <span>of </span>
+            <span>from </span>
             {editingLocation ? (
               <input
                 type="text"
@@ -880,10 +1086,6 @@ export default function EventsMapSection() {
                 {locationText}
               </button>
             )}
-            <span>by </span>
-            <button type="button" className="std-map-sentence-toggle" onClick={cycleTransportMode}>
-              {transportLabel(transportMode)}
-            </button>
             <button
               type="button"
               className="std-map-sentence-remove"
@@ -927,6 +1129,28 @@ export default function EventsMapSection() {
           </>
         )}
 
+        {neighborhoodEnabled && (
+          <>
+            <span>in </span>
+            <NeighborhoodFilterControl
+              neighborhoods={allNeighborhoods}
+              selected={selectedNeighborhoods}
+              eventCounts={eventCountsByNeighborhood}
+              onToggle={toggleNeighborhood}
+              onSelectAll={() => setSelectedNeighborhoods(new Set(allNeighborhoods))}
+              onClear={() => setSelectedNeighborhoods(new Set())}
+            />
+            <button
+              type="button"
+              className="std-map-sentence-remove"
+              onClick={disableNeighborhoodFilter}
+              aria-label="Remove neighborhood filter"
+            >
+              ×
+            </button>
+          </>
+        )}
+
         {hasEndedEvents && excludeEnded && (
           <>
             <span>and has not ended yet </span>
@@ -946,6 +1170,7 @@ export default function EventsMapSection() {
         !preciseTimeEnabled ||
         !radiusEnabled ||
         !keywordsEnabled ||
+        !neighborhoodEnabled ||
         (hasEndedEvents && !excludeEnded)) && (
         <div className="std-map-sentence-extra">
           {!timeOfDayEnabled && (
@@ -960,12 +1185,17 @@ export default function EventsMapSection() {
           )}
           {!radiusEnabled && (
             <button type="button" className="std-map-sentence-toggle-sm" onClick={enableLocation}>
-              +location
+              +miles from
             </button>
           )}
           {!keywordsEnabled && (
             <button type="button" className="std-map-sentence-toggle-sm" onClick={enableKeywords}>
               +keywords
+            </button>
+          )}
+          {!neighborhoodEnabled && (
+            <button type="button" className="std-map-sentence-toggle-sm" onClick={enableNeighborhoodFilter}>
+              +neighborhood
             </button>
           )}
           {hasEndedEvents && !excludeEnded && (

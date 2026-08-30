@@ -13,16 +13,3 @@ export function haversineMiles(a: LatLng, b: LatLng): number {
   return 2 * EARTH_RADIUS_MILES * Math.asin(Math.sqrt(h))
 }
 
-// Rough in-city average speeds used only to turn "N minutes by X" into a
-// straight-line search radius — not real routing/travel times.
-export const TRANSPORT_SPEEDS_MPH = {
-  walk: 3,
-  bike: 5,
-  car: 18,
-} as const
-
-export type TransportMode = keyof typeof TRANSPORT_SPEEDS_MPH
-
-export function radiusMiles(mode: TransportMode, minutes: number): number {
-  return TRANSPORT_SPEEDS_MPH[mode] * (minutes / 60)
-}

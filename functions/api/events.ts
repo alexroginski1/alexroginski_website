@@ -11,6 +11,10 @@ interface Env {
 export type ApiEvent = {
   id: string
   calendar: MapCalendarKey
+  // The specific source within a calendar (e.g. a calendar's individual
+  // contributing Eventbrite/Luma page) — finer-grained than `calendar`,
+  // used to sub-filter within a calendar's checkbox in the UI.
+  eventSource: string
   title: string
   description?: string
   location?: string
@@ -32,6 +36,7 @@ export type ApiEvent = {
 export type UnknownLocationEvent = {
   id: string
   calendar: MapCalendarKey
+  eventSource: string
   title: string
   description?: string
   rawLocation?: string
@@ -61,7 +66,7 @@ const GEOCODE_THROTTLE_MS = 1100
 // cache key, a stale pre-deploy response can still be served for up to
 // CACHE_TTL_SECONDS after a shape change ships — which crashes any client
 // expecting the new shape.
-const RESPONSE_SHAPE_VERSION = 'v7'
+const RESPONSE_SHAPE_VERSION = 'v8'
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -174,6 +179,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     events.push({
       id: row.id,
       calendar: row.calendar,
+      eventSource: row.eventSource,
       title: row.title,
       description: row.description,
       location: row.cleanedLocation,
@@ -193,6 +199,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     events.push({
       id: row.id,
       calendar: row.calendar,
+      eventSource: row.eventSource,
       title: row.title,
       description: row.description,
       location: 'Presidio, San Francisco, CA',
@@ -211,6 +218,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const unknownLocationEvents: UnknownLocationEvent[] = [...unknownLocationRows, ...geocodeFailedRows].map((row) => ({
     id: row.id,
     calendar: row.calendar,
+    eventSource: row.eventSource,
     title: row.title,
     description: row.description,
     rawLocation: row.rawLocation,
