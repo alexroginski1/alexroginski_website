@@ -18,8 +18,22 @@ export const ALL_EVENT_SOURCES: EventSourceInfo[] = [
   { label: 'The Faight', calendar: 'Arts/Culture', url: 'https://www.thefaight.com/events' },
   { label: 'Decentered Featured Events', calendar: 'Arts/Culture', url: 'https://decentered.org/events' },
   { label: 'SF Funcheap', calendar: 'Fun Cheap', url: 'https://sf.funcheap.com/region/san-francisco/' },
-  { label: 'Luma', calendar: 'Tech', url: 'https://luma.com/sf' },
+  { label: 'Luma discover page', calendar: 'Tech', url: 'https://luma.com/sf' },
   { label: 'Decentered Community Events', calendar: 'Community', url: 'https://decentered.org/events' },
+  { label: 'Garden for the Environment', calendar: 'Community', url: 'https://www.eventbrite.com/o/924286027' },
+  { label: 'Bay Area Open Mics', calendar: 'Community', url: 'https://bayareaopenmics.com/sf.html' },
+  { label: 'Black Bird Bookstore & Cafe', calendar: 'Community', url: 'https://blackbirdsf.com/pages/events' },
+  {
+    label: 'Medicine for Nightmares Bookstore & Gallery',
+    calendar: 'Community',
+    url: 'https://medicinefornightmares.com/events',
+  },
+  { label: 'Muddy Waters Café & Lounge', calendar: 'Community', url: 'https://luma.com/muddywaters' },
+  {
+    label: 'Lower Polk Community Benefit District',
+    calendar: 'Community',
+    url: 'https://www.eventbrite.com/o/the-lower-polk-community-benefit-district-117766608811',
+  },
   {
     label: "Manny's: Community, Politics, and Culture",
     calendar: 'Community',
@@ -37,7 +51,7 @@ export const ALL_EVENT_SOURCES: EventSourceInfo[] = [
   { label: 'Future of Us', calendar: 'Community', url: 'https://luma.com/future-of-us' },
   { label: 'The SF Contemplarium', calendar: 'Community', url: 'https://luma.com/sfcontemplarium' },
   { label: 'TIAT Art and Tech', calendar: 'Arts/Culture', url: 'https://luma.com/tiat' },
-  { label: 'Partiful', calendar: 'Partiful', url: 'https://partiful.com/explore/sf' },
+  { label: 'Partiful discover page', calendar: 'Partiful', url: 'https://partiful.com/explore/sf' },
   { label: 'Mox Event Space', calendar: 'Tech', url: 'https://moxsf.com/events' },
   { label: 'Art Bae', calendar: 'Arts/Culture', url: 'https://www.artbae.info/map-calendar' },
   {
@@ -60,6 +74,9 @@ export const ALL_EVENT_SOURCES: EventSourceInfo[] = [
     calendar: 'Arts/Culture',
     url: 'https://shop.archsupplies.com/pages/workshops',
   },
+  { label: 'The Lab', calendar: 'Arts/Culture', url: 'https://www.thelab.org/projects' },
+  { label: 'Gray Area', calendar: 'Arts/Culture', url: 'https://luma.com/user/grayarea' },
+  { label: 'Web', calendar: 'Arts/Culture', url: 'https://partiful.com/u/DpKsStjnolxJV0zADMiC' },
   {
     label: 'Flax: Art & Design',
     calendar: 'Arts/Culture',
@@ -68,6 +85,7 @@ export const ALL_EVENT_SOURCES: EventSourceInfo[] = [
   { label: 'Madrone Art Bar', calendar: 'Bars', url: 'https://www.eventbrite.com/o/madrone-art-bar-33448786911' },
   { label: 'Providence', calendar: 'Bars', url: 'https://www.eventbrite.com/o/36520958623' },
   { label: 'Balboa Cafe', calendar: 'Bars', url: 'https://www.balboacafesf.com/calendar' },
+  { label: "Specs' Twelve Adler Museum Cafe", calendar: 'Bars', url: 'https://www.specsbarsf.com/events' },
   { label: 'SF Climate Action Club', calendar: 'Community', url: 'https://luma.com/climateactionclub' },
   { label: 'SF Craft Club', calendar: 'Arts/Culture', url: 'https://luma.com/user/sfcraftclub' },
   { label: 'GistIRL: Make Friends and Network', calendar: 'Community', url: 'https://app.gistirl.com/' },
@@ -179,6 +197,37 @@ export const ALL_EVENT_SOURCES: EventSourceInfo[] = [
   { label: 'The Booksmith', calendar: 'Shows', url: 'https://booksmith.com/events/list/upcoming-events' },
   { label: 'Wave', calendar: 'Community', url: 'https://www.wavecollectivespace.com/community-events' },
   { label: "Stookey's Blue Room", calendar: 'Bars', url: 'https://www.stookeysblueroom.com/musicandevents' },
+  {
+    label: 'Sunset Mercantile',
+    calendar: 'Community',
+    url: 'https://calendar.google.com/calendar/embed?src=admin%40sunsetmercantilesf.com&ctz=America%2FLos_Angeles',
+  },
+  { label: 'SF Public Library Events', calendar: 'Library', url: 'https://sfpl.org/events/' },
+  { label: 'SF Supper Club', calendar: 'Community', url: 'https://partiful.com/u/eL7Hrq2H8LxUXbEasEGA' },
+  { label: 'Wine Club SF', calendar: 'Community', url: 'https://partiful.com/u/kplE3z7o8Vq9N2O4zKlU' },
+  {
+    label: 'Best Medicine Comedy',
+    calendar: 'Shows',
+    url: 'https://www.eventbrite.com/o/best-medicine-comedy-26380464595',
+  },
+  {
+    label: 'Blankets & Wine Comedy',
+    calendar: 'Community',
+    url: 'https://www.eventbrite.com/o/blankets-wine-comedy-19812774343',
+  },
+  { label: 'Mission Lotería', calendar: 'Community', url: 'https://www.eventbrite.com/o/mission-loteria-65040457373' },
+  { label: 'Chai Rave', calendar: 'Shows', url: 'https://www.eventbrite.com/o/chai-rave-114748992331' },
+  {
+    label: 'Church of 8 Wheels',
+    calendar: 'Community',
+    url: 'https://www.eventbrite.com/o/d-miles-jr-the-godfather-of-skate-31722333747',
+  },
+  { label: 'Offbeat SF', calendar: 'Music', url: 'https://offbeatsf.com/events/' },
+  {
+    label: 'Civic Joy Fund: Community Service',
+    calendar: 'Volunteering',
+    url: 'https://www.mobilize.us/civicjoyfund/?tag_ids=546',
+  },
 ]
 
 export const EVENT_SOURCE_LINKS: Record<string, string> = Object.fromEntries(

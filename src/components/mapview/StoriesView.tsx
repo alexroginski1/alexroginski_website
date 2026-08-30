@@ -14,6 +14,18 @@ const PASTEL_COLORS = ['#FDE2E4', '#DFE7FD', '#E2F0CB', '#FFF1E6', '#E2ECE9', '#
 type Story = { text: string; timestamp: string | null }
 type StoriesResponse = { stories: Story[] }
 
+// Colored by a hash of the story's own content rather than its position in
+// the list — using array index would reshuffle every existing story's color
+// whenever a new one is added ahead of it.
+function storyColor(story: Story) {
+  const key = story.timestamp ?? story.text
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) | 0
+  }
+  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length]
+}
+
 export default function StoriesView({ onClose }: { onClose: () => void }) {
   const [stories, setStories] = useState<Story[] | null>(null)
   const [loadError, setLoadError] = useState(false)
@@ -66,7 +78,7 @@ export default function StoriesView({ onClose }: { onClose: () => void }) {
       ) : (
         <div className="stories-list">
           {stories.map((story, i) => (
-            <div key={i} className="stories-card" style={{ backgroundColor: PASTEL_COLORS[i % PASTEL_COLORS.length] }}>
+            <div key={i} className="stories-card" style={{ backgroundColor: storyColor(story) }}>
               {story.text}
               {story.timestamp && <p className="stories-card-timestamp">- {story.timestamp}</p>}
             </div>

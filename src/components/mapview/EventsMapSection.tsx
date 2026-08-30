@@ -99,7 +99,7 @@ function weekendRange(todayKey: string): { from: string; to: string } {
 }
 
 // Tap-to-cycle distance control, in miles.
-const MILES_CYCLE = [1, 2, 5, 10, 25, 50]
+const MILES_CYCLE = [1, 2, 3, 4, 5, 6, 7, 8]
 
 // Tap-to-cycle time-of-day control: morning -> afternoon -> evening -> morning ...
 const TIME_OF_DAY_CYCLE: TimeOfDay[] = ['morning', 'afternoon', 'evening']
