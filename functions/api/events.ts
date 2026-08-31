@@ -1,6 +1,7 @@
 import type { MapCalendarKey } from '../../src/lib/calendarIds'
 import { getCachedGeocodes, upsertGeocode, normalizeLocationKey, parseCoordinateLocation } from '../_shared/geocodeCache'
 import { buildGeocodeCandidates, withCityStateContext } from '../_shared/geocodeQuery'
+import { waitForGeocodeSlot } from '../_shared/geocodeThrottle'
 import { findManualGeocodeOverride } from '../_shared/manualGeocodeOverrides'
 import { geocodeAddress } from '../_shared/nominatim'
 import { fetchStatsApiEvents } from '../_shared/statsApi'
@@ -60,8 +61,12 @@ const PRESIDIO_EVENT_SOURCE = 'Presidio Events'
 const PRESIDIO_CENTER = { lat: 37.7989, lng: -122.4662 }
 
 const CACHE_TTL_SECONDS = 300
-const MAX_NEW_GEOCODES_PER_REQUEST = 25
-const GEOCODE_THROTTLE_MS = 1100
+// Now that Nominatim throttling is a globally-serialized D1 reservation
+// (see geocodeThrottle.ts) rather than a per-invocation local sleep, a
+// bigger batch here is no longer a way to blow through the real 1 req/sec
+// budget — it just lets the backlog behind a busy day of new events drain
+// in fewer 5-minute cache cycles.
+const MAX_NEW_GEOCODES_PER_REQUEST = 60
 
 // Bump this whenever EventsResponse's shape changes. The edge cache
 // (caches.default) isn't cleared on deploy, so without a version in the
@@ -69,10 +74,6 @@ const GEOCODE_THROTTLE_MS = 1100
 // CACHE_TTL_SECONDS after a shape change ships — which crashes any client
 // expecting the new shape.
 const RESPONSE_SHAPE_VERSION = 'v8'
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { request, env } = context
@@ -126,17 +127,16 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const contactEmail = env.NOMINATIM_CONTACT_EMAIL ?? ''
 
   // Geocoding new locations against Nominatim is rate-limited to ~1 req/sec
-  // (GEOCODE_THROTTLE_MS), so resolving a full batch of missing keys inline
-  // used to block the response for up to ~15-20s. Instead, return this
-  // response with whatever's already cached and resolve the rest in the
-  // background — they'll show up once the D1 geocode cache is warm on a
-  // future request (this response is itself edge-cached for
-  // CACHE_TTL_SECONDS, so that's the worst-case delay).
+  // system-wide (see geocodeThrottle.ts), so resolving a full batch of
+  // missing keys inline used to block the response for up to ~15-20s.
+  // Instead, return this response with whatever's already cached and
+  // resolve the rest in the background — they'll show up once the D1
+  // geocode cache is warm on a future request (this response is itself
+  // edge-cached for CACHE_TTL_SECONDS, so that's the worst-case delay).
   if (missingKeys.length) {
     context.waitUntil(
       (async () => {
-        for (let i = 0; i < missingKeys.length; i++) {
-          const key = missingKeys[i]
+        for (const key of missingKeys) {
           const raw = locationKeyToRaw.get(key)!
 
           // One bad candidate (a network hiccup, an unexpected response)
@@ -150,7 +150,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
             if (!result) {
               const candidates = buildGeocodeCandidates(raw)
               for (let c = 0; c < candidates.length && !result; c++) {
-                if (c > 0) await sleep(GEOCODE_THROTTLE_MS)
+                await waitForGeocodeSlot(env.DB)
                 result = await geocodeAddress(withCityStateContext(candidates[c]), contactEmail)
               }
             }
@@ -161,7 +161,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
           } catch (err) {
             console.error(`Geocoding failed for ${JSON.stringify(raw)}:`, err)
           }
-          if (i < missingKeys.length - 1) await sleep(GEOCODE_THROTTLE_MS)
         }
       })()
     )

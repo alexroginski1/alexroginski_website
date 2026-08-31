@@ -1,5 +1,6 @@
 import { getCachedGeocodes, upsertGeocode, normalizeLocationKey } from '../_shared/geocodeCache'
 import { buildGeocodeCandidates, withCityStateContext } from '../_shared/geocodeQuery'
+import { waitForGeocodeSlot } from '../_shared/geocodeThrottle'
 import { findManualGeocodeOverride } from '../_shared/manualGeocodeOverrides'
 import { geocodeAddress } from '../_shared/nominatim'
 
@@ -15,13 +16,6 @@ type GeocodeResponse =
 function json(body: GeocodeResponse, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-// Nominatim usage policy caps usage at ~1 request/second.
-const GEOCODE_THROTTLE_MS = 1100
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { request, env } = context
@@ -46,7 +40,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       const candidates = buildGeocodeCandidates(address)
       const contactEmail = env.NOMINATIM_CONTACT_EMAIL ?? ''
       for (let c = 0; c < candidates.length && !result; c++) {
-        if (c > 0) await sleep(GEOCODE_THROTTLE_MS)
+        await waitForGeocodeSlot(env.DB)
         result = await geocodeAddress(withCityStateContext(candidates[c]), contactEmail)
       }
     }

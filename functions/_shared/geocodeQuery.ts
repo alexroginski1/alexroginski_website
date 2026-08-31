@@ -48,31 +48,75 @@ function expandOrdinalStreetWords(text: string): string | null {
   return changed ? next : null
 }
 
+// Nominatim's free-text search matches on whole tokens, so a unit/suite/
+// apartment number stuck onto a street address (e.g. "14 Hagiwara Tea
+// Garden Dr #2") reliably fails to match anything even though the same
+// address without it resolves fine — Nominatim's data doesn't carry unit
+// numbers at all. Dropping it is always safe here since it isn't needed to
+// disambiguate a single lat/lng for a whole building.
+function stripUnitSuffix(text: string): string | null {
+  const stripped = text.replace(/\s*#\s*[0-9A-Za-z]+\b/g, '').trim()
+  return stripped && stripped !== text ? stripped : null
+}
+
+// The stats API's source data occasionally misspells "San Francisco" (e.g.
+// "San Franciso") — Nominatim's free-text search doesn't fuzzy-match city
+// names, so a query carrying the typo fails even when the rest of the
+// address is perfectly resolvable.
+function fixCommonMisspellings(text: string): string | null {
+  const fixed = text.replace(/\bfranciso\b/gi, (m) => (m[0] === m[0].toUpperCase() ? 'Francisco' : 'francisco'))
+  return fixed !== text ? fixed : null
+}
+
 // Builds the ordered list of free-text queries worth trying for a single
 // cleaned location, from most to least likely to succeed.
 export function buildGeocodeCandidates(raw: string): string[] {
   const candidates = [raw]
 
   // A combined "name + address" free-text query can fail on Nominatim even
-  // when either half would succeed alone, and the useful half differs by
-  // source shape — a Google Calendar entry mashing a POI name into an
-  // unrelated cross-street (e.g. "Duboce Park, Scott St") needs the name
-  // kept and the tail dropped, while a "Venue Name, Street Address" entry
-  // (e.g. "Choquet's, 2500 Washington St") needs the opposite: the address
-  // is what Nominatim can actually resolve, and the venue name is what's
-  // confusing it. Try the full string first, then both halves split on the
-  // first comma.
-  const firstComma = raw.indexOf(',')
-  if (firstComma !== -1) {
-    const leadingSegment = raw.slice(0, firstComma).trim()
-    const trailingSegment = raw.slice(firstComma + 1).trim()
-    if (leadingSegment && !candidates.includes(leadingSegment)) candidates.push(leadingSegment)
-    if (trailingSegment && !candidates.includes(trailingSegment)) candidates.push(trailingSegment)
+  // when the address alone would succeed, and sources vary in how many
+  // name-like segments come before the real address — a Google Calendar
+  // entry mashing a POI name into an unrelated cross-street (e.g. "Duboce
+  // Park, Scott St") needs the name kept and the tail dropped, a "Venue
+  // Name, Street Address" entry (e.g. "Choquet's, 2500 Washington St")
+  // needs the opposite, and some sources stack a venue name *and* a
+  // sub-venue before the address (e.g. "Lindy in the Park, Golden Gate
+  // Park, 14 Hagiwara Tea Garden Dr"). Try the full string, the leading
+  // segment alone, and the address itself with every non-address segment
+  // before it dropped.
+  //
+  // "Where the address starts" is taken to be the first segment that
+  // starts with a number — i.e. a street number — rather than blindly
+  // stripping down to whatever's left after the last comma: a location
+  // with no street number at all (e.g. "Golden Gate Park, San Francisco,
+  // CA") would otherwise keep shedding segments past the point of being a
+  // useful query, down to a bare "CA" — which Nominatim happily "resolves"
+  // to some unrelated place, plotting the event nowhere near where it
+  // actually is instead of correctly leaving it unplaced.
+  const segments = raw.split(',').map((s) => s.trim()).filter(Boolean)
+  if (segments.length > 1) {
+    if (!candidates.includes(segments[0])) candidates.push(segments[0])
+    let addressStart = 1
+    while (addressStart < segments.length && !/^\d/.test(segments[addressStart])) addressStart++
+    if (addressStart > 0 && addressStart < segments.length) {
+      const suffix = segments.slice(addressStart).join(', ')
+      if (suffix && !candidates.includes(suffix)) candidates.push(suffix)
+    }
   }
 
   for (const candidate of [...candidates]) {
     const expanded = expandOrdinalStreetWords(candidate)
     if (expanded && !candidates.includes(expanded)) candidates.push(expanded)
+  }
+
+  for (const candidate of [...candidates]) {
+    const stripped = stripUnitSuffix(candidate)
+    if (stripped && !candidates.includes(stripped)) candidates.push(stripped)
+  }
+
+  for (const candidate of [...candidates]) {
+    const fixed = fixCommonMisspellings(candidate)
+    if (fixed && !candidates.includes(fixed)) candidates.push(fixed)
   }
 
   return candidates
