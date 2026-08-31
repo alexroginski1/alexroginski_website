@@ -7,7 +7,21 @@
       "Bash(/usr/bin/curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/?format=json\" -o /dev/null -w \"%{http_code}\\\\n\")",
       "Bash(/usr/bin/curl -s \"https://stuff-to-do-stats-api-5ycp65uliq-uw.a.run.app/\")",
       "Bash(gh api *)",
-      "Bash(curl -sL \"https://raw.githubusercontent.com/alexroginski1/stuff_to_do/main/config/settings.py\")"
+      "Bash(curl -sL \"https://raw.githubusercontent.com/alexroginski1/stuff_to_do/main/config/settings.py\")",
+      "Bash(curl -s -D - -G https://nominatim.openstreetmap.org/search --data-urlencode 'q=670 Kezar Drive, San Francisco, CA 94118' --data-urlencode format=jsonv2 --data-urlencode limit=1 -H 'User-Agent: alexroginski-website-stufftodo/1.0 \\(roginskialexr@gmail.com\\)' -H 'Accept-Language: en' -o /dev/null)",
+      "Bash(curl -s -D - -G https://nominatim.openstreetmap.org/search --data-urlencode 'q=670 Kezar Drive, San Francisco, CA 94118' --data-urlencode format=jsonv2 --data-urlencode limit=1 --data-urlencode viewbox=-123.3,38.9,-121.3,36.8 --data-urlencode bounded=1 -H 'User-Agent: alexroginski-website-stufftodo/1.0 \\(roginskialexr@gmail.com\\)' -H 'Accept-Language: en' -o /dev/null)",
+      "Bash(curl -s -G https://nominatim.openstreetmap.org/search --data-urlencode 'q=670 Kezar Drive, San Francisco, CA 94118' --data-urlencode format=jsonv2 --data-urlencode limit=1 --data-urlencode viewbox=-123.3,38.9,-121.3,36.8 --data-urlencode bounded=1 -H 'User-Agent: alexroginski-website-stufftodo/1.0 \\(roginskialexr@gmail.com\\)' -H 'Accept-Language: en')",
+      "Bash(curl -s -G https://nominatim.openstreetmap.org/search --data-urlencode 'q=Russian Center, 2460 Sutter St, San Franciso, CA 94115' --data-urlencode format=jsonv2 --data-urlencode limit=1 --data-urlencode viewbox=-123.3,38.9,-121.3,36.8 --data-urlencode bounded=1 -H 'User-Agent: alexroginski-website-stufftodo/1.0 \\(roginskialexr@gmail.com\\)' -H 'Accept-Language: en')",
+      "Bash(curl -s --max-time 15 'https://alexroginski.com/api/events' -o /private/tmp/claude-501/-Users-alexroginski-Documents-alexroginski-website/834f61ee-eb7d-4917-9974-3ca1083d168e/scratchpad/events.json)",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -w '\\\\nHTTP %{http_code}\\\\n' -G https://nominatim.openstreetmap.org/search --data-urlencode 'q=670 Kezar Drive, San Francisco, CA 94118' --data-urlencode format=jsonv2 --data-urlencode limit=1 --data-urlencode viewbox=-123.3,38.9,-121.3,36.8 --data-urlencode bounded=1 -H 'User-Agent: alexroginski-website-stufftodo/1.0 \\(no-contact-configured\\)' -H 'Accept-Language: en')",
+      "Bash(curl -s -w '\\\\nHTTP %{http_code}\\\\n' -G https://nominatim.openstreetmap.org/search --data-urlencode 'q=670 Kezar Drive, San Francisco, CA 94118' --data-urlencode format=jsonv2 --data-urlencode limit=1 --data-urlencode viewbox=-123.3,38.9,-121.3,36.8 --data-urlencode bounded=1 --data-urlencode email=roginskialexr@gmail.com -H 'User-Agent: alexroginski-website-stufftodo/1.0 \\(roginskialexr@gmail.com\\)' -H 'Accept-Language: en')",
+      "Bash(curl -s --max-time 15 'https://alexroginski.com/api/events')",
+      "Bash(curl -s --max-time 15 'https://alexroginski.com/api/events' -o /private/tmp/claude-501/-Users-alexroginski-Documents-alexroginski-website/834f61ee-eb7d-4917-9974-3ca1083d168e/scratchpad/events3.json)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d['scripts'], indent=2\\)\\)\")",
+      "Bash(node --experimental-strip-types -e ' *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
