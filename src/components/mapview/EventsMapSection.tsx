@@ -6,6 +6,7 @@ import type { Map as LeafletMapInstance } from 'leaflet'
 import EventsList from './EventsList'
 import CalendarLegendControl, { eventSourceKey } from './CalendarLegendControl'
 import NeighborhoodFilterControl from './NeighborhoodFilterControl'
+import DatePresetControl, { type DatePreset } from './DatePresetControl'
 import SortGroupControl from './SortGroupControl'
 import HelpSidebar from './HelpSidebar'
 import SurveySidebar from './SurveySidebar'
@@ -159,10 +160,6 @@ function HourStepper({
     </span>
   )
 }
-
-type DatePreset = 'today' | 'tomorrow' | 'weekend' | 'next3' | 'next7' | 'all' | 'custom'
-
-const DATE_PRESET_ORDER: DatePreset[] = ['today', 'tomorrow', 'next3', 'next7', 'weekend', 'all', 'custom']
 
 export default function EventsMapSection() {
   const [events, setEvents] = useState<ApiEvent[]>([])
@@ -491,12 +488,6 @@ export default function EventsMapSection() {
     }
     setDateFrom(today)
     setDateTo(preset === 'today' ? today : preset === 'next3' ? addDays(today, 3) : addDays(today, 7))
-  }
-
-  function cycleDatePreset() {
-    const currentIndex = DATE_PRESET_ORDER.indexOf(activeDatePreset)
-    const next = DATE_PRESET_ORDER[(currentIndex + 1) % DATE_PRESET_ORDER.length]
-    applyDatePreset(next)
   }
 
   const activeDatePreset: DatePreset = useMemo(() => {
@@ -1064,9 +1055,12 @@ export default function EventsMapSection() {
           toggleClassName="std-map-sentence-toggle"
         />
         <span>events for </span>
-        <button type="button" className="std-map-sentence-toggle" onClick={cycleDatePreset}>
-          {dateSentence}
-        </button>
+        <DatePresetControl
+          label={dateSentence}
+          activePreset={activeDatePreset}
+          onSelect={applyDatePreset}
+          toggleClassName="std-map-sentence-toggle"
+        />
 
         {timeOfDayEnabled && (
           <>
