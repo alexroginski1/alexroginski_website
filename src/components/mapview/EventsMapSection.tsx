@@ -1086,6 +1086,7 @@ export default function EventsMapSection() {
         <span>{activeDatePreset === 'custom' ? 'events ' : 'events for '}</span>
         <DateFilterControl
           label={dateSentence}
+          today={sfDateKey(new Date())}
           activePreset={activeDatePreset}
           dateFrom={dateFrom}
           dateTo={dateTo}
