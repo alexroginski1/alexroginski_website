@@ -908,7 +908,7 @@
   }
 
   .std-map-count {
-    @apply text-lg font-medium text-stone-600 mb-0;
+    @apply inline-flex items-center rounded-lg border border-stone-200 bg-stone-50 px-2 py-0.5 text-sm md:text-base font-medium text-stone-600;
   }
 
   .std-map-count-badge {
