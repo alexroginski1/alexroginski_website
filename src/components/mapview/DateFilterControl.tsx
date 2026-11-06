@@ -68,6 +68,8 @@ function Chevron({ dir }: { dir: 'left' | 'right' | 'down' }) {
 export default function DateFilterControl({
   label,
   today,
+  minDate,
+  maxDate,
   activePreset,
   dateFrom,
   dateTo,
@@ -78,6 +80,9 @@ export default function DateFilterControl({
   label: string
   /** Today's "YYYY-MM-DD" key; earlier days can't be picked. */
   today: string
+  /** Earliest/latest "YYYY-MM-DD" with event data; days outside are greyed out. */
+  minDate?: string | null
+  maxDate?: string | null
   activePreset: DatePreset
   dateFrom: string
   dateTo: string
@@ -96,6 +101,10 @@ export default function DateFilterControl({
   const [viewMonth, setViewMonth] = useState(() => parseKey(today)[1])
   const rootRef = useRef<HTMLDivElement>(null)
 
+  // Selectable window: never before today, and only within the event data.
+  const firstPickable = minDate && minDate > today ? minDate : today
+  const lastPickable = maxDate ?? null
+
   // Each time the menu opens, reflect the current filter: a custom range
   // opens straight into the calendar with that range selected.
   useEffect(() => {
@@ -105,7 +114,7 @@ export default function DateFilterControl({
     setStart(isCustom ? dateFrom : null)
     setEnd(isCustom && dateTo !== dateFrom ? dateTo : null)
     setHover(null)
-    const [y, m] = parseKey(isCustom ? dateFrom : today)
+    const [y, m] = parseKey(isCustom ? dateFrom : firstPickable)
     setViewYear(y)
     setViewMonth(m)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,8 +137,10 @@ export default function DateFilterControl({
   }, [open])
 
   const cells = useMemo(() => monthCells(viewYear, viewMonth), [viewYear, viewMonth])
-  const [todayY, todayM] = parseKey(today)
-  const canGoPrev = viewYear > todayY || (viewYear === todayY && viewMonth > todayM)
+  const [firstY, firstM] = parseKey(firstPickable)
+  const canGoPrev = viewYear > firstY || (viewYear === firstY && viewMonth > firstM)
+  const [lastY, lastM] = lastPickable ? parseKey(lastPickable) : [Infinity, 12]
+  const canGoNext = viewYear < lastY || (viewYear === lastY && viewMonth < lastM)
 
   function shiftMonth(delta: number) {
     let m = viewMonth + delta
@@ -230,6 +241,7 @@ export default function DateFilterControl({
                   type="button"
                   className="std-date-picker-nav"
                   onClick={() => shiftMonth(1)}
+                  disabled={!canGoNext}
                   aria-label="Next month"
                 >
                   <Chevron dir="right" />
@@ -244,7 +256,7 @@ export default function DateFilterControl({
                 ))}
                 {cells.map((key, i) => {
                   if (!key) return <span key={`blank-${i}`} />
-                  const past = key < today
+                  const past = key < firstPickable || (!!lastPickable && key > lastPickable)
                   const isStart = key === start
                   const isEnd = key === previewEnd
                   const inRange = !!start && !!previewEnd && key > start && key < previewEnd

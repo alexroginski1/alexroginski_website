@@ -331,6 +331,19 @@ export default function EventsMapSection() {
     return [...keys].sort((a, b) => a.localeCompare(b))
   }, [events, unknownLocationEvents])
 
+  // Earliest/latest SF date that has any event — bounds the "Specific date…"
+  // calendar so days with no data can't be picked. Null until events load.
+  const eventDateBounds = useMemo(() => {
+    let min: string | null = null
+    let max: string | null = null
+    for (const event of [...events, ...unknownLocationEvents]) {
+      const key = sfDateKey(new Date(event.start))
+      if (!min || key < min) min = key
+      if (!max || key > max) max = key
+    }
+    return { min, max }
+  }, [events, unknownLocationEvents])
+
   // Defaults selectedTypes to "everything" once the real calendar list is
   // known, unless localStorage already supplied an explicit selection (that
   // branch below sets the initialized ref first, so this is skipped).
@@ -1018,6 +1031,8 @@ export default function EventsMapSection() {
         <DateFilterControl
           label={dateSentence}
           today={sfDateKey(new Date())}
+          minDate={eventDateBounds.min}
+          maxDate={eventDateBounds.max}
           activePreset={activeDatePreset}
           dateFrom={dateFrom}
           dateTo={dateTo}
@@ -1151,7 +1166,7 @@ export default function EventsMapSection() {
               'Loading events…'
             ) : (
               <>
-                {`${visibleEvents.length} event${visibleEvents.length === 1 ? '' : 's'} found`}
+                {`${listEvents.length} event${listEvents.length === 1 ? '' : 's'} found`}
                 {highlightedEventIds && (
                   <span className="std-map-count-badge" style={{ backgroundColor: RADIUS_HIGHLIGHT_FILL_COLOR }}>
                     {`${highlightedEventIds.size} within region`}

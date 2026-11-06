@@ -117,7 +117,7 @@ export default function CalendarLegendControl({
           {sortedCalendarKeys.map((key) => {
             const { label, color, emoji } = getCalendarStyle(key)
             const sources = sortedSources(key)
-            const hasSubfilter = sources.length > 1
+            const hasSubfilter = sources.length > 0
             const isExpanded = expandedCalendars.has(key)
             return (
               <div key={key}>
