@@ -222,7 +222,7 @@ export const ALL_EVENT_SOURCES: EventSourceInfo[] = [
     calendar: 'Community',
     url: 'https://www.eventbrite.com/o/d-miles-jr-the-godfather-of-skate-31722333747',
   },
-  { label: 'Offbeat SF', calendar: 'Music', url: 'https://offbeatsf.com/events/' },
+  { label: 'Offbeat SF', calendar: 'Shows', url: 'https://offbeatsf.com/events/' },
   {
     label: 'Civic Joy Fund: Community Service',
     calendar: 'Volunteering',

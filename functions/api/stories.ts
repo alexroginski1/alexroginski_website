@@ -93,7 +93,11 @@ export const onRequestGet: PagesFunction = async (context) => {
     if (!res.ok) throw new Error(`Sheet fetch failed: ${res.status}`)
     const csv = await res.text()
     const [header, ...dataRows] = parseCsv(csv)
-    const storyIndex = header?.findIndex((h) => h.trim().toLowerCase() === 'story') ?? -1
+    // The story column's header is the form question's full text (e.g.
+    // "Share a story of how Stuff To Do has helped you"), which changes
+    // whenever the question gets reworded — so match on "story" anywhere in
+    // it rather than an exact header.
+    const storyIndex = header?.findIndex((h) => h.trim().toLowerCase().includes('story')) ?? -1
     const timestampIndex = header?.findIndex((h) => h.trim().toLowerCase() === 'timestamp') ?? -1
 
     stories =

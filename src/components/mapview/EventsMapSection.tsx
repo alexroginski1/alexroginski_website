@@ -11,10 +11,18 @@ import HelpSidebar from './HelpSidebar'
 import SurveySidebar from './SurveySidebar'
 import StoriesView from './StoriesView'
 import LatestUpdateSidebar from './LatestUpdateSidebar'
+import DateFilterControl, { formatDateKeyShort, type DatePreset } from './DateFilterControl'
+import MapEventSidebar from './MapEventSidebar'
 import { RADIUS_HIGHLIGHT_FILL_COLOR } from '@/lib/mapCalendarLegend'
 import type { ListCriterion } from '@/lib/mapListGrouping'
 import type { MapCalendarKey } from '@/lib/calendarIds'
-import { isEventEnded, matchesPreciseTime, matchesTimeOfDay, type TimeOfDay } from '@/lib/mapEventFormat'
+import {
+  isEventEnded,
+  matchesPreciseTime,
+  matchesTimeOfDay,
+  type EventListItem,
+  type TimeOfDay,
+} from '@/lib/mapEventFormat'
 import type { ApiEvent, EventsResponse, UnknownLocationEvent } from '@/lib/mapTypes'
 import { haversineMiles } from '@/lib/geo'
 
@@ -47,6 +55,22 @@ const DEFAULT_LOCATION_TEXT = 'San Francisco City Hall'
 const DEFAULT_LOCATION_COORDS = { lat: 37.7793, lng: -122.4193 }
 
 type LastGeocode = { text: string; lat: number; lng: number }
+
+// Query param holding the id of whichever event's details are open, so the
+// address bar is always a link straight to that event — e.g.
+// /stuff_to_do/?event=Shows%3Aabc123.
+const EVENT_URL_PARAM = 'event'
+// Zoom used when a shared link opens the map onto its event.
+const LINKED_EVENT_ZOOM = 15
+
+// replaceState (not pushState) so opening a string of events doesn't fill
+// the back button with one history entry per click.
+function writeEventToUrl(id: string | null) {
+  const url = new URL(window.location.href)
+  if (id) url.searchParams.set(EVENT_URL_PARAM, id)
+  else url.searchParams.delete(EVENT_URL_PARAM)
+  window.history.replaceState(window.history.state, '', url)
+}
 
 type PersistedMapFilters = {
   version: typeof STORAGE_VERSION
@@ -160,10 +184,6 @@ function HourStepper({
   )
 }
 
-type DatePreset = 'today' | 'tomorrow' | 'weekend' | 'next3' | 'next7' | 'all' | 'custom'
-
-const DATE_PRESET_ORDER: DatePreset[] = ['today', 'tomorrow', 'next3', 'next7', 'weekend', 'all', 'custom']
-
 export default function EventsMapSection() {
   const [events, setEvents] = useState<ApiEvent[]>([])
   const [unknownLocationEvents, setUnknownLocationEvents] = useState<UnknownLocationEvent[]>([])
@@ -191,7 +211,6 @@ export default function EventsMapSection() {
   const [miles, setMiles] = useState(5)
   const [dateFrom, setDateFrom] = useState(() => sfDateKey(new Date()))
   const [dateTo, setDateTo] = useState(() => sfDateKey(new Date()))
-  const [allDates, setAllDates] = useState(false)
   const [customDateMode, setCustomDateMode] = useState(false)
   const [radiusEnabled, setRadiusEnabled] = useState(false)
   const [keywordsEnabled, setKeywordsEnabled] = useState(false)
@@ -219,6 +238,12 @@ export default function EventsMapSection() {
   const [surveyNudgeVisible, setSurveyNudgeVisible] = useState(false)
   const [storiesOpen, setStoriesOpen] = useState(false)
   const [latestUpdateOpen, setLatestUpdateOpen] = useState(false)
+  // The event named in the URL on page load (a shared link). Shown in its
+  // own sidebar regardless of the current filters — whoever sent the link
+  // wants the recipient to see that event, even if the recipient's saved
+  // filters (say, "today" for an event on Friday) would otherwise hide it.
+  const [linkedEventId, setLinkedEventId] = useState<string | null>(null)
+  const linkedEventPannedRef = useRef(false)
 
   function toggleSortGroupCriterion(criterion: ListCriterion) {
     setSortGroupOrder((prev) => (prev.includes(criterion) ? prev.filter((c) => c !== criterion) : [...prev, criterion]))
@@ -239,6 +264,10 @@ export default function EventsMapSection() {
     } catch {
       // ignore quota/availability errors
     }
+  }, [])
+
+  useEffect(() => {
+    setLinkedEventId(new URLSearchParams(window.location.search).get(EVENT_URL_PARAM))
   }, [])
 
   // The map is the whole page now — no collapse/close, so this only needs
@@ -465,17 +494,8 @@ export default function EventsMapSection() {
     })
   }
 
-  function applyDatePreset(preset: DatePreset) {
-    setCustomDateMode(preset === 'custom')
-    if (preset === 'custom') {
-      setAllDates(false)
-      return
-    }
-    if (preset === 'all') {
-      setAllDates(true)
-      return
-    }
-    setAllDates(false)
+  function applyDatePreset(preset: Exclude<DatePreset, 'custom'>) {
+    setCustomDateMode(false)
     const today = sfDateKey(new Date())
     if (preset === 'weekend') {
       const { from, to } = weekendRange(today)
@@ -490,40 +510,36 @@ export default function EventsMapSection() {
       return
     }
     setDateFrom(today)
-    setDateTo(preset === 'today' ? today : preset === 'next3' ? addDays(today, 3) : addDays(today, 7))
+    setDateTo(preset === 'today' ? today : addDays(today, 7))
   }
 
-  function cycleDatePreset() {
-    const currentIndex = DATE_PRESET_ORDER.indexOf(activeDatePreset)
-    const next = DATE_PRESET_ORDER[(currentIndex + 1) % DATE_PRESET_ORDER.length]
-    applyDatePreset(next)
+  function applyDateRange(from: string, to: string) {
+    setCustomDateMode(true)
+    setDateFrom(from)
+    setDateTo(to)
   }
 
   const activeDatePreset: DatePreset = useMemo(() => {
     if (customDateMode) return 'custom'
-    if (allDates) return 'all'
     const today = sfDateKey(new Date())
     if (dateFrom === today && dateTo === today) return 'today'
     const tomorrow = addDays(today, 1)
     if (dateFrom === tomorrow && dateTo === tomorrow) return 'tomorrow'
-    if (dateFrom === today) {
-      if (dateTo === addDays(today, 3)) return 'next3'
-      if (dateTo === addDays(today, 7)) return 'next7'
-    }
+    if (dateFrom === today && dateTo === addDays(today, 7)) return 'next7'
     const weekend = weekendRange(today)
     if (dateFrom === weekend.from && dateTo === weekend.to) return 'weekend'
     return 'custom'
-  }, [customDateMode, allDates, dateFrom, dateTo])
+  }, [customDateMode, dateFrom, dateTo])
 
   const dateSentence = useMemo(() => {
-    if (allDates) return 'any day'
     if (activeDatePreset === 'today') return 'today'
     if (activeDatePreset === 'tomorrow') return 'tomorrow'
-    if (activeDatePreset === 'next3') return 'in the next 3 days'
     if (activeDatePreset === 'weekend') return 'this weekend'
-    if (activeDatePreset === 'next7') return 'in the next 7 days'
-    return dateFrom === dateTo ? `on ${dateFrom}` : `from ${dateFrom} to ${dateTo}`
-  }, [allDates, activeDatePreset, dateFrom, dateTo])
+    if (activeDatePreset === 'next7') return 'the next 7 days'
+    return dateFrom === dateTo
+      ? `on ${formatDateKeyShort(dateFrom)}`
+      : `from ${formatDateKeyShort(dateFrom)} to ${formatDateKeyShort(dateTo)}`
+  }, [activeDatePreset, dateFrom, dateTo])
 
   // Resolves a location's coordinates, preferring an already-known geocode
   // (the cached last search, or the hardcoded default) over an API call.
@@ -677,10 +693,8 @@ export default function EventsMapSection() {
     const counts = Object.fromEntries(allCalendarKeys.map((key) => [key, 0])) as Record<MapCalendarKey, number>
     for (const event of events ?? []) {
       if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) continue
-      if (!allDates) {
-        const eventDateKey = sfDateKey(new Date(event.start))
-        if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
-      }
+      const eventDateKey = sfDateKey(new Date(event.start))
+      if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
       if (
         activeKeywords &&
         !event.title.toLowerCase().includes(activeKeywords) &&
@@ -698,7 +712,6 @@ export default function EventsMapSection() {
   }, [
     events,
     allCalendarKeys,
-    allDates,
     dateFrom,
     dateTo,
     activeKeywords,
@@ -719,10 +732,8 @@ export default function EventsMapSection() {
     const counts: Record<string, number> = {}
     const sourcesByCalendar: Record<MapCalendarKey, Set<string>> = {}
     for (const event of events ?? []) {
-      if (!allDates) {
-        const eventDateKey = sfDateKey(new Date(event.start))
-        if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
-      }
+      const eventDateKey = sfDateKey(new Date(event.start))
+      if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
       if (
         activeKeywords &&
         !event.title.toLowerCase().includes(activeKeywords) &&
@@ -746,7 +757,6 @@ export default function EventsMapSection() {
     return { eventSourcesByCalendar: sourcesOut, eventSourceCounts: counts }
   }, [
     events,
-    allDates,
     dateFrom,
     dateTo,
     activeKeywords,
@@ -765,10 +775,8 @@ export default function EventsMapSection() {
     for (const event of events ?? []) {
       if (!selectedTypes.has(event.calendar)) continue
       if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) continue
-      if (!allDates) {
-        const eventDateKey = sfDateKey(new Date(event.start))
-        if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
-      }
+      const eventDateKey = sfDateKey(new Date(event.start))
+      if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
       if (
         activeKeywords &&
         !event.title.toLowerCase().includes(activeKeywords) &&
@@ -787,7 +795,6 @@ export default function EventsMapSection() {
     events,
     allNeighborhoods,
     selectedTypes,
-    allDates,
     dateFrom,
     dateTo,
     activeKeywords,
@@ -806,10 +813,8 @@ export default function EventsMapSection() {
     for (const event of events ?? []) {
       if (!selectedTypes.has(event.calendar)) continue
       if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) continue
-      if (!allDates) {
-        const eventDateKey = sfDateKey(new Date(event.start))
-        if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
-      }
+      const eventDateKey = sfDateKey(new Date(event.start))
+      if (eventDateKey < dateFrom || eventDateKey > dateTo) continue
       if (
         activeKeywords &&
         !event.title.toLowerCase().includes(activeKeywords) &&
@@ -826,7 +831,6 @@ export default function EventsMapSection() {
   }, [
     events,
     selectedTypes,
-    allDates,
     dateFrom,
     dateTo,
     activeKeywords,
@@ -840,10 +844,8 @@ export default function EventsMapSection() {
     return (events ?? []).filter((event) => {
       if (!selectedTypes.has(event.calendar)) return false
       if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) return false
-      if (!allDates) {
-        const eventDateKey = sfDateKey(new Date(event.start))
-        if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
-      }
+      const eventDateKey = sfDateKey(new Date(event.start))
+      if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
       if (
         activeKeywords &&
         !event.title.toLowerCase().includes(activeKeywords) &&
@@ -862,7 +864,6 @@ export default function EventsMapSection() {
   }, [
     events,
     selectedTypes,
-    allDates,
     dateFrom,
     dateTo,
     activeKeywords,
@@ -879,10 +880,8 @@ export default function EventsMapSection() {
     return unknownLocationEvents.filter((event) => {
       if (!selectedTypes.has(event.calendar)) return false
       if (excludedEventSources.has(eventSourceKey(event.calendar, event.eventSource))) return false
-      if (!allDates) {
-        const eventDateKey = sfDateKey(new Date(event.start))
-        if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
-      }
+      const eventDateKey = sfDateKey(new Date(event.start))
+      if (eventDateKey < dateFrom || eventDateKey > dateTo) return false
       if (
         activeKeywords &&
         !event.title.toLowerCase().includes(activeKeywords) &&
@@ -899,7 +898,6 @@ export default function EventsMapSection() {
   }, [
     unknownLocationEvents,
     selectedTypes,
-    allDates,
     dateFrom,
     dateTo,
     activeKeywords,
@@ -918,6 +916,28 @@ export default function EventsMapSection() {
     () => [...visibleEvents, ...visibleUnknownLocationEvents],
     [visibleEvents, visibleUnknownLocationEvents],
   )
+
+  const linkedEvent = useMemo((): EventListItem | null => {
+    if (!linkedEventId) return null
+    return events.find((e) => e.id === linkedEventId) ?? unknownLocationEvents.find((e) => e.id === linkedEventId) ?? null
+  }, [linkedEventId, events, unknownLocationEvents])
+
+  // A link to an event that's since ended and aged out of the feed (or never
+  // existed) has nothing to show — drop it from the URL rather than leaving
+  // a dead id there to get copied and shared again.
+  useEffect(() => {
+    if (eventsLoading || !linkedEventId || linkedEvent) return
+    setLinkedEventId(null)
+    writeEventToUrl(null)
+  }, [eventsLoading, linkedEventId, linkedEvent])
+
+  // Centers the map on a shared link's event once, after LeafletMap's own
+  // initial view (saved position / fit-to-events) has been applied.
+  useEffect(() => {
+    if (linkedEventPannedRef.current || !mapInstance || linkedEvent?.lat === undefined || linkedEvent.lng === undefined) return
+    linkedEventPannedRef.current = true
+    mapInstance.setView([linkedEvent.lat, linkedEvent.lng], Math.max(mapInstance.getZoom(), LINKED_EVENT_ZOOM))
+  }, [mapInstance, linkedEvent])
 
   // Events within the active travel radius — highlighted on the map and
   // pinned to the top of the list below. Null (not an empty set) when the
@@ -1063,10 +1083,16 @@ export default function EventsMapSection() {
           onToggleEventSource={toggleEventSource}
           toggleClassName="std-map-sentence-toggle"
         />
-        <span>events for </span>
-        <button type="button" className="std-map-sentence-toggle" onClick={cycleDatePreset}>
-          {dateSentence}
-        </button>
+        <span>{activeDatePreset === 'custom' ? 'events ' : 'events for '}</span>
+        <DateFilterControl
+          label={dateSentence}
+          activePreset={activeDatePreset}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onSelectPreset={applyDatePreset}
+          onSelectRange={applyDateRange}
+          toggleClassName="std-map-sentence-toggle"
+        />
 
         {timeOfDayEnabled && (
           <>
@@ -1247,25 +1273,6 @@ export default function EventsMapSection() {
         </div>
       )}
 
-      {activeDatePreset === 'custom' && (
-        <div className="std-map-filter-row">
-          <input
-            type="date"
-            className="std-map-input"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-          <span className="text-sm text-stone-500">to</span>
-          <input
-            type="date"
-            className="std-map-input"
-            value={dateTo}
-            min={dateFrom}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-        </div>
-      )}
-
       {geocodeStatus === 'error' && (
         <p className="std-map-empty">Couldn&apos;t find that location — showing all events instead.</p>
       )}
@@ -1299,6 +1306,7 @@ export default function EventsMapSection() {
             radiusMiles={activeRadiusMiles}
             highlightedEventIds={highlightedEventIds}
             onMapReady={setMapInstance}
+            onEventShown={writeEventToUrl}
           />
         ) : (
           <div className="std-map-overlay-list">
@@ -1315,6 +1323,7 @@ export default function EventsMapSection() {
                 highlightedEventIds={highlightedEventIds}
                 sortGroupOrder={sortGroupOrder}
                 distanceOrigin={activeSearchOrigin}
+                onEventShown={writeEventToUrl}
               />
             ) : (
               <p className="std-map-empty">No events match your filters.</p>
@@ -1322,6 +1331,16 @@ export default function EventsMapSection() {
           </div>
         )}
 
+        {linkedEvent && (
+          <MapEventSidebar
+            events={[linkedEvent]}
+            index={0}
+            onIndexChange={() => {}}
+            onClose={() => setLinkedEventId(null)}
+            onActiveEventChange={writeEventToUrl}
+            className={viewMode === 'list' ? 'std-map-sidebar-right' : ''}
+          />
+        )}
         {helpOpen && <HelpSidebar onClose={() => setHelpOpen(false)} />}
         {surveyOpen && <SurveySidebar onClose={() => setSurveyOpen(false)} />}
         {storiesOpen && <StoriesView onClose={() => setStoriesOpen(false)} />}

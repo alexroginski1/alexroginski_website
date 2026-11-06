@@ -37,7 +37,6 @@ const KNOWN_CALENDAR_STYLES: Record<string, CalendarStyle> = {
   Exercise: { color: '#F6BF26', emoji: '🏃' },
   Mindfulness: { color: '#26A69A', emoji: '🧘' },
   Shows: { color: '#AB47BC', emoji: '🎟️' },
-  Music: { color: '#0B8043', emoji: '🎵' },
   Library: { color: '#3F51B5', emoji: '📚' },
   Volunteering: { color: '#616161', emoji: '🤝' },
 }

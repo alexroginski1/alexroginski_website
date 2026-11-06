@@ -26,6 +26,7 @@ export default function EventsList({
   highlightedEventIds = null,
   sortGroupOrder = [],
   distanceOrigin = null,
+  onEventShown,
 }: {
   events: EventListItem[]
   // Events within the travel radius — shown bolded and pinned to the top.
@@ -34,6 +35,8 @@ export default function EventsList({
   sortGroupOrder?: ListCriterion[]
   // Origin for 'distance' grouping; ignored (criterion falls through) when null.
   distanceOrigin?: LatLng | null
+  // See MapEventSidebar's onActiveEventChange.
+  onEventShown?: (id: string | null) => void
 }) {
   // Reuses the same click-triggered sidebar as the Map view (see
   // LeafletMap's `selected` state) rather than a separate popup, so an
@@ -136,7 +139,11 @@ export default function EventsList({
     // Ended styling takes priority over the "within region" highlight —
     // a past event reads as inactive regardless of where it was.
     const ended = isEventEnded(event.end)
-    const ongoingNow = !ended && relativeTimeLabel(event.start, event.end) === 'now'
+    // Same today-only "in <1 hr"/"in x hr" countdown as the map marker labels
+    // (see LeafletMap's EventMarkerGroup), so the two views read the same.
+    const isToday = sfDateKey(event.start) === sfDateKey(new Date().toISOString())
+    const relative = !ended && isToday ? relativeTimeLabel(event.start, event.end) : null
+    const ongoingNow = relative === 'now'
     // Events whose location couldn't be geocoded arrive with no lat/lng at
     // all (see UnknownLocationEvent) — real events always have both, so
     // this is a reliable signal without needing a separate flag.
@@ -187,6 +194,12 @@ export default function EventsList({
                   {weekday}
                 </span>{' '}
                 {rest}
+                {relative && (
+                  <>
+                    {' '}
+                    <span className="std-event-item-relative">{relative}</span>
+                  </>
+                )}
               </>
             )}
             {venue && (
@@ -284,6 +297,7 @@ export default function EventsList({
           index={0}
           onIndexChange={() => {}}
           onClose={() => setSelected(null)}
+          onActiveEventChange={onEventShown}
           className="std-map-sidebar-right"
         />
       )}

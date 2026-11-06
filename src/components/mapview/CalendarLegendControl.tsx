@@ -43,11 +43,35 @@ export default function CalendarLegendControl({
   toggleClassName?: string
 }) {
   const [open, setOpen] = useState(false)
-  // Accordion-style — at most one calendar's source list expanded at a
-  // time, so the panel can't grow unmanageably tall on a small screen.
-  const [expandedCalendar, setExpandedCalendar] = useState<MapCalendarKey | null>(null)
+  // Any number of calendars' source lists can be open at once — the panel
+  // scrolls (see .std-map-calendar-panel's max-height) rather than limiting
+  // expansion to one at a time.
+  const [expandedCalendars, setExpandedCalendars] = useState<Set<MapCalendarKey>>(() => new Set())
   const rootRef = useRef<HTMLDivElement>(null)
   const allSelected = selectedTypes.size === calendarKeys.length
+
+  function toggleExpanded(key: MapCalendarKey) {
+    setExpandedCalendars((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  // Busiest calendars (and sources within a calendar) first. Sorted on
+  // per-source counts, which ignore the source checkboxes, rather than on
+  // eventCounts, which don't — otherwise unchecking a source would shrink
+  // its calendar's count and make the row jump out from under the cursor.
+  const sourceTotal = (key: MapCalendarKey) =>
+    (eventSourcesByCalendar[key] ?? []).reduce((sum, source) => sum + (eventSourceCounts[eventSourceKey(key, source)] ?? 0), 0)
+  const sortedCalendarKeys = [...calendarKeys].sort((a, b) => sourceTotal(b) - sourceTotal(a) || a.localeCompare(b))
+  const sortedSources = (key: MapCalendarKey) =>
+    [...(eventSourcesByCalendar[key] ?? [])].sort(
+      (a, b) =>
+        (eventSourceCounts[eventSourceKey(key, b)] ?? 0) - (eventSourceCounts[eventSourceKey(key, a)] ?? 0) ||
+        a.localeCompare(b),
+    )
 
   let toggleLabel: string
   if (allSelected) {
@@ -90,11 +114,11 @@ export default function CalendarLegendControl({
               Clear
             </button>
           </div>
-          {calendarKeys.map((key) => {
+          {sortedCalendarKeys.map((key) => {
             const { label, color, emoji } = getCalendarStyle(key)
-            const sources = eventSourcesByCalendar[key] ?? []
+            const sources = sortedSources(key)
             const hasSubfilter = sources.length > 1
-            const isExpanded = expandedCalendar === key
+            const isExpanded = expandedCalendars.has(key)
             return (
               <div key={key}>
                 <div className="std-map-legend-row">
@@ -114,7 +138,7 @@ export default function CalendarLegendControl({
                     <button
                       type="button"
                       className="std-map-legend-expand"
-                      onClick={() => setExpandedCalendar((prev) => (prev === key ? null : key))}
+                      onClick={() => toggleExpanded(key)}
                       aria-expanded={isExpanded}
                       aria-label={isExpanded ? `Hide ${label} event sources` : `Show ${label} event sources`}
                     >

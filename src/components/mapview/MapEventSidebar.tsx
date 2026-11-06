@@ -12,12 +12,16 @@ export default function MapEventSidebar({
   index,
   onIndexChange,
   onClose,
+  onActiveEventChange,
   className = '',
 }: {
   events: EventListItem[]
   index: number
   onIndexChange: (index: number) => void
   onClose: () => void
+  // Reports the id of whichever event is on screen (and null once the
+  // sidebar closes), so the page can mirror it into a shareable URL.
+  onActiveEventChange?: (id: string | null) => void
   // Extra class for placement — e.g. the list view anchors it to the right
   // edge instead of the left, so it doesn't cover the event titles.
   className?: string
@@ -35,6 +39,15 @@ export default function MapEventSidebar({
   const count = sortedEvents.length
   const activeIndex = index < count ? index : count - 1
   const event = sortedEvents[activeIndex]
+
+  // Kept in a ref so a caller passing an inline callback doesn't re-fire
+  // these effects (and re-write the URL) on every render.
+  const onActiveEventChangeRef = useRef(onActiveEventChange)
+  onActiveEventChangeRef.current = onActiveEventChange
+  useEffect(() => {
+    onActiveEventChangeRef.current?.(event.id)
+  }, [event.id])
+  useEffect(() => () => onActiveEventChangeRef.current?.(null), [])
 
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {

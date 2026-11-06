@@ -668,9 +668,11 @@
 
   .std-map-calendar-panel {
     @apply absolute left-0 top-full z-[1001] mt-1 flex flex-col gap-1 overflow-y-auto rounded-lg bg-white/95 shadow-lg p-2;
-    width: max-content;
-    min-width: 200px;
-    max-width: 260px;
+    /* Fixed (not max-content) so expanding a calendar's source list, whose
+       labels are often longer than the calendar names, doesn't widen the
+       whole panel — long source names wrap instead. */
+    width: 260px;
+    max-width: calc(100vw - 32px);
     max-height: min(70vh, 420px);
   }
 
@@ -928,6 +930,14 @@
   }
 
   .std-map-marker-label-relative {
+    @apply rounded px-1 font-semibold;
+    background-color: #fed7aa;
+    color: #9a3412;
+  }
+
+  /* List-tile twin of .std-map-marker-label-relative, so an upcoming event's
+     countdown looks the same in the list as under its map marker. */
+  .std-event-item-relative {
     @apply rounded px-1 font-semibold;
     background-color: #fed7aa;
     color: #9a3412;

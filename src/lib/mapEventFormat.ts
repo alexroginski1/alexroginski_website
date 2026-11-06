@@ -101,21 +101,20 @@ export function isEventEnded(end: string): boolean {
   return new Date(end).getTime() < Date.now()
 }
 
-// "now" while an event is in progress, "in x min"/"in x hr" while it's still
-// ahead, null once it's over — used on map marker labels so a same-day
-// event's urgency is visible without opening its details. Minutes round to
-// the nearest 10 (minimum 10, so it doesn't misleadingly read "in 0 min"); 2
-// hours or more rounds to the nearest hour instead.
+// "now" while an event is in progress, "in <1 hr"/"in x hr" while it's still
+// ahead, null once it's over — used on map marker labels and list tiles so a
+// same-day event's urgency is visible without opening its details. Never
+// shows minutes: anything under an hour away reads "<1 hr", and an hour or
+// more rounds to the nearest hour.
 export function relativeTimeLabel(startIso: string, endIso: string, now: Date = new Date()): string | null {
   const start = new Date(startIso).getTime()
   const end = new Date(endIso).getTime()
   const t = now.getTime()
   if (t >= start && t <= end) return 'now'
   if (t < start) {
-    const minutes = Math.max(10, Math.round((start - t) / (10 * 60 * 1000)) * 10)
-    if (minutes < 120) return `in ${minutes} min`
-    const hours = Math.round(minutes / 60)
-    return `in ${hours} hr`
+    const minutes = (start - t) / (60 * 1000)
+    if (minutes < 60) return 'in <1 hr'
+    return `in ${Math.round(minutes / 60)} hr`
   }
   return null
 }

@@ -430,6 +430,7 @@ export default function LeafletMap({
   radiusMiles,
   highlightedEventIds,
   onMapReady,
+  onEventShown,
 }: {
   events: ApiEvent[]
   searchOrigin: { lat: number; lng: number } | null
@@ -440,6 +441,8 @@ export default function LeafletMap({
   // Reports the Leaflet map instance up once it's mounted, so the page's
   // own right-side zoom buttons can call zoomIn()/zoomOut() on it.
   onMapReady?: (map: L.Map) => void
+  // See MapEventSidebar's onActiveEventChange.
+  onEventShown?: (id: string | null) => void
 }) {
   const [zoom, setZoom] = useState(12)
   const zoomBucket: ZoomBucket = zoom >= 16 ? 'lg' : zoom >= 14 ? 'md' : 'sm'
@@ -546,6 +549,7 @@ export default function LeafletMap({
           index={selected!.index}
           onIndexChange={(index) => setSelected({ groupKey: selectedGroup.key, index })}
           onClose={() => setSelected(null)}
+          onActiveEventChange={onEventShown}
         />
       )}
     </div>
