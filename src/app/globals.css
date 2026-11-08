@@ -1145,6 +1145,11 @@
     @apply text-lg;
   }
 
+  .std-map-title-event-link {
+    @apply shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-sm font-medium no-underline transition-colors;
+    @apply bg-violet-100 border-violet-200 text-violet-800 hover:bg-violet-200;
+  }
+
   .std-map-popup-title-ended {
     @apply line-through text-stone-500;
   }

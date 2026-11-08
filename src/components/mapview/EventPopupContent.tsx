@@ -22,8 +22,11 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
   const relative = ended ? null : relativeTimeLabel(event.start, event.end)
   const ongoingNow = relative === 'now'
   const descriptionHtml = useMemo(
-    () => (event.description ? sanitizeDescriptionHtml(event.description) : null),
-    [event.description]
+    () =>
+      event.description
+        ? sanitizeDescriptionHtml(event.description, { dropEventLink: Boolean(event.eventLink) })
+        : null,
+    [event.description, event.eventLink]
   )
   const [locationInfoOpen, setLocationInfoOpen] = useState(false)
 
@@ -36,6 +39,16 @@ export default function EventPopupContent({ event }: { event: EventListItem }) {
         <strong>
           <span className={ended ? 'std-map-popup-title-ended' : undefined}>{event.title}</span>
         </strong>
+        {event.eventLink && (
+          <a
+            href={event.eventLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="std-map-title-event-link"
+          >
+            Event Link
+          </a>
+        )}
       </div>
       <div className="std-map-popup-meta-row">
         <span className="std-map-popup-meta">

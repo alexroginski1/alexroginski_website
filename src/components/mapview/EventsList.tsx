@@ -188,18 +188,16 @@ export default function EventsList({
           <div className="std-event-item-meta">
             {ongoingNow ? (
               nowTillLabel(event.end)
+            ) : relative ? (
+              // Within the next few hours the countdown alone says when — the
+              // full date would just repeat it.
+              <span className="std-event-item-relative">{relative}</span>
             ) : (
               <>
                 <span className="std-event-item-day" style={dayColor ? { backgroundColor: dayColor } : undefined}>
                   {weekday}
                 </span>{' '}
                 {rest}
-                {relative && (
-                  <>
-                    {' '}
-                    <span className="std-event-item-relative">{relative}</span>
-                  </>
-                )}
               </>
             )}
             {venue && (

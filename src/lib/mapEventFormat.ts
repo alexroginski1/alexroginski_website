@@ -37,14 +37,6 @@ const shortMonthDayFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
 })
 
-const monthDayTimeFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/Los_Angeles',
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-})
-
 // "Mon" + "5:30 PM" / "Sat" + "10 AM" — used for the map marker labels,
 // which are too small for the fuller `dateTimeFormatter` output. Split so
 // the weekday can be styled separately (e.g. color-coded per day).
@@ -59,7 +51,7 @@ export function shortEventDateParts(iso: string): { weekday: string; time: strin
 // marker badge for that date (see DAY_BADGE_COLORS/buildDayColorMap).
 export function eventListDateParts(iso: string): { weekday: string; rest: string } {
   const date = new Date(iso)
-  return { weekday: shortWeekdayFormatter.format(date), rest: monthDayTimeFormatter.format(date) }
+  return { weekday: shortWeekdayFormatter.format(date), rest: shortMonthDayTime(iso) }
 }
 
 // "Monday, August 9, 10:00 AM – 12:00 PM" — used in the map marker popup,

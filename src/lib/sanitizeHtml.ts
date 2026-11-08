@@ -9,7 +9,11 @@ function escapeHtml(text: string): string {
 // field rather than plain text. Only <a href="http(s)://…"> plus a few
 // inline text tags survive; everything else is unwrapped to plain text so
 // it can be safely rendered via dangerouslySetInnerHTML.
-export function sanitizeDescriptionHtml(raw: string): string {
+//
+// `dropEventLink` removes the description's own "Event Link" anchor, for
+// callers that already surface event.eventLink elsewhere (e.g. beside the
+// title) and don't want it shown twice.
+export function sanitizeDescriptionHtml(raw: string, { dropEventLink = false } = {}): string {
   if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
     return escapeHtml(raw)
   }
@@ -29,6 +33,11 @@ export function sanitizeDescriptionHtml(raw: string): string {
       for (const attr of Array.from(el.attributes)) {
         if (el.tagName === 'A' && attr.name === 'href') continue
         el.removeAttribute(attr.name)
+      }
+
+      if (el.tagName === 'A' && dropEventLink && /^\s*Event Link\s*$/i.test(el.textContent ?? '')) {
+        node.removeChild(el)
+        continue
       }
 
       if (el.tagName === 'A') {
